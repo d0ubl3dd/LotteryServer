@@ -21,7 +21,7 @@ namespace DataAccess
         }
     
         public int id_game { get; set; }
-        public int id_winner { get; set; }
+        public string id_winner { get; set; }
     
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<User> User { get; set; }

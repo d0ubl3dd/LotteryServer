@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Services.Services.Lobby
+namespace Contracts.Services.Lobby
 {
     internal interface ILobbyService
     {

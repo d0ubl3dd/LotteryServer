@@ -4,27 +4,34 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="DBModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+      <Schema Namespace="base_lotteryModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="Avatar">
           <Key>
             <PropertyRef Name="id_avatar" />
           </Key>
-          <Property Name="id_avatar" Type="int" Nullable="false" />
-          <Property Name="path" Type="varchar" MaxLength="100" />
+          <Property Name="id_avatar" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="path" Type="varchar" MaxLength="300" />
+          <Property Name="avatar_name" Type="varchar" MaxLength="50" />
         </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'base_prueba.dbo.Banned' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
         <EntityType Name="Banned">
           <Key>
             <PropertyRef Name="id_banned" />
+            <PropertyRef Name="id_user" />
+            <PropertyRef Name="ban_type" />
+            <PropertyRef Name="reason" />
+            <PropertyRef Name="banned_at" />
           </Key>
-          <Property Name="id_banned" Type="int" Nullable="false" />
+          <Property Name="id_banned" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="id_user" Type="int" Nullable="false" />
-          <Property Name="ban_type" Type="varchar" MaxLength="30" Nullable="false" />
-          <Property Name="reason" Type="varchar" MaxLength="60" Nullable="false" />
+          <Property Name="ban_type" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="reason" Type="varchar" MaxLength="150" Nullable="false" />
           <Property Name="banned_at" Type="datetime" Nullable="false" />
           <Property Name="unbanned_at" Type="datetime" />
         </EntityType>
         <!--Errores durante la generación:
-advertencia 6002: La tabla o vista 'DB.dbo.Friendship' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+advertencia 6002: La tabla o vista 'base_prueba.dbo.Friendship' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
         <EntityType Name="Friendship">
           <Key>
             <PropertyRef Name="id_user1" />
@@ -32,21 +39,21 @@ advertencia 6002: La tabla o vista 'DB.dbo.Friendship' no tiene definida ninguna
             <PropertyRef Name="status" />
           </Key>
           <Property Name="id_user1" Type="int" Nullable="false" />
-          <Property Name="id_user2" Type="int" Nullable="false" />
-          <Property Name="status" Type="varchar" MaxLength="30" Nullable="false" />
+          <Property Name="id_user2" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="status" Type="varchar" MaxLength="50" />
         </EntityType>
         <EntityType Name="Game">
           <Key>
             <PropertyRef Name="id_game" />
           </Key>
-          <Property Name="id_game" Type="int" Nullable="false" />
-          <Property Name="id_winner" Type="int" Nullable="false" />
+          <Property Name="id_game" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="id_winner" Type="varchar" MaxLength="45" Nullable="false" />
         </EntityType>
         <EntityType Name="SocialMedia">
           <Key>
             <PropertyRef Name="id_social_media" />
           </Key>
-          <Property Name="id_social_media" Type="int" Nullable="false" />
+          <Property Name="id_social_media" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="id_user" Type="int" Nullable="false" />
           <Property Name="facebook_user" Type="varchar" MaxLength="100" />
           <Property Name="instagram_user" Type="varchar" MaxLength="100" />
@@ -67,26 +74,26 @@ advertencia 6002: La tabla o vista 'DB.dbo.Friendship' no tiene definida ninguna
           <Key>
             <PropertyRef Name="id_user" />
           </Key>
-          <Property Name="id_user" Type="int" Nullable="false" />
+          <Property Name="id_user" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
           <Property Name="id_avatar" Type="int" Nullable="false" />
           <Property Name="nickname" Type="varchar" MaxLength="30" Nullable="false" />
           <Property Name="email" Type="varchar" MaxLength="30" Nullable="false" />
-          <Property Name="password" Type="varchar" MaxLength="30" Nullable="false" />
-          <Property Name="registration_date" Type="datetime" Nullable="false" />
-          <Property Name="frist_name" Type="varchar" MaxLength="30" Nullable="false" />
+          <Property Name="password" Type="varchar" MaxLength="16" Nullable="false" />
+          <Property Name="registration_date" Type="datetime2" Precision="7" Nullable="false" />
+          <Property Name="first_name" Type="varchar" MaxLength="30" Nullable="false" />
           <Property Name="paternal_last_name" Type="varchar" MaxLength="30" Nullable="false" />
           <Property Name="maternal_last_name" Type="varchar" MaxLength="30" />
           <Property Name="score" Type="int" />
         </EntityType>
         <!--Errores durante la generación:
-advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
         <EntityType Name="User_Game">
           <Key>
             <PropertyRef Name="id_game" />
             <PropertyRef Name="id_user" />
           </Key>
           <Property Name="id_game" Type="int" Nullable="false" />
-          <Property Name="id_user" Type="int" Nullable="false" />
+          <Property Name="id_user" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
         </EntityType>
         <Association Name="FK_Banned_User">
           <End Role="User" Type="Self.User" Multiplicity="1" />
@@ -172,44 +179,23 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
             </Dependent>
           </ReferentialConstraint>
         </Association>
-        <Function Name="fn_diagramobjects" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo" ReturnType="int" />
-        <Function Name="sp_alterdiagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
-          <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
-          <Parameter Name="owner_id" Type="int" Mode="In" />
-          <Parameter Name="version" Type="int" Mode="In" />
-          <Parameter Name="definition" Type="varbinary(max)" Mode="In" />
-        </Function>
-        <Function Name="sp_creatediagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
-          <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
-          <Parameter Name="owner_id" Type="int" Mode="In" />
-          <Parameter Name="version" Type="int" Mode="In" />
-          <Parameter Name="definition" Type="varbinary(max)" Mode="In" />
-        </Function>
-        <Function Name="sp_dropdiagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
-          <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
-          <Parameter Name="owner_id" Type="int" Mode="In" />
-        </Function>
-        <Function Name="sp_helpdiagramdefinition" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
-          <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
-          <Parameter Name="owner_id" Type="int" Mode="In" />
-        </Function>
-        <Function Name="sp_helpdiagrams" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
-          <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
-          <Parameter Name="owner_id" Type="int" Mode="In" />
-        </Function>
-        <Function Name="sp_renamediagram" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
-          <Parameter Name="diagramname" Type="nvarchar" Mode="In" />
-          <Parameter Name="owner_id" Type="int" Mode="In" />
-          <Parameter Name="new_diagramname" Type="nvarchar" Mode="In" />
-        </Function>
-        <Function Name="sp_upgraddiagrams" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo" />
-        <EntityContainer Name="DBModelStoreContainer">
+        <EntityContainer Name="base_lotteryModelStoreContainer">
           <EntitySet Name="Avatar" EntityType="Self.Avatar" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Banned" EntityType="Self.Banned" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Game" EntityType="Self.Game" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="SocialMedia" EntityType="Self.SocialMedia" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="sysdiagrams" EntityType="Self.sysdiagrams" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="User" EntityType="Self.User" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Banned" EntityType="Self.Banned" store:Type="Tables" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Banned].[id_banned] AS [id_banned], 
+    [Banned].[id_user] AS [id_user], 
+    [Banned].[ban_type] AS [ban_type], 
+    [Banned].[reason] AS [reason], 
+    [Banned].[banned_at] AS [banned_at], 
+    [Banned].[unbanned_at] AS [unbanned_at]
+    FROM [dbo].[Banned] AS [Banned]</DefiningQuery>
+          </EntitySet>
           <EntitySet Name="Friendship" EntityType="Self.Friendship" store:Type="Tables" store:Schema="dbo">
             <DefiningQuery>SELECT 
     [Friendship].[id_user1] AS [id_user1], 
@@ -256,13 +242,14 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
     </edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
-      <Schema Namespace="DBModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+      <Schema Namespace="base_lotteryModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
         <EntityType Name="Avatar">
           <Key>
             <PropertyRef Name="id_avatar" />
           </Key>
-          <Property Name="id_avatar" Type="Int32" Nullable="false" />
-          <Property Name="path" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="id_avatar" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="path" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="avatar_name" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
           <NavigationProperty Name="User" Relationship="Self.FK_User_Avatar" FromRole="Avatar" ToRole="User" />
         </EntityType>
         <EntityType Name="Banned">
@@ -281,15 +268,15 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
           <Key>
             <PropertyRef Name="id_game" />
           </Key>
-          <Property Name="id_game" Type="Int32" Nullable="false" />
-          <Property Name="id_winner" Type="Int32" Nullable="false" />
+          <Property Name="id_game" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="id_winner" Type="String" MaxLength="45" FixedLength="false" Unicode="false" Nullable="false" />
           <NavigationProperty Name="User" Relationship="Self.User_Game" FromRole="Game" ToRole="User" />
         </EntityType>
         <EntityType Name="SocialMedia">
           <Key>
             <PropertyRef Name="id_social_media" />
           </Key>
-          <Property Name="id_social_media" Type="Int32" Nullable="false" />
+          <Property Name="id_social_media" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="id_user" Type="Int32" Nullable="false" />
           <Property Name="facebook_user" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
           <Property Name="instagram_user" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
@@ -311,22 +298,39 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
           <Key>
             <PropertyRef Name="id_user" />
           </Key>
-          <Property Name="id_user" Type="Int32" Nullable="false" />
+          <Property Name="id_user" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="id_avatar" Type="Int32" Nullable="false" />
           <Property Name="nickname" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="email" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
-          <Property Name="password" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
-          <Property Name="registration_date" Type="DateTime" Nullable="false" Precision="3" />
-          <Property Name="frist_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="password" Type="String" MaxLength="16" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="registration_date" Type="DateTime" Nullable="false" Precision="7" />
+          <Property Name="first_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="paternal_last_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="maternal_last_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" />
           <Property Name="score" Type="Int32" />
           <NavigationProperty Name="Avatar" Relationship="Self.FK_User_Avatar" FromRole="User" ToRole="Avatar" />
           <NavigationProperty Name="Banned" Relationship="Self.FK_Banned_User" FromRole="User" ToRole="Banned" />
           <NavigationProperty Name="SocialMedia" Relationship="Self.FK_SocialMedia_User" FromRole="User" ToRole="SocialMedia" />
+          <NavigationProperty Name="Banned" Relationship="Self.FK_Banned_User" FromRole="User" ToRole="Banned" />
           <NavigationProperty Name="Friendship" Relationship="Self.FK_Friendship_User" FromRole="User" ToRole="Friendship" />
           <NavigationProperty Name="Friendship1" Relationship="Self.FK_Friendship_User1" FromRole="User" ToRole="Friendship" />
           <NavigationProperty Name="Game" Relationship="Self.User_Game" FromRole="User" ToRole="Game" />
+        </EntityType>
+        <EntityType Name="Banned">
+          <Key>
+            <PropertyRef Name="id_banned" />
+            <PropertyRef Name="id_user" />
+            <PropertyRef Name="ban_type" />
+            <PropertyRef Name="reason" />
+            <PropertyRef Name="banned_at" />
+          </Key>
+          <Property Name="id_banned" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="id_user" Type="Int32" Nullable="false" />
+          <Property Name="ban_type" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="reason" Type="String" MaxLength="150" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="banned_at" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="unbanned_at" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="User" Relationship="Self.FK_Banned_User" FromRole="Banned" ToRole="User" />
         </EntityType>
         <EntityType Name="Friendship">
           <Key>
@@ -335,8 +339,8 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
             <PropertyRef Name="status" />
           </Key>
           <Property Name="id_user1" Type="Int32" Nullable="false" />
-          <Property Name="id_user2" Type="Int32" Nullable="false" />
-          <Property Name="status" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="id_user2" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="status" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
           <NavigationProperty Name="User" Relationship="Self.FK_Friendship_User" FromRole="Friendship" ToRole="User" />
           <NavigationProperty Name="User1" Relationship="Self.FK_Friendship_User1" FromRole="Friendship" ToRole="User" />
         </EntityType>
@@ -352,18 +356,6 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
             </Dependent>
           </ReferentialConstraint>
         </Association>
-        <Association Name="FK_Banned_User">
-          <End Role="User" Type="Self.User" Multiplicity="1" />
-          <End Role="Banned" Type="Self.Banned" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="User">
-              <PropertyRef Name="id_user" />
-            </Principal>
-            <Dependent Role="Banned">
-              <PropertyRef Name="id_user" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
         <Association Name="FK_SocialMedia_User">
           <End Role="User" Type="Self.User" Multiplicity="1" />
           <End Role="SocialMedia" Type="Self.SocialMedia" Multiplicity="*" />
@@ -372,6 +364,18 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
               <PropertyRef Name="id_user" />
             </Principal>
             <Dependent Role="SocialMedia">
+              <PropertyRef Name="id_user" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Banned_User">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Banned" Type="Self.Banned" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Banned">
               <PropertyRef Name="id_user" />
             </Dependent>
           </ReferentialConstraint>
@@ -404,17 +408,22 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
           <End Role="Game" Type="Self.Game" Multiplicity="*" />
           <End Role="User" Type="Self.User" Multiplicity="*" />
         </Association>
-        <EntityContainer Name="DBEntities" annotation:LazyLoadingEnabled="true">
+        <EntityContainer Name="base_lottery" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="Avatar" EntityType="Self.Avatar" />
           <EntitySet Name="Banned" EntityType="Self.Banned" />
           <EntitySet Name="Game" EntityType="Self.Game" />
           <EntitySet Name="SocialMedia" EntityType="Self.SocialMedia" />
           <EntitySet Name="sysdiagrams" EntityType="Self.sysdiagrams" />
           <EntitySet Name="User" EntityType="Self.User" />
+          <EntitySet Name="Banned" EntityType="Self.Banned" />
           <EntitySet Name="Friendship" EntityType="Self.Friendship" />
           <AssociationSet Name="FK_User_Avatar" Association="Self.FK_User_Avatar">
             <End Role="Avatar" EntitySet="Avatar" />
             <End Role="User" EntitySet="User" />
+          </AssociationSet>
+          <AssociationSet Name="FK_SocialMedia_User" Association="Self.FK_SocialMedia_User">
+            <End Role="User" EntitySet="User" />
+            <End Role="SocialMedia" EntitySet="SocialMedia" />
           </AssociationSet>
           <AssociationSet Name="FK_Banned_User" Association="Self.FK_Banned_User">
             <End Role="User" EntitySet="User" />
@@ -483,29 +492,18 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
     <!-- C-S mapping content -->
     <edmx:Mappings>
       <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
-        <EntityContainerMapping StorageEntityContainer="DBModelStoreContainer" CdmEntityContainer="DBEntities">
+        <EntityContainerMapping StorageEntityContainer="base_lotteryModelStoreContainer" CdmEntityContainer="base_lottery">
           <EntitySetMapping Name="Avatar">
-            <EntityTypeMapping TypeName="DBModel.Avatar">
+            <EntityTypeMapping TypeName="base_lotteryModel.Avatar">
               <MappingFragment StoreEntitySet="Avatar">
                 <ScalarProperty Name="id_avatar" ColumnName="id_avatar" />
                 <ScalarProperty Name="path" ColumnName="path" />
-              </MappingFragment>
-            </EntityTypeMapping>
-          </EntitySetMapping>
-          <EntitySetMapping Name="Banned">
-            <EntityTypeMapping TypeName="DBModel.Banned">
-              <MappingFragment StoreEntitySet="Banned">
-                <ScalarProperty Name="id_banned" ColumnName="id_banned" />
-                <ScalarProperty Name="id_user" ColumnName="id_user" />
-                <ScalarProperty Name="ban_type" ColumnName="ban_type" />
-                <ScalarProperty Name="reason" ColumnName="reason" />
-                <ScalarProperty Name="banned_at" ColumnName="banned_at" />
-                <ScalarProperty Name="unbanned_at" ColumnName="unbanned_at" />
+                <ScalarProperty Name="avatar_name" ColumnName="avatar_name" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
           <EntitySetMapping Name="Game">
-            <EntityTypeMapping TypeName="DBModel.Game">
+            <EntityTypeMapping TypeName="base_lotteryModel.Game">
               <MappingFragment StoreEntitySet="Game">
                 <ScalarProperty Name="id_game" ColumnName="id_game" />
                 <ScalarProperty Name="id_winner" ColumnName="id_winner" />
@@ -513,7 +511,7 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
             </EntityTypeMapping>
           </EntitySetMapping>
           <EntitySetMapping Name="SocialMedia">
-            <EntityTypeMapping TypeName="DBModel.SocialMedia">
+            <EntityTypeMapping TypeName="base_lotteryModel.SocialMedia">
               <MappingFragment StoreEntitySet="SocialMedia">
                 <ScalarProperty Name="id_social_media" ColumnName="id_social_media" />
                 <ScalarProperty Name="id_user" ColumnName="id_user" />
@@ -536,7 +534,7 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
             </EntityTypeMapping>
           </EntitySetMapping>
           <EntitySetMapping Name="User">
-            <EntityTypeMapping TypeName="DBModel.User">
+            <EntityTypeMapping TypeName="base_lotteryModel.User">
               <MappingFragment StoreEntitySet="User">
                 <ScalarProperty Name="id_user" ColumnName="id_user" />
                 <ScalarProperty Name="id_avatar" ColumnName="id_avatar" />
@@ -544,15 +542,27 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
                 <ScalarProperty Name="email" ColumnName="email" />
                 <ScalarProperty Name="password" ColumnName="password" />
                 <ScalarProperty Name="registration_date" ColumnName="registration_date" />
-                <ScalarProperty Name="frist_name" ColumnName="frist_name" />
+                <ScalarProperty Name="first_name" ColumnName="first_name" />
                 <ScalarProperty Name="paternal_last_name" ColumnName="paternal_last_name" />
                 <ScalarProperty Name="maternal_last_name" ColumnName="maternal_last_name" />
                 <ScalarProperty Name="score" ColumnName="score" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
+          <EntitySetMapping Name="Banned">
+            <EntityTypeMapping TypeName="base_lotteryModel.Banned">
+              <MappingFragment StoreEntitySet="Banned">
+                <ScalarProperty Name="id_banned" ColumnName="id_banned" />
+                <ScalarProperty Name="id_user" ColumnName="id_user" />
+                <ScalarProperty Name="ban_type" ColumnName="ban_type" />
+                <ScalarProperty Name="reason" ColumnName="reason" />
+                <ScalarProperty Name="banned_at" ColumnName="banned_at" />
+                <ScalarProperty Name="unbanned_at" ColumnName="unbanned_at" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
           <EntitySetMapping Name="Friendship">
-            <EntityTypeMapping TypeName="DBModel.Friendship">
+            <EntityTypeMapping TypeName="base_lotteryModel.Friendship">
               <MappingFragment StoreEntitySet="Friendship">
                 <ScalarProperty Name="id_user1" ColumnName="id_user1" />
                 <ScalarProperty Name="id_user2" ColumnName="id_user2" />
@@ -560,7 +570,7 @@ advertencia 6002: La tabla o vista 'DB.dbo.User_Game' no tiene definida ninguna 
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>
-          <AssociationSetMapping Name="User_Game" TypeName="DBModel.User_Game" StoreEntitySet="User_Game">
+          <AssociationSetMapping Name="User_Game" TypeName="base_lotteryModel.User_Game" StoreEntitySet="User_Game">
             <EndProperty Name="Game">
               <ScalarProperty Name="id_game" ColumnName="id_game" />
             </EndProperty>

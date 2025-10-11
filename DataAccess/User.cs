@@ -17,6 +17,7 @@ namespace DataAccess
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
         public User()
         {
+            this.SocialMedia = new HashSet<SocialMedia>();
             this.Banned = new HashSet<Banned>();
             this.SocialMedia = new HashSet<SocialMedia>();
             this.Friendship = new HashSet<Friendship>();
@@ -30,7 +31,7 @@ namespace DataAccess
         public string email { get; set; }
         public string password { get; set; }
         public System.DateTime registration_date { get; set; }
-        public string frist_name { get; set; }
+        public string first_name { get; set; }
         public string paternal_last_name { get; set; }
         public string maternal_last_name { get; set; }
         public Nullable<int> score { get; set; }
@@ -40,6 +41,8 @@ namespace DataAccess
         public virtual ICollection<Banned> Banned { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<SocialMedia> SocialMedia { get; set; }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+        public virtual ICollection<Banned> Banned { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Friendship> Friendship { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Services.Services.Users
+namespace Contracts.Services.Users
 {
     internal interface IAuthenticationService
     {

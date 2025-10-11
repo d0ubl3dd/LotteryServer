@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Contracts.Callbacks
+namespace BusinessLogic
 {
-    internal interface ILobbyCallback
+    public class Class1
     {
     }
 }

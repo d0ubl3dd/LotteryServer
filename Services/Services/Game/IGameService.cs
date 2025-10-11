@@ -1,12 +1,23 @@
-﻿using System;
+﻿using Contracts.Callbacks;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Services.Services.Game
+namespace Contracts.Services.Game
 {
-    internal interface IGameService
+    [ServiceContract(CallbackContract = typeof(IGameCallback))]
+    public interface IGameService
     {
+        [OperationContract(IsOneWay = true)]
+        void StartGame();
+
+        [OperationContract(IsOneWay = true)]
+        void UpdateGameSettings();
+
+        [OperationContract]
+        Task GetScoreboard();
     }
 }

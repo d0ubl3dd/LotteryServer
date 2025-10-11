@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.ServiceModel;
 
 
-namespace Services.Services.Users
+namespace Contracts.Services.Users
 {
     [ServiceContract]
     public interface IUserService
