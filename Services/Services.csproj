@@ -53,7 +53,13 @@
     <Compile Include="Services\Lobby\ILobbyService.cs" />
     <Compile Include="Services\Users\IAuthenticationService.cs" />
     <Compile Include="Services\Users\IUserService.cs" />
+    <Compile Include="Services\Users\UserService.cs" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj">
+      <Project>{5AD935EC-17E6-4E7E-9474-33DC278C4028}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
