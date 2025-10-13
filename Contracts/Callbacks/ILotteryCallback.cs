@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Contracts
+namespace Contracts.Callbacks
 {
-    public class Class1
+    public interface ILotteryCallback : IGameCallback, IChatCallback, ILobbyCallback
     {
+
     }
 }

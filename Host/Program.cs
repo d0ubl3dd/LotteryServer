@@ -8,7 +8,7 @@ namespace Host
     {
         static void Main(string[] args)
         {
-            using (ServiceHost host = new ServiceHost(typeof(GameService)))
+            using (ServiceHost host = new ServiceHost(typeof(LotteryService)))
             {
                 host.Open();
 

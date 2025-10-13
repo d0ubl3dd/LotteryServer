@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace Contracts.Services.Game
 {
-    [ServiceContract(CallbackContract = typeof(IGameCallback))]
+    [ServiceContract]
     public interface IGameService
     {
-        [OperationContract(IsOneWay = true)]
-        void StartGame();
+        [OperationContract]
+        Task StartGame();
 
-        [OperationContract(IsOneWay = true)]
-        void UpdateGameSettings();
+        [OperationContract]
+        Task UpdateGameSettings(/* DTO con settings */);
 
         [OperationContract]
         Task GetScoreboard();

@@ -41,8 +41,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
-    <Compile Include="GameService.cs" />
+    <Compile Include="Logic\AuthenticationHandler.cs" />
+    <Compile Include="Logic\ChatHandler.cs" />
+    <Compile Include="Logic\FriendHandler.cs" />
+    <Compile Include="Logic\GameHandler.cs" />
+    <Compile Include="Logic\LobbyHandler.cs" />
+    <Compile Include="Logic\UserHandler.cs" />
+    <Compile Include="LotteryService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Contracts.Callbacks
 {
-    internal interface IChatCallback
+    public interface IChatCallback
     {
+
     }
 }

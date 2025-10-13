@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Contracts.Callbacks
 {
-    internal interface IGameCallback
+    public interface IGameCallback
     {
     }
 }

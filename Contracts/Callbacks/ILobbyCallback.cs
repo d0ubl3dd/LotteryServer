@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Contracts.Callbacks
 {
-    internal interface ILobbyCallback
+    public interface ILobbyCallback
     {
+
     }
 }
