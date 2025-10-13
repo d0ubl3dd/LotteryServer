@@ -18,8 +18,6 @@ namespace DataAccess
         public int id_user { get; set; }
         public string facebook_user { get; set; }
         public string instagram_user { get; set; }
-        public string x_user { get; set; }
-        public string tiktok_user { get; set; }
     
         public virtual User User { get; set; }
     }
