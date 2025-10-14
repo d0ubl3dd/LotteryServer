@@ -1,23 +1,53 @@
-﻿using System;
+﻿using BusinessLogic.Logic;
+using DataAccess;
+using System;
+using System.Data.Entity;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
 {
     public class AuthenticationHandler
     {
-        public Task<bool> UserLogin(string username, string password)
+        public async Task<User> LoginUser(string userName, string password)
         {
-            Console.WriteLine("Lógica de Login manejada por AuthenticationHandler.");
-            // TODO: Lógica para verificar credenciales contra la BD.
-            // using (var db = new LotteryEntities()) { ... }
-            return Task.FromResult(true); // Devuelve true si el login es exitoso
+            using (var context = new base_pruebaEntities())
+            {
+                var foundUser = await context.User.FirstOrDefaultAsync(u => u.nickname == userName);
+
+                if (foundUser == null)
+                {
+                    return null;
+                }
+
+                if (!PasswordHasher.VerifyPasswordHash(password, foundUser.passwordHash, foundUser.passwordSalt))
+                {
+                    return null;
+                }
+
+                return foundUser;
+            }
         }
 
-        public Task UserLogout()
+        public async Task LogoutUser(User userToLogout)
         {
-            Console.WriteLine("Lógica de Logout manejada por AuthenticationHandler.");
-            // TODO: Lógica para manejar el logout (ej. actualizar estado del jugador).
-            return Task.CompletedTask;
+            if (userToLogout == null)
+            {
+                return;
+            }
+
+            Console.WriteLine($"User {userToLogout.nickname} has requested to log out.");
+
+            try
+            {
+                using (var context = new base_pruebaEntities())
+                {
+                    Console.WriteLine($"User {userToLogout.nickname} has logged out successfully.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during logout: {ex.Message}");
+            }
         }
     }
 }

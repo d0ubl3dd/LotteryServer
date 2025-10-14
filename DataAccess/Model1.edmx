@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="base_pruebaModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+    <Schema Namespace="base_pruebaModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="Avatar">
           <Key>
             <PropertyRef Name="id_avatar" />
@@ -65,12 +65,13 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.Friendship' no tiene definid
           <Property Name="id_avatar" Type="int" Nullable="false" />
           <Property Name="nickname" Type="varchar" MaxLength="30" Nullable="false" />
           <Property Name="email" Type="varchar" MaxLength="30" Nullable="false" />
-          <Property Name="password" Type="varchar" MaxLength="16" Nullable="false" />
           <Property Name="registration_date" Type="datetime2" Precision="7" Nullable="false" />
           <Property Name="first_name" Type="varchar" MaxLength="30" Nullable="false" />
           <Property Name="paternal_last_name" Type="varchar" MaxLength="30" Nullable="false" />
           <Property Name="maternal_last_name" Type="varchar" MaxLength="30" />
           <Property Name="score" Type="int" />
+          <Property Name="passwordHash" Type="varbinary(max)" />
+          <Property Name="passwordSalt" Type="varbinary(max)" />
         </EntityType>
         <!--Errores durante la generación:
 advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
@@ -127,18 +128,6 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
             </Principal>
             <Dependent Role="SocialMedia">
               <PropertyRef Name="id_user" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
-        <Association Name="FK_User_Avatar">
-          <End Role="Avatar" Type="Self.Avatar" Multiplicity="1" />
-          <End Role="User" Type="Self.User" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="Avatar">
-              <PropertyRef Name="id_avatar" />
-            </Principal>
-            <Dependent Role="User">
-              <PropertyRef Name="id_avatar" />
             </Dependent>
           </ReferentialConstraint>
         </Association>
@@ -210,10 +199,6 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
             <End Role="User" EntitySet="User" />
             <End Role="SocialMedia" EntitySet="SocialMedia" />
           </AssociationSet>
-          <AssociationSet Name="FK_User_Avatar" Association="Self.FK_User_Avatar">
-            <End Role="Avatar" EntitySet="Avatar" />
-            <End Role="User" EntitySet="User" />
-          </AssociationSet>
           <AssociationSet Name="FK_User_Game_Game" Association="Self.FK_User_Game_Game">
             <End Role="Game" EntitySet="Game" />
             <End Role="User_Game" EntitySet="User_Game" />
@@ -223,8 +208,7 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
             <End Role="User_Game" EntitySet="User_Game" />
           </AssociationSet>
         </EntityContainer>
-      </Schema>
-    </edmx:StorageModels>
+      </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="base_pruebaModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -263,7 +247,6 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <Property Name="id_avatar" Type="Int32" Nullable="false" />
           <Property Name="nickname" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="email" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
-          <Property Name="password" Type="String" MaxLength="16" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="registration_date" Type="DateTime" Nullable="false" Precision="7" />
           <Property Name="first_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="paternal_last_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
@@ -275,6 +258,8 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <NavigationProperty Name="Friendship" Relationship="Self.FK_Friendship_User" FromRole="User" ToRole="Friendship" />
           <NavigationProperty Name="Friendship1" Relationship="Self.FK_Friendship_User1" FromRole="User" ToRole="Friendship" />
           <NavigationProperty Name="Game" Relationship="Self.User_Game" FromRole="User" ToRole="Game" />
+          <Property Name="passwordHash" Type="Binary" MaxLength="Max" FixedLength="false" />
+          <Property Name="passwordSalt" Type="Binary" MaxLength="Max" FixedLength="false" />
         </EntityType>
         <EntityType Name="Banned">
           <Key>
@@ -435,11 +420,12 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <EntitySetMapping Name="User">
             <EntityTypeMapping TypeName="base_pruebaModel.User">
               <MappingFragment StoreEntitySet="User">
+                <ScalarProperty Name="passwordSalt" ColumnName="passwordSalt" />
+                <ScalarProperty Name="passwordHash" ColumnName="passwordHash" />
                 <ScalarProperty Name="id_user" ColumnName="id_user" />
                 <ScalarProperty Name="id_avatar" ColumnName="id_avatar" />
                 <ScalarProperty Name="nickname" ColumnName="nickname" />
                 <ScalarProperty Name="email" ColumnName="email" />
-                <ScalarProperty Name="password" ColumnName="password" />
                 <ScalarProperty Name="registration_date" ColumnName="registration_date" />
                 <ScalarProperty Name="first_name" ColumnName="first_name" />
                 <ScalarProperty Name="paternal_last_name" ColumnName="paternal_last_name" />

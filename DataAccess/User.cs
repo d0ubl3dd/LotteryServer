@@ -28,12 +28,13 @@ namespace DataAccess
         public int id_avatar { get; set; }
         public string nickname { get; set; }
         public string email { get; set; }
-        public string password { get; set; }
         public System.DateTime registration_date { get; set; }
         public string first_name { get; set; }
         public string paternal_last_name { get; set; }
         public string maternal_last_name { get; set; }
         public Nullable<int> score { get; set; }
+        public byte[] passwordHash { get; set; }
+        public byte[] passwordSalt { get; set; }
     
         public virtual Avatar Avatar { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
