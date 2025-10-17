@@ -11,12 +11,24 @@ namespace Contracts.DTOs
     public class UserRegisterDTO
     {
         [DataMember]
-        public string Username { get; set; }
-
+        public int IdUser { get; set; }
+        [DataMember]
+        public int IdAvatar { get; set; }
+        [DataMember]
+        public string Nickname { get; set; }
         [DataMember]
         public string Email { get; set; }
-
         [DataMember]
         public string Password { get; set; }
+        [DataMember]
+        public DateTime RegistrationDate { get; set; }
+        [DataMember]
+        public string FirstName { get; set; }
+        [DataMember]
+        public string PaternalLastName { get; set; }
+        [DataMember]
+        public string MaternalLastName { get; set; }
+        [DataMember]
+        public int? Score { get; set; }       
     }
 }

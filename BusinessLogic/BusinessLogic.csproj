@@ -47,6 +47,7 @@
     <Compile Include="Logic\GameHandler.cs" />
     <Compile Include="Logic\LobbyHandler.cs" />
     <Compile Include="Logic\UserHandler.cs" />
+    <Compile Include="Logic\VerificationHandler .cs" />
     <Compile Include="LotteryService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -54,6 +55,10 @@
     <ProjectReference Include="..\Contracts\Contracts.csproj">
       <Project>{a120ac68-a8e9-42fb-92f0-0baade6ff3b8}</Project>
       <Name>Contracts</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DataAccess\DataAccess.csproj">
+      <Project>{97aa68c4-1789-413e-8abd-f17fbf8f2ddb}</Project>
+      <Name>DataAccess</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

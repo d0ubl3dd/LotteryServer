@@ -1,6 +1,7 @@
 ﻿using BusinessLogic.Handlers; // Suponiendo que tus handlers están en este namespace
 using BusinessLogic.Logic;
 using Contracts;
+using Contracts.DTOs;
 using System.Threading.Tasks;
 
 namespace BusinessLogic
@@ -27,29 +28,29 @@ namespace BusinessLogic
         }
 
         // --- IUserService ---
-        public Task<int> RegisterUser(/* UserRegisterDTO userData */)
+        public void RegisterUser(UserRegisterDTO user)
         {
-            return _userHandler.RegisterUser(/* userData */);
+            
         }
 
-        public Task<int> RegisterGuest()
+        public void RegisterGuest(string nickname)
         {
-            return _userHandler.RegisterGuest();
+            
         }
 
-        public Task ChangePassword(string oldPassword, string newPassword)
+        public void ChangePassword(string password)
         {
-            return _userHandler.ChangePassword(oldPassword, newPassword);
+            
         }
 
-        public Task RecoverPassword(string email)
+        public void RecoverPassword(string email)
         {
-            return _userHandler.RecoverPassword(email);
+            
         }
 
-        public Task UpdateProfile(/* UserProfileDTO profileData */)
+        public void UpdateProfile(/* UserProfileDTO profileData */)
         {
-            return _userHandler.UpdateProfile(/* profileData */);
+            
         }
 
         // --- IFriendService ---

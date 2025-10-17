@@ -60,6 +60,7 @@
       <DependentUpon>Model1.tt</DependentUpon>
     </Compile>
     <Compile Include="Class1.cs" />
+    <Compile Include="DAOs\UserDAO.cs" />
     <Compile Include="Friendship.cs">
       <DependentUpon>Model1.tt</DependentUpon>
     </Compile>

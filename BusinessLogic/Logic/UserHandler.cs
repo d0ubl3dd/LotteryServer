@@ -1,46 +1,50 @@
-﻿using System;
+﻿using Contracts.DTOs;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Contracts.Services.Users;
+using Microsoft.SqlServer.Server;
+using DataAccess;
+using DataAccess.DAOs;
+
 
 namespace BusinessLogic.Logic
 {
-    public class UserHandler
+    public partial class UserHandler : IUserService
     {
-        public Task<int> RegisterUser(/* UserRegisterDTO userData */)
+        public void RegisterUser(UserRegisterDTO user)
         {
-            Console.WriteLine("Lógica de RegisterUser manejada por UserHandler.");
-            // TODO: Lógica para validar y guardar un nuevo usuario en la BD.
-            return Task.FromResult(1); // Devuelve el ID del nuevo usuario
+            var userDAO = new DataAccess.User
+            {
+                nickname = user.Nickname,
+                email = user.Email,
+                //password = user.Password,
+                registration_date = user.RegistrationDate,
+                first_name = user.FirstName,
+                paternal_last_name = user.PaternalLastName,
+                maternal_last_name = user.MaternalLastName,
+                score = user.Score,
+                id_avatar = user.IdAvatar
+            };
+            new UserDAO().AddUser(userDAO);
         }
 
-        public Task<int> RegisterGuest()
+        public void ChangePassword(string password)
         {
-            Console.WriteLine("Lógica de RegisterGuest manejada por UserHandler.");
-            // TODO: Lógica para crear un usuario invitado temporal.
-            return Task.FromResult(-1); // Devuelve un ID de invitado
+            throw new NotImplementedException();
         }
 
-        public Task ChangePassword(string oldPassword, string newPassword)
+        public void RecoverPassword(string email)
         {
-            Console.WriteLine("Lógica de ChangePassword manejada por UserHandler.");
-            // TODO: Lógica para verificar la contraseña antigua y actualizarla.
-            return Task.CompletedTask;
+            throw new NotImplementedException();
         }
-
-        public Task RecoverPassword(string email)
+        
+        public void RegisterGuest(string nickname)
         {
-            Console.WriteLine("Lógica de RecoverPassword manejada por UserHandler.");
-            // TODO: Lógica para generar y enviar un token de recuperación.
-            return Task.CompletedTask;
+            throw new NotImplementedException();
         }
-
-        public Task UpdateProfile(/* UserProfileDTO profileData */)
-        {
-            Console.WriteLine("Lógica de UpdateProfile manejada por UserHandler.");
-            // TODO: Lógica para actualizar el perfil del usuario en la BD.
-            return Task.CompletedTask;
-        }
+        
     }
 }
