@@ -1,14 +1,18 @@
-﻿using BusinessLogic.Handlers; // Suponiendo que tus handlers están en este namespace
-using BusinessLogic.Logic;
+﻿using BusinessLogic.Logic;
 using Contracts;
 using Contracts.DTOs;
 using System.Threading.Tasks;
+using System.ServiceModel;
+using BusinessLogic.Handlers;
+using DataAccess;
 
 namespace BusinessLogic
 {
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
     public class LotteryService : ILotteryService
     {
         // Instancia de cada especialista
+        private User currentUser;
         private readonly AuthenticationHandler _authHandler = new AuthenticationHandler();
         private readonly UserHandler _userHandler = new UserHandler();
         private readonly FriendHandler _friendHandler = new FriendHandler();
@@ -17,14 +21,16 @@ namespace BusinessLogic
         private readonly ChatHandler _chatHandler = new ChatHandler();
 
         // --- IAuthenticationService ---
-        public Task<bool> UserLogin(string username, string password)
+        public async Task<bool> LoginUser(string username, string password)
         {
-            return _authHandler.UserLogin(username, password);
+            this.currentUser = await _authHandler.LoginUser(username, password);
+
+            return this.currentUser != null;
         }
 
-        public Task UserLogout()
+        public Task LogoutUser()
         {
-            return _authHandler.UserLogout();
+            return _authHandler.LogoutUser(this.currentUser);
         }
 
         // --- IUserService ---

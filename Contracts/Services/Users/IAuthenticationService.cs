@@ -11,9 +11,9 @@ namespace Contracts.Services.Users
     public interface IAuthenticationService
     {
         [OperationContract]
-        Task<bool> UserLogin(string username, string password);
+        Task<bool> LoginUser(string username, string password);
 
         [OperationContract]
-        Task UserLogout();
+        Task LogoutUser();
     }
 }
