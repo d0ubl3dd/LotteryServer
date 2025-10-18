@@ -4,10 +4,14 @@ using DataAccess;
 using System;
 using System.Data.Entity;
 using System.Threading.Tasks;
+using Contracts.Services.Users;
+using Microsoft.SqlServer.Server;
+using DataAccess;
+using DataAccess.DAOs;
 
 namespace BusinessLogic.Handlers
 {
-    public class UserHandler
+    public partial class UserHandler : IUserService
     {
         public async Task<int> RegisterUser(UserRegisterDTO userData)
         {

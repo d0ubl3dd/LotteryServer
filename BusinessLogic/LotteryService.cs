@@ -41,9 +41,9 @@ namespace BusinessLogic
             return _userHandler.RegisterUser(userData);
         }
 
-        public Task<int> RegisterGuest()
+        public void RegisterGuest(string nickname)
         {
-            return _userHandler.RegisterGuest();
+            
         }
 
         public Task RecoverPassword(string email)

@@ -11,7 +11,6 @@
         <EntityTypeShape EntityType="base_pruebaModel.User" Width="1.5" PointX="3" PointY="3.125" IsExpanded="true" />
         <EntityTypeShape EntityType="base_pruebaModel.Banned" Width="1.5" PointX="5.25" PointY="4" IsExpanded="true" />
         <EntityTypeShape EntityType="base_pruebaModel.Friendship" Width="1.5" PointX="5.25" PointY="7" IsExpanded="true" />
-        <AssociationConnector Association="base_pruebaModel.FK_User_Avatar" ManuallyRouted="false" />
         <AssociationConnector Association="base_pruebaModel.FK_SocialMedia_User" ManuallyRouted="false" />
         <AssociationConnector Association="base_pruebaModel.FK_Banned_User" ManuallyRouted="false" />
         <AssociationConnector Association="base_pruebaModel.FK_Friendship_User" ManuallyRouted="false" />

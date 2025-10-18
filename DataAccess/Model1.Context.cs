@@ -13,10 +13,10 @@ namespace DataAccess
     using System.Data.Entity;
     using System.Data.Entity.Infrastructure;
     
-    public partial class base_pruebaEntities : DbContext
+    public partial class base_pruebaEntities1 : DbContext
     {
-        public base_pruebaEntities()
-            : base("name=base_pruebaEntities")
+        public base_pruebaEntities1()
+            : base("name=base_pruebaEntities1")
         {
         }
     

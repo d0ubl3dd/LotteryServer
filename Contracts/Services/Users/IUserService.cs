@@ -13,7 +13,7 @@ namespace Contracts.Services.Users
         public interface IUserService
         {
             [OperationContract]
-            Task<int> RegisterUser(UserRegisterDTO userData);
+            Task<int> RegisterUser(/* UserRegisterDTO userData */);
 
             [OperationContract]
             Task<int> RegisterGuest();
@@ -25,6 +25,6 @@ namespace Contracts.Services.Users
             Task RecoverPassword(string email);
 
             [OperationContract]
-            Task UpdateProfile(UserProfileDTO profileData);
+            Task UpdateProfile(/* UserProfileDTO profileData */);
         }
     }

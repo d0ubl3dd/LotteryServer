@@ -223,7 +223,6 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <Property Name="id_avatar" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
           <Property Name="path" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
           <Property Name="avatar_name" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
-          <NavigationProperty Name="User" Relationship="Self.FK_User_Avatar" FromRole="Avatar" ToRole="User" />
         </EntityType>
         <EntityType Name="Game">
           <Key>
@@ -256,7 +255,8 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <Property Name="paternal_last_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" Nullable="false" />
           <Property Name="maternal_last_name" Type="String" MaxLength="30" FixedLength="false" Unicode="false" />
           <Property Name="score" Type="Int32" />
-          <NavigationProperty Name="Avatar" Relationship="Self.FK_User_Avatar" FromRole="User" ToRole="Avatar" />
+          <Property Name="passwordHash" Type="Binary" MaxLength="Max" FixedLength="false" />
+          <Property Name="passwordSalt" Type="Binary" MaxLength="Max" FixedLength="false" />
           <NavigationProperty Name="SocialMedia" Relationship="Self.FK_SocialMedia_User" FromRole="User" ToRole="SocialMedia" />
           <NavigationProperty Name="Banned" Relationship="Self.FK_Banned_User" FromRole="User" ToRole="Banned" />
           <NavigationProperty Name="Friendship" Relationship="Self.FK_Friendship_User" FromRole="User" ToRole="Friendship" />
@@ -296,18 +296,6 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <NavigationProperty Name="User" Relationship="Self.FK_Friendship_User" FromRole="Friendship" ToRole="User" />
           <NavigationProperty Name="User1" Relationship="Self.FK_Friendship_User1" FromRole="Friendship" ToRole="User" />
         </EntityType>
-        <Association Name="FK_User_Avatar">
-          <End Role="Avatar" Type="Self.Avatar" Multiplicity="1" />
-          <End Role="User" Type="Self.User" Multiplicity="*" />
-          <ReferentialConstraint>
-            <Principal Role="Avatar">
-              <PropertyRef Name="id_avatar" />
-            </Principal>
-            <Dependent Role="User">
-              <PropertyRef Name="id_avatar" />
-            </Dependent>
-          </ReferentialConstraint>
-        </Association>
         <Association Name="FK_SocialMedia_User">
           <End Role="User" Type="Self.User" Multiplicity="1" />
           <End Role="SocialMedia" Type="Self.SocialMedia" Multiplicity="*" />
@@ -360,17 +348,13 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <End Role="Game" Type="Self.Game" Multiplicity="*" />
           <End Role="User" Type="Self.User" Multiplicity="*" />
         </Association>
-        <EntityContainer Name="base_pruebaEntities" annotation:LazyLoadingEnabled="true">
+        <EntityContainer Name="base_pruebaEntities1" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="Avatar" EntityType="Self.Avatar" />
           <EntitySet Name="Game" EntityType="Self.Game" />
           <EntitySet Name="SocialMedia" EntityType="Self.SocialMedia" />
           <EntitySet Name="User" EntityType="Self.User" />
           <EntitySet Name="Banned" EntityType="Self.Banned" />
           <EntitySet Name="Friendship" EntityType="Self.Friendship" />
-          <AssociationSet Name="FK_User_Avatar" Association="Self.FK_User_Avatar">
-            <End Role="Avatar" EntitySet="Avatar" />
-            <End Role="User" EntitySet="User" />
-          </AssociationSet>
           <AssociationSet Name="FK_SocialMedia_User" Association="Self.FK_SocialMedia_User">
             <End Role="User" EntitySet="User" />
             <End Role="SocialMedia" EntitySet="SocialMedia" />
@@ -397,7 +381,7 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
     <!-- C-S mapping content -->
     <edmx:Mappings>
       <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
-        <EntityContainerMapping StorageEntityContainer="base_pruebaModelStoreContainer" CdmEntityContainer="base_pruebaEntities">
+        <EntityContainerMapping StorageEntityContainer="base_pruebaModelStoreContainer" CdmEntityContainer="base_pruebaEntities1">
           <EntitySetMapping Name="Avatar">
             <EntityTypeMapping TypeName="base_pruebaModel.Avatar">
               <MappingFragment StoreEntitySet="Avatar">
@@ -443,6 +427,8 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
                 <ScalarProperty Name="paternal_last_name" ColumnName="paternal_last_name" />
                 <ScalarProperty Name="maternal_last_name" ColumnName="maternal_last_name" />
                 <ScalarProperty Name="score" ColumnName="score" />
+                <ScalarProperty Name="passwordHash" ColumnName="passwordHash" />
+                <ScalarProperty Name="passwordSalt" ColumnName="passwordSalt" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

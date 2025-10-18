@@ -58,6 +58,7 @@
     <Compile Include="Services\Friends\IFriendService.cs" />
     <Compile Include="Services\Game\IGameService.cs" />
     <Compile Include="Services\Lobby\ILobbyService.cs" />
+    <Compile Include="Services\Users\IVerificationService.cs" />
     <Compile Include="Services\Users\IAuthenticationService.cs" />
     <Compile Include="Services\Users\IUserService.cs" />
   </ItemGroup>

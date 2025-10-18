@@ -40,7 +40,6 @@ namespace DataAccess
         public int failedLoginAttempts { get; set; }
         public Nullable<System.DateTime> lastLoginDate { get; set; }
     
-        public virtual Avatar Avatar { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<SocialMedia> SocialMedia { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
