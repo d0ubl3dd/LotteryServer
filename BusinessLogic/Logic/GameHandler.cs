@@ -1,31 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Contracts.DTOs;
+using DataAccess;
+using System;
 using System.Threading.Tasks;
 
-namespace BusinessLogic.Logic
+namespace BusinessLogic.Handlers
 {
     public class GameHandler
     {
-        public Task StartGame()
+        public Task StartGame(User hostUser)
         {
-            Console.WriteLine("Lógica de StartGame manejada por GameHandler.");
-            // TODO: Lógica para cambiar el estado del juego y notificar a los jugadores.
+            Console.WriteLine($"Game started by {hostUser.nickname}.");
+            // Find the lobby where this user is the host.
+            // Change the lobby state to "InProgress".
+            // Notify all players in the lobby via callbacks that the game has started.
             return Task.CompletedTask;
         }
 
-        public Task UpdateGameSettings(/* DTO con settings */)
+        public Task UpdateGameSettings(User hostUser, GameSettingsDTO settings)
         {
-            Console.WriteLine("Lógica de UpdateGameSettings manejada por GameHandler.");
-            // TODO: Lógica para guardar la nueva configuración y notificar.
+            Console.WriteLine($"Game settings updated by {hostUser.nickname}.");
+            // Find the lobby, verify the user is the host, and update settings.
+            // Notify players of the changes via callbacks.
             return Task.CompletedTask;
         }
 
         public Task GetScoreboard()
         {
-            Console.WriteLine("Lógica de GetScoreboard manejada por GameHandler.");
-            // TODO: Lógica para obtener las puntuaciones de la BD.
+            Console.WriteLine("Scoreboard requested.");
+            // This would query the database for users ordered by score/wins.
             return Task.CompletedTask;
         }
     }

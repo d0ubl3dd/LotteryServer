@@ -35,6 +35,10 @@ namespace DataAccess
         public Nullable<int> score { get; set; }
         public byte[] passwordHash { get; set; }
         public byte[] passwordSalt { get; set; }
+        public Nullable<bool> isLocked { get; set; }
+        public string status { get; set; }
+        public int failedLoginAttempts { get; set; }
+        public Nullable<System.DateTime> lastLoginDate { get; set; }
     
         public virtual Avatar Avatar { get; set; }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

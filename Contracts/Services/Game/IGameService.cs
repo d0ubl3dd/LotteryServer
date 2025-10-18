@@ -1,4 +1,5 @@
 ﻿using Contracts.Callbacks;
+using Contracts.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +16,7 @@ namespace Contracts.Services.Game
         Task StartGame();
 
         [OperationContract]
-        Task UpdateGameSettings(/* DTO con settings */);
+        Task UpdateGameSettings(GameSettingsDTO settings);
 
         [OperationContract]
         Task GetScoreboard();

@@ -1,25 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using DataAccess;
+using System;
 using System.Threading.Tasks;
 
-namespace BusinessLogic.Logic
+namespace BusinessLogic.Handlers
 {
     public class LobbyHandler
     {
-        public Task<string> CreateLobby()
+        public Task<string> CreateLobby(User hostUser)
         {
-            Console.WriteLine("Lógica de CreateLobby manejada por LobbyHandler.");
-            // TODO: Lógica para crear un nuevo lobby y guardarlo.
-            string lobbyCode = "XYZ123"; // Genera un código único
+            string lobbyCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+            Console.WriteLine($"Lobby created by {hostUser.nickname} with code {lobbyCode}.");
+
+            // In a real scenario, you would save this lobby to the database
+            // and add the host to an in-memory list of players for this lobby.
+
             return Task.FromResult(lobbyCode);
         }
 
-        public Task JoinLobby(string lobbyCode)
+        public Task JoinLobby(User joiningUser, string lobbyCode)
         {
-            Console.WriteLine($"Lógica de JoinLobby manejada por LobbyHandler para el código: {lobbyCode}");
-            // TODO: Lógica para agregar al jugador al lobby y notificar a otros jugadores.
+            Console.WriteLine($"{joiningUser.nickname} is joining lobby {lobbyCode}.");
+
+            // In a real scenario, you would find the lobby, validate it's open,
+            // add the user to the in-memory player list, and notify other players
+            // via their WCF callbacks.
+
             return Task.CompletedTask;
         }
     }

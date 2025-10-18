@@ -1,17 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DataAccess;
+using System;
 
-namespace BusinessLogic.Logic
+namespace BusinessLogic.Handlers
 {
     public class ChatHandler
     {
-        public void SendMessage(string message)
+        public void SendMessage(User sendingUser, string message)
         {
-            Console.WriteLine($"Lógica de SendMessage manejada por ChatHandler. Mensaje: {message}");
-            // TODO: Lógica para procesar el mensaje y notificar a los jugadores en el chat.
+            Console.WriteLine($"Message from {sendingUser.nickname}: {message}");
+            // Find the lobby/game the user is in.
+            // Get the list of all other players in that session.
+            // Loop through the list and invoke the 'OnMessageReceived' callback for each player.
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Logic;
+﻿using BusinessLogic.Validation;
 using DataAccess;
 using System;
 using System.Data.Entity;
@@ -8,23 +8,61 @@ namespace BusinessLogic.Handlers
 {
     public class AuthenticationHandler
     {
+        private const int MaxFailedAttempts = 5;
+
         public async Task<User> LoginUser(string userName, string password)
         {
+            User foundUser = null;
+            try
+            {
+                using (var context = new base_pruebaEntities())
+                {
+                    foundUser = await context.User.FirstOrDefaultAsync(u => u.nickname == userName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Database error during login: {ex.Message}");
+                return null;
+            }
+
+            var validationResult = LoginValidator.ValidateLoginAttempt(userName, password, foundUser);
+
             using (var context = new base_pruebaEntities())
             {
-                var foundUser = await context.User.FirstOrDefaultAsync(u => u.nickname == userName);
+                var userToUpdate = foundUser != null ? await context.User.FindAsync(foundUser.id_user) : null;
 
-                if (foundUser == null)
+                switch (validationResult)
                 {
-                    return null;
-                }
+                    case LoginValidationResult.Success:
+                        if (userToUpdate != null)
+                        {
+                            userToUpdate.failedLoginAttempts = 0;
+                            userToUpdate.status = "Online";
+                            userToUpdate.lastLoginDate = DateTime.UtcNow;
+                            await context.SaveChangesAsync();
+                        }
+                        Console.WriteLine($"Login successful for: {userName}");
+                        return userToUpdate;
 
-                if (!PasswordHasher.VerifyPasswordHash(password, foundUser.passwordHash, foundUser.passwordSalt))
-                {
-                    return null;
-                }
+                    case LoginValidationResult.IncorrectPassword:
+                        if (userToUpdate != null)
+                        {
+                            userToUpdate.failedLoginAttempts++;
+                            if (userToUpdate.failedLoginAttempts >= MaxFailedAttempts)
+                            {
+                                userToUpdate.isLocked = true;
+                                Console.WriteLine($"Account for '{userName}' has been locked due to too many failed attempts.");
+                            }
+                            await context.SaveChangesAsync();
+                        }
+                        Console.WriteLine($"Login failed: Incorrect password for user '{userName}'.");
+                        return null;
 
-                return foundUser;
+                    default:
+                        Console.WriteLine($"Login failed for '{userName}' with reason: {validationResult}");
+                        return null;
+                }
             }
         }
 
@@ -36,12 +74,17 @@ namespace BusinessLogic.Handlers
             }
 
             Console.WriteLine($"User {userToLogout.nickname} has requested to log out.");
-
             try
             {
                 using (var context = new base_pruebaEntities())
                 {
-                    Console.WriteLine($"User {userToLogout.nickname} has logged out successfully.");
+                    var userInDb = await context.User.FindAsync(userToLogout.id_user);
+                    if (userInDb != null)
+                    {
+                        userInDb.status = "Offline";
+                        await context.SaveChangesAsync();
+                        Console.WriteLine($"User {userToLogout.nickname} has logged out successfully.");
+                    }
                 }
             }
             catch (Exception ex)

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.Serialization;
 
 namespace Contracts.DTOs
 {
@@ -18,5 +13,14 @@ namespace Contracts.DTOs
 
         [DataMember]
         public string Password { get; set; }
+
+        [DataMember]
+        public string FirstName { get; set; }
+
+        [DataMember]
+        public string PaternalLastName { get; set; }
+
+        [DataMember]
+        public string MaternalLastName { get; set; }
     }
 }

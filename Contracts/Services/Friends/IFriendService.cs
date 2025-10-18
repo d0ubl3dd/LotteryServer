@@ -14,7 +14,7 @@ namespace Contracts.Services.Friends
         Task SendRequestFriendship(int targetUserId);
 
         [OperationContract]
-        Task AddFriend(int friendshipRequestId);
+        Task AddFriend(int requesterId);
 
         [OperationContract]
         Task RemoveFriend(int friendUserId);

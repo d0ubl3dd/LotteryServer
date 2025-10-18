@@ -1,16 +1,17 @@
-﻿using BusinessLogic.Logic;
+﻿using BusinessLogic.Handlers;
+using BusinessLogic.Logic;
 using Contracts;
-using System.Threading.Tasks;
-using System.ServiceModel;
-using BusinessLogic.Handlers;
+using Contracts.DTOs;
 using DataAccess;
+using System;
+using System.ServiceModel;
+using System.Threading.Tasks;
 
 namespace BusinessLogic
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
     public class LotteryService : ILotteryService
     {
-        // Instancia de cada especialista
         private User currentUser;
         private readonly AuthenticationHandler _authHandler = new AuthenticationHandler();
         private readonly UserHandler _userHandler = new UserHandler();
@@ -23,19 +24,21 @@ namespace BusinessLogic
         public async Task<bool> LoginUser(string username, string password)
         {
             this.currentUser = await _authHandler.LoginUser(username, password);
-
             return this.currentUser != null;
         }
 
         public Task LogoutUser()
         {
-            return _authHandler.LogoutUser(this.currentUser);
+            var userToLogout = this.currentUser;
+            this.currentUser = null; // Clear the session user
+            return _authHandler.LogoutUser(userToLogout);
         }
 
         // --- IUserService ---
-        public Task<int> RegisterUser(/* UserRegisterDTO userData */)
+        // These methods do not require a logged-in user.
+        public Task<int> RegisterUser(UserRegisterDTO userData)
         {
-            return _userHandler.RegisterUser(/* userData */);
+            return _userHandler.RegisterUser(userData);
         }
 
         public Task<int> RegisterGuest()
@@ -43,68 +46,80 @@ namespace BusinessLogic
             return _userHandler.RegisterGuest();
         }
 
-        public Task ChangePassword(string oldPassword, string newPassword)
-        {
-            return _userHandler.ChangePassword(oldPassword, newPassword);
-        }
-
         public Task RecoverPassword(string email)
         {
             return _userHandler.RecoverPassword(email);
         }
 
-        public Task UpdateProfile(/* UserProfileDTO profileData */)
+        // These methods DO require a logged-in user.
+        public Task ChangePassword(string oldPassword, string newPassword)
         {
-            return _userHandler.UpdateProfile(/* profileData */);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to change password.");
+            return _userHandler.ChangePassword(this.currentUser, oldPassword, newPassword);
+        }
+
+        public Task UpdateProfile(UserProfileDTO profileData)
+        {
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to update profile.");
+            return _userHandler.UpdateProfile(this.currentUser, profileData);
         }
 
         // --- IFriendService ---
         public Task SendRequestFriendship(int targetUserId)
         {
-            return _friendHandler.SendRequestFriendship(targetUserId);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to send a friend request.");
+            return _friendHandler.SendRequestFriendship(this.currentUser.id_user, targetUserId);
         }
 
-        public Task AddFriend(int friendshipRequestId)
+        public Task AddFriend(int requesterId)
         {
-            return _friendHandler.AddFriend(friendshipRequestId);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to add a friend.");
+            return _friendHandler.AddFriend(this.currentUser, requesterId);
         }
 
         public Task RemoveFriend(int friendUserId)
         {
-            return _friendHandler.RemoveFriend(friendUserId);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to remove a friend.");
+            return _friendHandler.RemoveFriend(this.currentUser.id_user, friendUserId);
         }
 
         // --- ILobbyService ---
         public Task<string> CreateLobby()
         {
-            return _lobbyHandler.CreateLobby();
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to create a lobby.");
+            return _lobbyHandler.CreateLobby(this.currentUser);
         }
 
         public Task JoinLobby(string lobbyCode)
         {
-            return _lobbyHandler.JoinLobby(lobbyCode);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to join a lobby.");
+            return _lobbyHandler.JoinLobby(this.currentUser, lobbyCode);
         }
 
         // --- IGameService ---
         public Task StartGame()
         {
-            return _gameHandler.StartGame();
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to start a game.");
+            return _gameHandler.StartGame(this.currentUser);
         }
 
-        public Task UpdateGameSettings(/* DTO con settings */)
+        public Task UpdateGameSettings(GameSettingsDTO settings)
         {
-            return _gameHandler.UpdateGameSettings(/* settings */);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to update game settings.");
+            return _gameHandler.UpdateGameSettings(this.currentUser, settings);
         }
 
         public Task GetScoreboard()
         {
+            // Getting the scoreboard might not require a logged-in user, depending on your rules.
             return _gameHandler.GetScoreboard();
         }
 
         // --- IChatService ---
         public void SendMessage(string message)
         {
-            _chatHandler.SendMessage(message);
+            if (currentUser == null) throw new InvalidOperationException("User must be logged in to send a message.");
+            _chatHandler.SendMessage(this.currentUser, message);
         }
     }
 }

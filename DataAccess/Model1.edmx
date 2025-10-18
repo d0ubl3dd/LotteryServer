@@ -72,6 +72,10 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.Friendship' no tiene definid
           <Property Name="score" Type="int" />
           <Property Name="passwordHash" Type="varbinary(max)" />
           <Property Name="passwordSalt" Type="varbinary(max)" />
+          <Property Name="isLocked" Type="bit" />
+          <Property Name="status" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="failedLoginAttempts" Type="int" Nullable="false" />
+          <Property Name="lastLoginDate" Type="datetime2" Precision="7" />
         </EntityType>
         <!--Errores durante la generación:
 advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
@@ -260,6 +264,10 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <NavigationProperty Name="Game" Relationship="Self.User_Game" FromRole="User" ToRole="Game" />
           <Property Name="passwordHash" Type="Binary" MaxLength="Max" FixedLength="false" />
           <Property Name="passwordSalt" Type="Binary" MaxLength="Max" FixedLength="false" />
+          <Property Name="isLocked" Type="Boolean" />
+          <Property Name="status" Type="String" Nullable="false" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="failedLoginAttempts" Type="Int32" Nullable="false" />
+          <Property Name="lastLoginDate" Type="DateTime" Precision="7" />
         </EntityType>
         <EntityType Name="Banned">
           <Key>
@@ -420,6 +428,10 @@ advertencia 6002: La tabla o vista 'base_prueba.dbo.User_Game' no tiene definida
           <EntitySetMapping Name="User">
             <EntityTypeMapping TypeName="base_pruebaModel.User">
               <MappingFragment StoreEntitySet="User">
+                <ScalarProperty Name="lastLoginDate" ColumnName="lastLoginDate" />
+                <ScalarProperty Name="failedLoginAttempts" ColumnName="failedLoginAttempts" />
+                <ScalarProperty Name="status" ColumnName="status" />
+                <ScalarProperty Name="isLocked" ColumnName="isLocked" />
                 <ScalarProperty Name="passwordSalt" ColumnName="passwordSalt" />
                 <ScalarProperty Name="passwordHash" ColumnName="passwordHash" />
                 <ScalarProperty Name="id_user" ColumnName="id_user" />
