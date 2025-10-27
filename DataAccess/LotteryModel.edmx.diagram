@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="cdc94618bc1148d886efb2b5a72afecf" Name="Diagram1" ZoomLevel="79">
+        <EntityTypeShape EntityType="base_pruebaModel.Avatar" Width="1.5" PointX="7.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="base_pruebaModel.Game" Width="1.5" PointX="0.75" PointY="4.375" IsExpanded="true" />
+        <EntityTypeShape EntityType="base_pruebaModel.SocialMedia" Width="1.5" PointX="5.25" PointY="1.25" IsExpanded="true" />
+        <EntityTypeShape EntityType="base_pruebaModel.User" Width="1.5" PointX="3" PointY="2.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="base_pruebaModel.Banned" Width="1.5" PointX="5.625" PointY="7.5" IsExpanded="true" />
+        <EntityTypeShape EntityType="base_pruebaModel.Friendship" Width="1.5" PointX="8.75" PointY="4" IsExpanded="true" />
+        <AssociationConnector Association="base_pruebaModel.FK_SocialMedia_User" ManuallyRouted="false" />
+        <AssociationConnector Association="base_pruebaModel.FK_Banned_User" ManuallyRouted="false" />
+        <AssociationConnector Association="base_pruebaModel.User_Game" ManuallyRouted="false" />
+        <AssociationConnector Association="base_pruebaModel.FK_User_Avatar" />
+        <AssociationConnector Association="base_pruebaModel.FK_Friendship_User_Receiver" />
+        <AssociationConnector Association="base_pruebaModel.FK_Friendship_User_Sender" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>
