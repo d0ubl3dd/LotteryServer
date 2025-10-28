@@ -85,7 +85,6 @@ namespace BusinessLogic.Models
             }
         }
     }
-
     public static class PlayerClientExtensions
     {
         public static PlayerInfoDTO ToPlayerInfoDTO(this PlayerClient player, bool isHost)

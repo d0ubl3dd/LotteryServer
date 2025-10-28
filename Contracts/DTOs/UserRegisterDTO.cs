@@ -11,6 +11,8 @@ namespace Contracts.DTOs
         [DataMember]
         public int IdAvatar { get; set; }
         [DataMember]
+        public string AvatarUrl { get; set; }
+        [DataMember]
         public string Nickname { get; set; }
         [DataMember]
         public string Email { get; set; }

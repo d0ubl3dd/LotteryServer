@@ -109,7 +109,7 @@ namespace BusinessLogic
             return userHandler.ChangePassword(currentUserId, oldPassword, newPassword);
         }
 
-        public Task<bool> UpdateProfile(int currentUserId, UserProfileDTO profileData)
+        public Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserRegisterDTO profileData)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
@@ -122,6 +122,11 @@ namespace BusinessLogic
         public Task<FriendDTO> FindUserByNickname(string nickname)
         {
             return userHandler.FindUserByNickname(nickname);
+        }
+
+        public Task<UserRegisterDTO> GetUserProfile(int userId)
+        {
+            return userHandler.GetUserProfile(userId);
         }
 
         // --- IFriendService ---

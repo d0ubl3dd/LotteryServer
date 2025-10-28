@@ -26,9 +26,12 @@ namespace Contracts.Services.Users
         Task RecoverPassword(string email);
 
         [OperationContract]
-        Task<bool> UpdateProfile(int currentUserId, UserProfileDTO profileData);
+        Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserRegisterDTO userData);
 
         [OperationContract]
         Task<FriendDTO> FindUserByNickname(string nickname);
+
+        [OperationContract]
+        Task<UserRegisterDTO> GetUserProfile(int userId);
     }
 }
