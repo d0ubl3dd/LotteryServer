@@ -17,7 +17,7 @@ namespace BusinessLogic.Handlers
         private readonly VerificationHandler _verificationHandler;
 
         public UserHandler()
-        {            
+        {
             _userRepository = new UserDAO();
             _verificationHandler = new VerificationHandler();
         }
@@ -47,9 +47,9 @@ namespace BusinessLogic.Handlers
         }
 
         public async Task<int> RegisterUser(UserRegisterDTO userData)
-        {            
+        {
             try
-            {                
+            {
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
                 var newUser = new User
@@ -67,10 +67,10 @@ namespace BusinessLogic.Handlers
                     status = "Offline",
                     id_avatar = 1
                 };
-                
+
                 _userRepository.AddUser(newUser);
                 await _userRepository.SaveChangesAsync();
-                                
+
                 return newUser.id_user;
             }
             catch (Exception ex)
@@ -105,23 +105,33 @@ namespace BusinessLogic.Handlers
                 return false;
             }
         }
-
-        public async Task<bool> UpdateProfile(int currentUserId, UserProfileDTO profileData)
+        public async Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserRegisterDTO userData)
         {
             try
             {
                 var userInDb = await _userRepository.GetUserByIdAsync(currentUserId);
-                if (userInDb == null) return false;
+                if (userInDb == null)
+                    return (false, "Usuario no encontrado.");
 
-                userInDb.email = profileData.Email;
+                if (!string.Equals(userInDb.nickname, userData.Nickname, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (await _userRepository.NicknameExistsAsync(userData.Nickname))
+                        return (false, "El nickname ya está en uso.");
+                }
+
+                userInDb.first_name = userData.FirstName;
+                userInDb.paternal_last_name = userData.PaternalLastName;
+                userInDb.maternal_last_name = userData.MaternalLastName;
+                userInDb.nickname = userData.Nickname;
+                userInDb.id_avatar = userData.IdAvatar;
 
                 await _userRepository.SaveChangesAsync();
-                return true;
+                return (true, "Perfil actualizado correctamente.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating profile for user ID {currentUserId}: {ex.Message}");
-                return false;
+                return (false, "Ocurrió un error al actualizar el perfil.");
             }
         }
 
@@ -139,7 +149,7 @@ namespace BusinessLogic.Handlers
 
         public async Task<FriendDTO> FindUserByNickname(string nickname)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var user = await context.User
                     .Where(u => u.nickname == nickname)
@@ -151,6 +161,26 @@ namespace BusinessLogic.Handlers
                     })
                     .FirstOrDefaultAsync();
 
+                return user;
+            }
+        }
+
+        public async Task<UserRegisterDTO> GetUserProfile(int userId)
+        {
+            using (var context = new lottery_databaseEntities())
+            {
+                var user = await context.User
+                    .Where(u => u.id_user == userId)
+                    .Select(u => new UserRegisterDTO
+                    {
+                        Nickname = u.nickname,
+                        Email = u.email,
+                        FirstName = u.first_name,
+                        PaternalLastName = u.paternal_last_name,
+                        MaternalLastName = u.maternal_last_name,
+                        AvatarUrl = u.Avatar != null ? u.Avatar.path : null
+                    })
+                    .FirstOrDefaultAsync();
                 return user;
             }
         }

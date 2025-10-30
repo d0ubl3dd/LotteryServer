@@ -9,6 +9,9 @@ namespace Contracts.DTOs
         public int RequesterId { get; set; }
 
         [DataMember]
+        public int TargetUserId { get; set; }
+
+        [DataMember]
         public string Nickname { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Contracts.DTOs;
+using Contracts.Faults;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading.Tasks;
@@ -22,6 +23,10 @@ namespace Contracts.Services.Friends
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
+        Task CancelFriendRequest(int currentUserId, int targetUserId);
+
+        [OperationContract]
+        [FaultContract(typeof(Contracts.Faults.ServiceFault))]
         Task RemoveFriend(int currentUserId, int friendUserId);
 
         [OperationContract]
@@ -31,6 +36,10 @@ namespace Contracts.Services.Friends
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
         Task<List<FriendRequestDTO>> GetPendingRequests(int currentUserId);
+
+        [OperationContract]
+        [FaultContract(typeof(Contracts.Faults.ServiceFault))]
+        Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId);
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]

@@ -30,7 +30,7 @@ namespace BusinessLogic.Validation
                 return LoginValidationResult.UserNotFound;
             }
 
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 bool isCurrentlyBanned = context.Banned.Any(b => b.id_user == foundUser.id_user && b.unbanned_at == null);
                 if (isCurrentlyBanned)
