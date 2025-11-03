@@ -12,10 +12,10 @@ namespace DataAccess.DAOs
 {
     public class UserDAO : IUserDAO
     {
-        private readonly base_pruebaEntities3 _context;
+        private readonly lottery_databaseEntities _context;
         public UserDAO()
         {
-            _context = new base_pruebaEntities3();
+            _context = new lottery_databaseEntities();
         }
 
         public async Task<bool> NicknameExistsAsync(string nickname)

@@ -14,12 +14,12 @@ namespace DataAccess
     
     public partial class Friendship
     {
-        public string status { get; set; }
         public int id_friendship { get; set; }
         public int id_user_sender { get; set; }
         public int id_user_receiver { get; set; }
+        public string status { get; set; }
     
-        public virtual User User2 { get; set; }
-        public virtual User User11 { get; set; }
+        public virtual User User { get; set; }
+        public virtual User User1 { get; set; }
     }
 }

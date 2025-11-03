@@ -14,35 +14,65 @@ namespace BusinessLogic.Logic
     {
         public async Task SendRequestFriendship(int currentUserId, int targetUserId)
         {
-            if (currentUserId == targetUserId)
+            try
             {
-                throw new Exception("No puedes agregarte a ti mismo como amigo.");
-            }
-
-            using (var context = new base_pruebaEntities3())
-            {
-                bool exists = await context.Friendship.AnyAsync(f =>
-                    (f.id_user_sender == currentUserId && f.id_user_receiver == targetUserId) ||
-                    (f.id_user_sender == targetUserId && f.id_user_receiver == currentUserId));
-
-                if (exists)
+                if (currentUserId == targetUserId)
                 {
-                    throw new FaultException<ServiceFault>(new ServiceFault
-                    {
-                        Message = "Ya existe una solicitud de amistad o ya son amigos."
-                    });
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault
+                        {
+                            ErrorCode = "FR-001",
+                            Message = "No puedes agregarte a ti mismo como amigo."
+                        },
+                        new FaultReason("Solicitud inválida")
+                    );
                 }
 
-                var newRequest = new Friendship
+                using (var context = new base_pruebaEntities3())
                 {
-                    id_user_sender = currentUserId,
-                    id_user_receiver = targetUserId,
-                    status = "Pending"
-                };
-                context.Friendship.Add(newRequest);
-                await context.SaveChangesAsync();
+                    bool exists = await context.Friendship.AnyAsync(f =>
+                        (f.id_user_sender == currentUserId && f.id_user_receiver == targetUserId) ||
+                        (f.id_user_sender == targetUserId && f.id_user_receiver == currentUserId));
+
+                    if (exists)
+                    {
+                        throw new FaultException<ServiceFault>(
+                            new ServiceFault
+                            {
+                                ErrorCode = "FR-002",
+                                Message = "Ya existe una solicitud de amistad o ya son amigos."
+                            },
+                            new FaultReason("Solicitud duplicada")
+                        );
+                    }
+
+                    var newRequest = new Friendship
+                    {
+                        id_user_sender = currentUserId,
+                        id_user_receiver = targetUserId,
+                        status = "Pending"
+                    };
+                    context.Friendship.Add(newRequest);
+                    await context.SaveChangesAsync();
+                }
+            }
+            catch (FaultException<ServiceFault> ex)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault
+                    {
+                        ErrorCode = "FR-500",
+                        Message = $"Error inesperado en la base de datos: {ex.Message}"
+                    },
+                    new FaultReason("Error interno del servidor")
+                );
             }
         }
+
 
         public async Task AcceptFriendRequest(int currentUserId, int requesterId)
         {
@@ -81,7 +111,34 @@ namespace BusinessLogic.Logic
                 }
                 else
                 {
-                    throw new Exception("No se encontró la solicitud de amistad.");
+                    throw new FaultException<ServiceFault>(new ServiceFault
+                    {
+                        Message = "No se encontró la solicitud de amistad."
+                    });
+                }
+            }
+        }
+
+        public async Task CancelFriendRequest(int currentUserId, int targetUserId)
+        {
+            using (var context = new base_pruebaEntities3())
+            {
+                var request = await context.Friendship.FirstOrDefaultAsync(f =>
+                    f.id_user_sender == currentUserId &&
+                    f.id_user_receiver == targetUserId &&
+                    f.status == "Pending");
+
+                if (request != null)
+                {
+                    context.Friendship.Remove(request);
+                    await context.SaveChangesAsync();
+                }
+                else
+                {
+                    throw new FaultException<ServiceFault>(new ServiceFault
+                    {
+                        Message = "No se ha encontrado ninguna solicitud enviada a ese jugador."
+                    });
                 }
             }
         }
@@ -157,6 +214,28 @@ namespace BusinessLogic.Logic
                 return requests;
             }
         }
+
+        public async Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId)
+        {
+            using (var context = new base_pruebaEntities3())
+            {
+                var requests = await context.Friendship
+                    .Where(f => f.id_user_sender == currentUserId && f.status == "Pending")
+                    .Join(context.User,
+                        friendship => friendship.id_user_receiver,
+                        user => user.id_user,
+                        (friendship, user) => new FriendRequestDTO
+                        {
+                            RequesterId = currentUserId,
+                            TargetUserId = user.id_user,
+                            Nickname = user.nickname
+                        })
+                    .ToListAsync();
+
+                return requests;
+            }
+        }
+
 
         public Task InviteFriendToLobby(int currentUserId, int targetFriendId, string lobbyCode)
         {

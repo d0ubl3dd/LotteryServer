@@ -1,13 +1,14 @@
 ﻿using BusinessLogic.Handlers;
 using BusinessLogic.Logic;
 using Contracts;
+using Contracts.Callbacks;
 using Contracts.DTOs;
+using Contracts.Faults;
 using DataAccess;
 using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading.Tasks;
-using Contracts.Callbacks;
 
 namespace BusinessLogic
 {
@@ -152,7 +153,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                        new FaultReason("Sesión inválida")
+                    );
             }
 
             return friendHandler.SendRequestFriendship(currentUserId, targetUserId);
@@ -176,6 +180,16 @@ namespace BusinessLogic
             }
 
             return friendHandler.RejectFriendRequest(currentUserId, requesterId);
+        }
+
+        public Task CancelFriendRequest(int currentUserId, int requesterId)
+        {
+            if (currentUser == null || currentUser.id_user != currentUserId)
+            {
+                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+            }
+
+            return friendHandler.CancelFriendRequest(currentUserId, requesterId);
         }
 
         public Task RemoveFriend(int currentUserId,int friendUserId)
@@ -208,10 +222,14 @@ namespace BusinessLogic
             return friendHandler.GetPendingRequests(currentUserId);
         }
 
-        public Task<List<FriendRequestDTO>> GetPendingRequests()
+        public Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId)
         {
-            if (currentUser == null) throw new InvalidOperationException("El usuario debe estar conectado.");
-            return friendHandler.GetPendingRequests(this.currentUser.id_user);
+            if (currentUser == null || currentUser.id_user != currentUserId)
+            {
+                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+            }
+
+            return friendHandler.GetSentRequests(currentUserId);
         }
 
         public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
