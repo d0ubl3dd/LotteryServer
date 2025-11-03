@@ -129,6 +129,24 @@ namespace BusinessLogic
             return userHandler.GetUserProfile(userId);
         }
 
+        public Task<bool> RequestEmailChange(int userId, string newEmail)
+        {
+            if (currentUser == null || currentUser.id_user != userId)
+            {
+                throw new InvalidOperationException("Invalid user session for this operation.");
+            }
+            return userHandler.RequestEmailChange(userId, newEmail);
+        }
+
+        public Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
+        {
+            if (currentUser == null || currentUser.id_user != userId)
+            {
+                throw new InvalidOperationException("Invalid user session for this operation.");
+            }
+            return userHandler.ConfirmEmailChange(userId, newEmail, verificationCode);
+        }
+
         // --- IFriendService ---
         public Task SendRequestFriendship(int currentUserId, int targetUserId)
         {

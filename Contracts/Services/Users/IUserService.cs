@@ -33,5 +33,11 @@ namespace Contracts.Services.Users
 
         [OperationContract]
         Task<UserRegisterDTO> GetUserProfile(int userId);
+
+        [OperationContract]
+        Task<bool> RequestEmailChange(int userId, string newEmail);
+
+        [OperationContract]
+        Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode);
     }
 }

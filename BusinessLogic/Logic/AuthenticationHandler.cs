@@ -45,7 +45,15 @@ namespace BusinessLogic.Handlers
                         {
                             userToUpdate.isLocked = true;
                         }
-                        await userDAO.SaveChangesAsync();
+                        try
+                        {
+                            await userDAO.SaveChangesAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error en SaveChangesAsync: {ex.Message}");
+                        }
+
                     }
                 }
 

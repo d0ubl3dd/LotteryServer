@@ -9,9 +9,15 @@ namespace BusinessLogic.Handlers
 {
     public class VerificationHandler : IVerificationService
     {
-        private static readonly Dictionary<string, string> _codes = new Dictionary<string, string>();
+        private class VerificationEntry
+        {
+            public string Code { get; set; }
+            public DateTime Expiration { get; set; }
+        }
+
+        private static readonly Dictionary<string, VerificationEntry> _codes = new Dictionary<string, VerificationEntry>();
         private readonly Random _random = new Random();
-        
+
         private readonly string _senderEmail = "coilvicapplication@gmail.com";
         private readonly string _senderPassword = "aorv zezj pazz cdqj";
 
@@ -21,11 +27,12 @@ namespace BusinessLogic.Handlers
                 return false;
 
             string code = _random.Next(100000, 999999).ToString();
+            DateTime expiration = DateTime.UtcNow.AddMinutes(5);
 
             if (_codes.ContainsKey(email))
-                _codes[email] = code;
+                _codes[email] = new VerificationEntry { Code = code, Expiration = expiration };
             else
-                _codes.Add(email, code);
+                _codes.Add(email, new VerificationEntry { Code = code, Expiration = expiration });
 
             try
             {
@@ -39,26 +46,16 @@ namespace BusinessLogic.Handlers
                     {
                         From = new MailAddress(_senderEmail, "Lottery App"),
                         Subject = "Código de verificación",
-                        Body = $"Tu código de verificación es: {code}",
+                        Body = $"Tu código de verificación es: {code}\n\nEste código expira en 5 minutos.",
                         IsBodyHtml = false
                     };
-
                     message.To.Add(email);
-
                     await smtp.SendMailAsync(message);
                 }
-
-                Console.WriteLine($"Código {code} enviado a {email}");
                 return true;
             }
-            catch (SmtpException smtpEx)
+            catch
             {
-                Console.WriteLine($"Error SMTP enviando código a {email}: {smtpEx.Message}");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error inesperado enviando código a {email}: {ex.Message}");
                 return false;
             }
         }
@@ -67,12 +64,15 @@ namespace BusinessLogic.Handlers
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(code))
                 return Task.FromResult(false);
 
-            if (_codes.ContainsKey(email) && _codes[email] == code)
+            if (_codes.TryGetValue(email, out var entry))
             {
+                if (DateTime.UtcNow <= entry.Expiration && entry.Code == code)
+                {
+                    _codes.Remove(email);
+                    return Task.FromResult(true);
+                }                
                 _codes.Remove(email);
-                return Task.FromResult(true);
             }
-
             return Task.FromResult(false);
         }
     }
