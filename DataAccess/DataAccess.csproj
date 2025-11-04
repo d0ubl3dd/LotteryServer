@@ -54,51 +54,50 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Avatar.cs">
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
     <Compile Include="Banned.cs">
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
-    <Compile Include="Class1.cs" />
     <Compile Include="DAOs\IUserDAO.cs" />
     <Compile Include="DAOs\UserDAO.cs" />
     <Compile Include="Friendship.cs">
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
     <Compile Include="Game.cs">
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
-    <Compile Include="LotteryModel.Context.cs">
+    <Compile Include="LotteryDatabaseModel.Context.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>LotteryModel.Context.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.Context.tt</DependentUpon>
     </Compile>
-    <Compile Include="LotteryModel.cs">
+    <Compile Include="LotteryDatabaseModel.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
-    <Compile Include="LotteryModel.Designer.cs">
+    <Compile Include="LotteryDatabaseModel.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>LotteryModel.edmx</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SocialMedia.cs">
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
     <Compile Include="User.cs">
-      <DependentUpon>LotteryModel.tt</DependentUpon>
+      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <EntityDeploy Include="LotteryModel.edmx">
+    <EntityDeploy Include="LotteryDatabaseModel.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
-      <LastGenOutput>LotteryModel.Designer.cs</LastGenOutput>
+      <LastGenOutput>LotteryDatabaseModel.Designer.cs</LastGenOutput>
     </EntityDeploy>
-    <None Include="LotteryModel.edmx.diagram">
-      <DependentUpon>LotteryModel.edmx</DependentUpon>
+    <None Include="LotteryDatabaseModel.edmx.diagram">
+      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
     </None>
     <None Include="packages.config" />
   </ItemGroup>
@@ -106,15 +105,15 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="LotteryModel.Context.tt">
+    <Content Include="LotteryDatabaseModel.Context.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <DependentUpon>LotteryModel.edmx</DependentUpon>
-      <LastGenOutput>LotteryModel.Context.cs</LastGenOutput>
+      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
+      <LastGenOutput>LotteryDatabaseModel.Context.cs</LastGenOutput>
     </Content>
-    <Content Include="LotteryModel.tt">
+    <Content Include="LotteryDatabaseModel.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <DependentUpon>LotteryModel.edmx</DependentUpon>
-      <LastGenOutput>LotteryModel.cs</LastGenOutput>
+      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
+      <LastGenOutput>LotteryDatabaseModel.cs</LastGenOutput>
     </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -136,7 +136,7 @@ namespace BusinessLogic
             {
                 throw new InvalidOperationException("Invalid user session for this operation.");
             }
-            return userHandler.RequestEmailChange(userId, newEmail);
+            return userHandler.RequestEmailChange(userId, newEmail);            
         }
 
         public Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)

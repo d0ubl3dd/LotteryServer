@@ -16,8 +16,10 @@ namespace DataAccess
     {
         public int id_social_media { get; set; }
         public int id_user { get; set; }
-        public string facebook_user { get; set; }
-        public string instagram_user { get; set; }
+        public string facebook { get; set; }
+        public string instagram { get; set; }
+        public string tiktok { get; set; }
+        public string twitter { get; set; }
     
         public virtual User User { get; set; }
     }

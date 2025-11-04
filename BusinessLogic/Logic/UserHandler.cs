@@ -184,5 +184,15 @@ namespace BusinessLogic.Handlers
                 return user;
             }
         }
+
+        public Task<bool> RequestEmailChange(int userId, string newEmail)
+        {
+            return Task.FromResult(false);
+        }
+
+        public Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
+        { 
+            return Task.FromResult(false);
+        }
     }
 }

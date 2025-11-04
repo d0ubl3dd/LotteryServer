@@ -13,10 +13,10 @@ namespace DataAccess
     using System.Data.Entity;
     using System.Data.Entity.Infrastructure;
     
-    public partial class base_pruebaEntities3 : DbContext
+    public partial class lottery_databaseEntities : DbContext
     {
-        public base_pruebaEntities3()
-            : base("name=base_pruebaEntities3")
+        public lottery_databaseEntities()
+            : base("name=lottery_databaseEntities")
         {
         }
     
@@ -26,10 +26,10 @@ namespace DataAccess
         }
     
         public virtual DbSet<Avatar> Avatar { get; set; }
+        public virtual DbSet<Banned> Banned { get; set; }
+        public virtual DbSet<Friendship> Friendship { get; set; }
         public virtual DbSet<Game> Game { get; set; }
         public virtual DbSet<SocialMedia> SocialMedia { get; set; }
         public virtual DbSet<User> User { get; set; }
-        public virtual DbSet<Banned> Banned { get; set; }
-        public virtual DbSet<Friendship> Friendship { get; set; }
     }
 }

@@ -28,7 +28,7 @@ namespace BusinessLogic.Logic
                     );
                 }
 
-                using (var context = new base_pruebaEntities3())
+                using (var context = new lottery_databaseEntities())
                 {
                     bool exists = await context.Friendship.AnyAsync(f =>
                         (f.id_user_sender == currentUserId && f.id_user_receiver == targetUserId) ||
@@ -76,7 +76,7 @@ namespace BusinessLogic.Logic
 
         public async Task AcceptFriendRequest(int currentUserId, int requesterId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var request = await context.Friendship.FirstOrDefaultAsync(f =>
                     f.id_user_sender == requesterId &&
@@ -97,7 +97,7 @@ namespace BusinessLogic.Logic
 
         public async Task RejectFriendRequest(int currentUserId, int requesterId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var request = await context.Friendship.FirstOrDefaultAsync(f =>
                     f.id_user_sender == requesterId &&
@@ -121,7 +121,7 @@ namespace BusinessLogic.Logic
 
         public async Task CancelFriendRequest(int currentUserId, int targetUserId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var request = await context.Friendship.FirstOrDefaultAsync(f =>
                     f.id_user_sender == currentUserId &&
@@ -145,7 +145,7 @@ namespace BusinessLogic.Logic
 
         public async Task RemoveFriend(int currentUserId, int friendUserId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var friendship = await context.Friendship.FirstOrDefaultAsync(f =>
                     ((f.id_user_sender == currentUserId && f.id_user_receiver == friendUserId) ||
@@ -169,7 +169,7 @@ namespace BusinessLogic.Logic
 
         public async Task<List<FriendDTO>> GetFriends(int currentUserId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var friends = await context.Friendship
                     .Where(f => (f.id_user_sender == currentUserId || f.id_user_receiver == currentUserId)
@@ -197,7 +197,7 @@ namespace BusinessLogic.Logic
 
         public async Task<List<FriendRequestDTO>> GetPendingRequests(int currentUserId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var requests = await context.Friendship
                     .Where(f => f.id_user_receiver == currentUserId && f.status == "Pending")
@@ -217,7 +217,7 @@ namespace BusinessLogic.Logic
 
         public async Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId)
         {
-            using (var context = new base_pruebaEntities3())
+            using (var context = new lottery_databaseEntities())
             {
                 var requests = await context.Friendship
                     .Where(f => f.id_user_sender == currentUserId && f.status == "Pending")

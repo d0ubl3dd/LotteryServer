@@ -16,8 +16,8 @@ namespace DataAccess
     {
         public int id_banned { get; set; }
         public int id_user { get; set; }
-        public string ban_type { get; set; }
         public string reason { get; set; }
+        public string moderator { get; set; }
         public System.DateTime banned_at { get; set; }
         public Nullable<System.DateTime> unbanned_at { get; set; }
     
