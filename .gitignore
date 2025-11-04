@@ -361,3 +361,22 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# --- Overrides: incluir carpetas propias ---
+!/.vs/
+!/BusinessLogic/.vs/
+!/BusinessLogic/bin/
+!/BusinessLogic/obj/
+!/Contracts/.vs/
+!/Contracts/Contracts.csproj.user
+!/Contracts/bin/
+!/Contracts/obj/
+!/DataAccess/.vs/
+!/DataAccess/DataAccess.csproj.user
+!/DataAccess/bin/
+!/DataAccess/obj/
+!/Host/.vs/
+!/Host/Host.csproj.user
+!/Host/bin/
+!/Host/obj/
+!/packages/
