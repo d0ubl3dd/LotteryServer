@@ -19,20 +19,20 @@ namespace BusinessLogic.Logic
 
         private LobbyManager() { }
 
-        public LobbyStateDTO CreateLobby(PlayerClient host)
+        public LobbyStateDto CreateLobby(PlayerClient host)
         {
             var lobbyCode = GenerateLobbyCode();
             var lobby = new Lobby(lobbyCode, host);
             _lobbies[lobbyCode] = lobby;
 
-            return new LobbyStateDTO
+            return new LobbyStateDto
             {
                 LobbyCode = lobbyCode,
                 Players = lobby.GetPlayerDTOs()
             };
         }
 
-        public LobbyStateDTO JoinLobby(PlayerClient player, string lobbyCode)
+        public LobbyStateDto JoinLobby(PlayerClient player, string lobbyCode)
         {
             if (string.IsNullOrEmpty(lobbyCode))
             {
@@ -51,7 +51,7 @@ namespace BusinessLogic.Logic
 
             lobby.BroadcastPlayerJoined(player);
 
-            return new LobbyStateDTO
+            return new LobbyStateDto
             {
                 LobbyCode = lobbyCode,
                 Players = lobby.GetPlayerDTOs()

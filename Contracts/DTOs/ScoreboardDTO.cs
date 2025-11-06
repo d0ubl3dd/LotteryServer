@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Contracts.DTOs
 {
     [DataContract]
-    public class ScoreboardDTO
+    public class ScoreboardDto
     {
         [DataMember]
         public List<PlayerScoreDTO> TopScores { get; set; }

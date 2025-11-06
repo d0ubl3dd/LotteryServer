@@ -10,10 +10,10 @@ namespace Contracts.Services.Users
     {
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        Task<int> RequestUserVerification(UserRegisterDTO userData);
+        Task<int> RequestUserVerification(UserDto userData);
         
         [OperationContract]
-        Task<int> RegisterUser(UserRegisterDTO userData);
+        Task<int> RegisterUser(UserDto userData);
 
         [OperationContract]
         Task<int> RegisterGuest();
@@ -26,13 +26,13 @@ namespace Contracts.Services.Users
         Task RecoverPassword(string email);
 
         [OperationContract]
-        Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserRegisterDTO userData);
+        Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData);
 
         [OperationContract]
-        Task<FriendDTO> FindUserByNickname(string nickname);
+        Task<FriendDto> FindUserByNickname(string nickname);
 
         [OperationContract]
-        Task<UserRegisterDTO> GetUserProfile(int userId);
+        Task<UserDto> GetUserProfile(int userId);
 
         [OperationContract]
         Task<bool> RequestEmailChange(int userId, string newEmail);

@@ -10,7 +10,7 @@ namespace Contracts.Services.Users
     {
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        Task<UserSessionDTO> LoginUser(string username, string password);
+        Task<UserDto> LoginUser(string username, string password);
 
         [OperationContract]
         Task LogoutUser();

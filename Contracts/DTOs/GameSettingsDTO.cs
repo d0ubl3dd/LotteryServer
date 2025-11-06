@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Contracts.DTOs
 {
     [DataContract]
-    public class GameSettingsDTO
+    public class GameSettingsDto
     {
         [DataMember]
         public int MaxPlayers { get; set; }

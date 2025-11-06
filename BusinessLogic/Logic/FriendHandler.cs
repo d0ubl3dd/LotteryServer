@@ -167,7 +167,7 @@ namespace BusinessLogic.Logic
             }
         }
 
-        public async Task<List<FriendDTO>> GetFriends(int currentUserId)
+        public async Task<List<FriendDto>> GetFriends(int currentUserId)
         {
             using (var context = new lottery_databaseEntities())
             {
@@ -183,9 +183,9 @@ namespace BusinessLogic.Logic
                 var friendIds = friends.Select(f => f.FriendUserId).ToList();
                 var friendDetails = await context.User
                     .Where(u => friendIds.Contains(u.id_user))
-                    .Select(u => new FriendDTO
+                    .Select(u => new FriendDto
                     {
-                        UserId = u.id_user,
+                        FriendId = u.id_user,
                         Nickname = u.nickname,
                         Status = u.status
                     })
@@ -195,7 +195,7 @@ namespace BusinessLogic.Logic
             }
         }
 
-        public async Task<List<FriendRequestDTO>> GetPendingRequests(int currentUserId)
+        public async Task<List<FriendDto>> GetPendingRequests(int currentUserId)
         {
             using (var context = new lottery_databaseEntities())
             {
@@ -204,9 +204,9 @@ namespace BusinessLogic.Logic
                     .Join(context.User,
                         friendship => friendship.id_user_sender,
                         user => user.id_user,
-                        (friendship, user) => new FriendRequestDTO
+                        (friendship, user) => new FriendDto
                         {
-                            RequesterId = user.id_user,
+                            FriendId = user.id_user,
                             Nickname = user.nickname
                         })
                     .ToListAsync();
@@ -215,7 +215,7 @@ namespace BusinessLogic.Logic
             }
         }
 
-        public async Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId)
+        public async Task<List<FriendDto>> GetSentRequests(int currentUserId)
         {
             using (var context = new lottery_databaseEntities())
             {
@@ -224,10 +224,10 @@ namespace BusinessLogic.Logic
                     .Join(context.User,
                         friendship => friendship.id_user_receiver,
                         user => user.id_user,
-                        (friendship, user) => new FriendRequestDTO
+                        (friendship, user) => new FriendDto
                         {
-                            RequesterId = currentUserId,
-                            TargetUserId = user.id_user,
+                            FriendId = currentUserId,
+                            UserId = user.id_user,
                             Nickname = user.nickname
                         })
                     .ToListAsync();

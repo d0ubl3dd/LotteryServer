@@ -9,11 +9,11 @@ namespace Contracts.Services.Lobby
     {
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
-        Task<LobbyStateDTO> CreateLobby();
+        Task<LobbyStateDto> CreateLobby();
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
-        Task<LobbyStateDTO> JoinLobby(UserSessionDTO currentUser, string lobbyCode);
+        Task<LobbyStateDto> JoinLobby(UserDto currentUser, string lobbyCode);
 
         [OperationContract(IsOneWay = true)]
         void LeaveLobby();

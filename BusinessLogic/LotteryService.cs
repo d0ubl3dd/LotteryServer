@@ -26,7 +26,7 @@ namespace BusinessLogic
         private readonly VerificationHandler verificationHandler = new VerificationHandler();
 
         // --- IAuthenticationService ---
-        public async Task<UserSessionDTO> LoginUser(string username, string password)
+        public async Task<UserDto> LoginUser(string username, string password)
         {
             var operationContext = OperationContext.Current;
             if (operationContext == null)
@@ -48,7 +48,7 @@ namespace BusinessLogic
             channel.Faulted += OnChannelFaulted;
             channel.Closing += OnChannelFaulted;
 
-            return new UserSessionDTO
+            return new UserDto
             {
                 UserId = this.currentUser.id_user,
                 Nickname = this.currentUser.nickname,
@@ -81,11 +81,11 @@ namespace BusinessLogic
         }
 
         // --- IUserService ---
-        public async Task<int> RequestUserVerification(UserRegisterDTO userData)
+        public async Task<int> RequestUserVerification(UserDto userData)
         {
             return await userHandler.RequestUserVerification(userData);
         }
-        public async Task<int> RegisterUser(UserRegisterDTO userData)
+        public async Task<int> RegisterUser(UserDto userData)
         {            
             return await userHandler.RegisterUser(userData);
         }
@@ -110,7 +110,7 @@ namespace BusinessLogic
             return userHandler.ChangePassword(currentUserId, oldPassword, newPassword);
         }
 
-        public Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserRegisterDTO profileData)
+        public Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto profileData)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
@@ -120,12 +120,12 @@ namespace BusinessLogic
             return userHandler.UpdateProfile(currentUserId, profileData);
         }
 
-        public Task<FriendDTO> FindUserByNickname(string nickname)
+        public Task<FriendDto> FindUserByNickname(string nickname)
         {
             return userHandler.FindUserByNickname(nickname);
         }
 
-        public Task<UserRegisterDTO> GetUserProfile(int userId)
+        public Task<UserDto> GetUserProfile(int userId)
         {
             return userHandler.GetUserProfile(userId);
         }
@@ -202,7 +202,7 @@ namespace BusinessLogic
             return friendHandler.RemoveFriend(currentUserId, friendUserId);
         }
 
-        public Task<List<FriendDTO>> GetFriends(int currentUserId)
+        public Task<List<FriendDto>> GetFriends(int currentUserId)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
@@ -212,7 +212,7 @@ namespace BusinessLogic
             return friendHandler.GetFriends(currentUserId);
         }
 
-        public Task<List<FriendRequestDTO>> GetPendingRequests(int currentUserId)
+        public Task<List<FriendDto>> GetPendingRequests(int currentUserId)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
@@ -222,7 +222,7 @@ namespace BusinessLogic
             return friendHandler.GetPendingRequests(currentUserId);
         }
 
-        public Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId)
+        public Task<List<FriendDto>> GetSentRequests(int currentUserId)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
@@ -240,20 +240,20 @@ namespace BusinessLogic
         }
 
         // --- ILobbyService ---
-        public Task<LobbyStateDTO> CreateLobby()
+        public Task<LobbyStateDto> CreateLobby()
         {
             if (currentUser == null) throw new InvalidOperationException("Usuario no conectado.");
             return lobbyHandler.CreateLobby(this.currentUser);
         }
 
-        public Task<LobbyStateDTO> JoinLobby(UserSessionDTO currentUserDto, string lobbyCode)
+        public Task<LobbyStateDto> JoinLobby(UserDto currentUserDto, string lobbyCode)
         {
             if (currentUser == null) throw new InvalidOperationException("User not logged in.");
             var userEntity = new User
             {
                 id_user = currentUserDto.UserId,
                 nickname = currentUserDto.Nickname,
-                id_avatar = currentUserDto.AvatarId
+                id_avatar = (int)currentUserDto.AvatarId
             };
             return lobbyHandler.JoinLobby(this.currentUser, lobbyCode);
         }
@@ -277,7 +277,7 @@ namespace BusinessLogic
             return gameHandler.StartGame(this.currentUser);
         }
 
-        public Task UpdateGameSettings(GameSettingsDTO settings)
+        public Task UpdateGameSettings(GameSettingsDto settings)
         {
             if (currentUser == null) throw new InvalidOperationException("User must be logged in to update game settings.");
             return gameHandler.UpdateGameSettings(this.currentUser, settings);

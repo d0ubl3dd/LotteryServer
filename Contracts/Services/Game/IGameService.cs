@@ -16,7 +16,7 @@ namespace Contracts.Services.Game
         Task StartGame();
 
         [OperationContract]
-        Task UpdateGameSettings(GameSettingsDTO settings);
+        Task UpdateGameSettings(GameSettingsDto settings);
 
         [OperationContract]
         Task GetScoreboard();

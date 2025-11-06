@@ -41,7 +41,7 @@ namespace BusinessLogic.Models
 
         public void BroadcastPlayerJoined(PlayerClient newPlayer)
         {
-            var dto = newPlayer.ToPlayerInfoDTO(newPlayer.UserId == Host.UserId);
+            var dto = newPlayer.ToUserDto(newPlayer.UserId == Host.UserId);
             BroadcastToAll(client => client.PlayerJoined(dto));
         }
 
@@ -66,9 +66,9 @@ namespace BusinessLogic.Models
         }
 
         // --- Helpers ---
-        public List<PlayerInfoDTO> GetPlayerDTOs()
+        public List<UserDto> GetPlayerDTOs()
         {
-            return Players.Select(p => p.ToPlayerInfoDTO(p.UserId == Host.UserId)).ToList();
+            return Players.Select(p => p.ToUserDto(p.UserId == Host.UserId)).ToList();
         }
 
         private void BroadcastToAll(Action<ILotteryCallback> action)
@@ -87,9 +87,9 @@ namespace BusinessLogic.Models
     }
     public static class PlayerClientExtensions
     {
-        public static PlayerInfoDTO ToPlayerInfoDTO(this PlayerClient player, bool isHost)
+        public static UserDto ToUserDto(this PlayerClient player, bool isHost)
         {
-            return new PlayerInfoDTO
+            return new UserDto
             {
                 UserId = player.UserId,
                 Nickname = player.Nickname,

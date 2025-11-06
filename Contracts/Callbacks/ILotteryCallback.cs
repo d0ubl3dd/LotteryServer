@@ -16,7 +16,7 @@ namespace Contracts.Callbacks
         void ReceiveChatMessage(string nickname, string message);
 
         [OperationContract(IsOneWay = true)]
-        void PlayerJoined(PlayerInfoDTO newPlayer);
+        void PlayerJoined(UserDto newPlayer);
 
         [OperationContract(IsOneWay = true)]
         void PlayerLeft(int playerId);

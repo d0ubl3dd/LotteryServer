@@ -31,15 +31,15 @@ namespace Contracts.Services.Friends
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
-        Task<List<FriendDTO>> GetFriends(int currentUserId);
+        Task<List<FriendDto>> GetFriends(int currentUserId);
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
-        Task<List<FriendRequestDTO>> GetPendingRequests(int currentUserId);
+        Task<List<FriendDto>> GetPendingRequests(int currentUserId);
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
-        Task<List<FriendRequestDTO>> GetSentRequests(int currentUserId);
+        Task<List<FriendDto>> GetSentRequests(int currentUserId);
 
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]

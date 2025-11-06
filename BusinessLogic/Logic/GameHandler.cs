@@ -16,7 +16,7 @@ namespace BusinessLogic.Handlers
             return Task.CompletedTask;
         }
 
-        public Task UpdateGameSettings(User hostUser, GameSettingsDTO settings)
+        public Task UpdateGameSettings(User hostUser, GameSettingsDto settings)
         {
             Console.WriteLine($"Game settings updated by {hostUser.nickname}.");
             // Find the lobby, verify the user is the host, and update settings.

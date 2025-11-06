@@ -6,7 +6,7 @@ namespace Contracts.Callbacks
     public interface ILobbyCallback
     {
         [OperationContract(IsOneWay = true)]
-        void PlayerJoined(PlayerInfoDTO newPlayer);
+        void PlayerJoined(UserDto newPlayer);
 
         [OperationContract(IsOneWay = true)]
         void PlayerLeft(int playerId);

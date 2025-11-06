@@ -21,7 +21,7 @@ namespace BusinessLogic.Handlers
             _userRepository = new UserDAO();
             _verificationHandler = new VerificationHandler();
         }
-        public async Task<int> RequestUserVerification(UserRegisterDTO userData)
+        public async Task<int> RequestUserVerification(UserDto userData)
         {
             if (string.IsNullOrEmpty(userData.Email) || string.IsNullOrEmpty(userData.Nickname) || string.IsNullOrEmpty(userData.Password))
             {
@@ -46,7 +46,7 @@ namespace BusinessLogic.Handlers
             return codeSent ? 1 : 0;
         }
 
-        public async Task<int> RegisterUser(UserRegisterDTO userData)
+        public async Task<int> RegisterUser(UserDto userData)
         {
             try
             {
@@ -105,7 +105,7 @@ namespace BusinessLogic.Handlers
                 return false;
             }
         }
-        public async Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserRegisterDTO userData)
+        public async Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData)
         {
             try
             {
@@ -123,7 +123,7 @@ namespace BusinessLogic.Handlers
                 userInDb.paternal_last_name = userData.PaternalLastName;
                 userInDb.maternal_last_name = userData.MaternalLastName;
                 userInDb.nickname = userData.Nickname;
-                userInDb.id_avatar = userData.IdAvatar;
+                userInDb.id_avatar = (int)userData.AvatarId;
 
                 await _userRepository.SaveChangesAsync();
                 return (true, "Perfil actualizado correctamente.");
@@ -147,15 +147,15 @@ namespace BusinessLogic.Handlers
             return Task.CompletedTask;
         }
 
-        public async Task<FriendDTO> FindUserByNickname(string nickname)
+        public async Task<FriendDto> FindUserByNickname(string nickname)
         {
             using (var context = new lottery_databaseEntities())
             {
                 var user = await context.User
                     .Where(u => u.nickname == nickname)
-                    .Select(u => new FriendDTO
+                    .Select(u => new FriendDto
                     {
-                        UserId = u.id_user,
+                        FriendId = u.id_user,
                         Nickname = u.nickname,
                         Status = u.status
                     })
@@ -165,13 +165,13 @@ namespace BusinessLogic.Handlers
             }
         }
 
-        public async Task<UserRegisterDTO> GetUserProfile(int userId)
+        public async Task<UserDto> GetUserProfile(int userId)
         {
             using (var context = new lottery_databaseEntities())
             {
                 var user = await context.User
                     .Where(u => u.id_user == userId)
-                    .Select(u => new UserRegisterDTO
+                    .Select(u => new UserDto
                     {
                         Nickname = u.nickname,
                         Email = u.email,

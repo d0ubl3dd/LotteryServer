@@ -20,7 +20,7 @@ namespace BusinessLogic.Logic
             return client;
         }
 
-        public Task<LobbyStateDTO> CreateLobby(User currentUser)
+        public Task<LobbyStateDto> CreateLobby(User currentUser)
         {
             var hostClient = GetClient(currentUser);
             if (hostClient.CurrentLobby != null)
@@ -32,7 +32,7 @@ namespace BusinessLogic.Logic
             return Task.FromResult(lobbyState);
         }
 
-        public Task<LobbyStateDTO> JoinLobby(User currentUser, string lobbyCode)
+        public Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
         {
             var playerClient = GetClient(currentUser);
             if (playerClient.CurrentLobby != null)
