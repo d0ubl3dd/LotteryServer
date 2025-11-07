@@ -155,7 +155,7 @@ namespace BusinessLogic.Handlers
                     .Where(u => u.nickname == nickname)
                     .Select(u => new FriendDto
                     {
-                        FriendId = u.id_user,
+                        UserId = u.id_user,
                         Nickname = u.nickname,
                         Status = u.status
                     })
