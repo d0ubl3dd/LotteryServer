@@ -90,7 +90,10 @@ namespace BusinessLogic.Logic
                 }
                 else
                 {
-                    throw new Exception("No se encontró la solicitud de amistad. Es posible que el usuario la haya cancelado.");
+                    throw new FaultException<ServiceFault>(new ServiceFault
+                    {
+                        Message = "No se encontró la solicitud de amistad. Es posible que el usuario la haya cancelado."
+                    });
                 }
             }
         }
