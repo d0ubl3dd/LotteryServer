@@ -13,7 +13,7 @@ namespace Contracts.Services.Game
     public interface IGameService
     {
         [OperationContract]
-        Task StartGame();
+        Task StartGame(GameSettingsDto settings);
 
         [OperationContract]
         Task UpdateGameSettings(GameSettingsDto settings);

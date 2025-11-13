@@ -99,6 +99,11 @@ namespace BusinessLogic.Logic
             playerToKick.CallbackChannel.YouWereKicked();
         }
 
+        public Lobby FindLobbyByHostId(int hostUserId)
+        {
+            return _lobbies.Values.FirstOrDefault(lobby => lobby.Host.UserId == hostUserId);
+        }
+
         private string GenerateLobbyCode()
         {
             var chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";

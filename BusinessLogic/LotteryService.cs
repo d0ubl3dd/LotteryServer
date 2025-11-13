@@ -17,13 +17,28 @@ namespace BusinessLogic
     public class LotteryService : ILotteryService
     {
         private User currentUser;
-        private readonly AuthenticationHandler authHandler = new AuthenticationHandler();
-        private readonly UserHandler userHandler = new UserHandler();
-        private readonly FriendHandler friendHandler = new FriendHandler();
-        private readonly LobbyHandler lobbyHandler = new LobbyHandler();
-        private readonly GameHandler gameHandler = new GameHandler();
-        private readonly ChatHandler chatHandler = new ChatHandler();
-        private readonly VerificationHandler verificationHandler = new VerificationHandler();
+        private readonly AuthenticationHandler authHandler;
+        private readonly UserHandler userHandler;
+        private readonly FriendHandler friendHandler;
+        private readonly LobbyHandler lobbyHandler;
+        private readonly GameHandler gameHandler;
+        private readonly ChatHandler chatHandler;
+        private readonly VerificationHandler verificationHandler;
+
+        public LotteryService()
+        {
+            var lobbyManagerInstance = LobbyManager.Instance;
+            var sessionManagerInstance = GlobalSessionManager.Instance;
+
+            this.lobbyHandler = new LobbyHandler(lobbyManagerInstance);
+            this.gameHandler = new GameHandler(lobbyManagerInstance);
+            this.chatHandler = new ChatHandler(sessionManagerInstance);
+
+            this.authHandler = new AuthenticationHandler();
+            this.userHandler = new UserHandler();
+            this.friendHandler = new FriendHandler();
+            this.verificationHandler = new VerificationHandler();
+        }
 
         // --- IAuthenticationService ---
         public async Task<UserDto> LoginUser(string username, string password)
@@ -276,10 +291,10 @@ namespace BusinessLogic
         }
 
         // --- IGameService ---
-        public Task StartGame()
+        public Task StartGame(GameSettingsDto settings)
         {
             if (currentUser == null) throw new InvalidOperationException("User must be logged in to start a game.");
-            return gameHandler.StartGame(this.currentUser);
+            return gameHandler.StartGame(this.currentUser, settings);
         }
 
         public Task UpdateGameSettings(GameSettingsDto settings)

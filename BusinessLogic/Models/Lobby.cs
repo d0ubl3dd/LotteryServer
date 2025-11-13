@@ -3,6 +3,8 @@ using Contracts.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BusinessLogic.Models
 {
@@ -12,6 +14,11 @@ namespace BusinessLogic.Models
         public PlayerClient Host { get; }
         public List<PlayerClient> Players { get; } = new List<PlayerClient>();
         public const int MaxPlayers = 4;
+
+        public bool IsGameInProgress { get; private set; }
+        private Deck _gameDeck;
+        private Task _gameLoopTask;
+        private CancellationTokenSource _gameCts;
 
         public Lobby(string code, PlayerClient host)
         {
@@ -35,9 +42,12 @@ namespace BusinessLogic.Models
         {
             Players.Remove(player);
             player.CurrentLobby = null;
-        }
 
-        // --- Métodos de Broadcast (para Callbacks) ---
+            if (player.UserId == Host.UserId)
+            {
+                StopLobbyGame();
+            }
+        }
 
         public void BroadcastPlayerJoined(PlayerClient newPlayer)
         {
@@ -65,6 +75,84 @@ namespace BusinessLogic.Models
             BroadcastToAll(client => client.LobbyClosed());
         }
 
+        public void BroadcastGameStarted(GameSettingsDto settings)
+        {
+            BroadcastToAll(client => client.OnGameStarted(settings));
+        }
+
+        public void BroadcastCardDrawn(CardDto card)
+        {
+            BroadcastToAll(client => client.OnCardDrawn(card));
+        }
+
+        public void BroadcastGameFinished()
+        {
+            BroadcastToAll(client => client.OnGameFinished());
+        }
+
+        public void StartLobbyGame(GameSettingsDto settings)
+        {
+            if (IsGameInProgress) return;
+
+            IsGameInProgress = true;
+            _gameDeck = new Deck();
+            _gameCts = new CancellationTokenSource();
+
+            BroadcastGameStarted(settings);
+
+            _gameLoopTask = Task.Run(() => RunGameLoop(settings, _gameCts.Token));
+        }
+
+        public void StopLobbyGame()
+        {
+            if (!IsGameInProgress) return;
+
+            IsGameInProgress = false;
+            if (_gameCts != null)
+            {
+                _gameCts.Cancel();
+                _gameCts.Dispose();
+                _gameCts = null;
+            }
+        }
+
+        private async Task RunGameLoop(GameSettingsDto settings, CancellationToken token)
+        {
+            int cardDrawDelayMs = (settings?.CardDrawSpeedSeconds ?? 4) * 1000;
+
+            try
+            {
+                while (IsGameInProgress && _gameDeck.CardsRemaining > 0)
+                {
+                    await Task.Delay(cardDrawDelayMs, token);
+
+                    Card card = _gameDeck.DrawCard();
+                    if (card == null) break;
+
+                    var cardDto = new CardDto { Id = card.Id, Name = card.Name };
+
+                    BroadcastCardDrawn(cardDto);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine($"Juego del lobby {LobbyCode} cancelado.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en el bucle del juego {LobbyCode}: {ex.Message}");
+            }
+            finally
+            {
+                IsGameInProgress = false;
+
+                if (!token.IsCancellationRequested)
+                {
+                    BroadcastGameFinished();
+                }
+            }
+        }
+
         // --- Helpers ---
         public List<UserDto> GetPlayerDTOs()
         {
@@ -73,7 +161,9 @@ namespace BusinessLogic.Models
 
         private void BroadcastToAll(Action<ILotteryCallback> action)
         {
-            foreach (var player in Players)
+            List<PlayerClient> playersCopy = new List<PlayerClient>(Players);
+
+            foreach (var player in playersCopy)
             {
                 try
                 {
@@ -81,10 +171,12 @@ namespace BusinessLogic.Models
                 }
                 catch (Exception)
                 {
+                    
                 }
             }
         }
     }
+
     public static class PlayerClientExtensions
     {
         public static UserDto ToUserDto(this PlayerClient player, bool isHost)

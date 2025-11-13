@@ -2,18 +2,29 @@
 using DataAccess;
 using System;
 using System.Threading.Tasks;
+using System.ServiceModel;
+using Contracts.Faults;
 
 namespace BusinessLogic.Logic
 {
     public class ChatHandler
     {
+        private readonly GlobalSessionManager _sessionManager;
+        public ChatHandler(GlobalSessionManager sessionManager)
+        {
+            _sessionManager = sessionManager;
+        }
+
         public void SendMessage(User currentUser, string message)
         {
-            var client = GlobalSessionManager.Instance.GetClient(currentUser.id_user);
+            var client = _sessionManager.GetClient(currentUser.id_user);
 
             if (client?.CurrentLobby == null)
             {
-                throw new Exception("No estás en un lobby para chatear.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "No estás en un lobby para chatear." },
+                    new FaultReason("No estás en un lobby")
+                );
             }
 
             if (string.IsNullOrWhiteSpace(message)) return;
