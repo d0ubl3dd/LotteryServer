@@ -135,7 +135,7 @@ namespace BusinessLogic.Handlers
                 userInDb.paternal_last_name = userData.PaternalLastName;
                 userInDb.maternal_last_name = userData.MaternalLastName;
                 userInDb.nickname = userData.Nickname;
-                userInDb.id_avatar = userData.AvatarId;
+                userInDb.id_avatar = userData.AvatarId;                
 
                 await _userRepository.SaveChangesAsync();
                 return (true, "Perfil actualizado correctamente.");
