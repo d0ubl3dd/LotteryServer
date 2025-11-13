@@ -80,31 +80,43 @@ namespace BusinessLogic.Handlers
             }
         }
 
-        public async Task<bool> ChangePassword(int currentUserId, string oldPassword, string newPassword)
+        public async Task<bool> VerifyPassword(int userId, string password)
         {
             try
             {
-                var userInDb = await _userRepository.GetUserByIdAsync(currentUserId);
-                if (userInDb == null) return false;
+                var user = await _userRepository.GetUserByIdAsync(userId);
+                if (user == null) return false;
 
-                if (!PasswordHasher.VerifyPasswordHash(oldPassword, userInDb.passwordHash, userInDb.passwordSalt))
-                {
-                    return false;
-                }
+                return PasswordHasher.VerifyPasswordHash(password, user.passwordHash, user.passwordSalt);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error verifying password for user ID {userId}: {ex.Message}");
+                return false;
+            }
+        }
 
-                PasswordHasher.CreatePasswordHash(newPassword, out byte[] passwordHash, out byte[] passwordSalt);
-                userInDb.passwordHash = passwordHash;
-                userInDb.passwordSalt = passwordSalt;
+        public async Task<bool> ChangePassword(int userId, string newPassword)
+        {
+            try
+            {
+                var user = await _userRepository.GetUserByIdAsync(userId);
+                if (user == null) return false;
+
+                PasswordHasher.CreatePasswordHash(newPassword, out byte[] hash, out byte[] salt);
+                user.passwordHash = hash;
+                user.passwordSalt = salt;
 
                 await _userRepository.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error changing password for user ID {currentUserId}: {ex.Message}");
+                Console.WriteLine($"Error changing password for user ID {userId}: {ex.Message}");
                 return false;
             }
         }
+
         public async Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData)
         {
             try
@@ -123,7 +135,7 @@ namespace BusinessLogic.Handlers
                 userInDb.paternal_last_name = userData.PaternalLastName;
                 userInDb.maternal_last_name = userData.MaternalLastName;
                 userInDb.nickname = userData.Nickname;
-                userInDb.id_avatar = (int)userData.AvatarId;
+                userInDb.id_avatar = userData.AvatarId;
 
                 await _userRepository.SaveChangesAsync();
                 return (true, "Perfil actualizado correctamente.");
@@ -173,26 +185,66 @@ namespace BusinessLogic.Handlers
                     .Where(u => u.id_user == userId)
                     .Select(u => new UserDto
                     {
+                        UserId =  u.id_user,
                         Nickname = u.nickname,
                         Email = u.email,
                         FirstName = u.first_name,
                         PaternalLastName = u.paternal_last_name,
                         MaternalLastName = u.maternal_last_name,
-                        AvatarUrl = u.Avatar != null ? u.Avatar.path : null
+                        AvatarId = u.id_avatar,
+                        AvatarUrl = u.Avatar != null ? u.Avatar.path : null                        
                     })
                     .FirstOrDefaultAsync();
                 return user;
             }
         }
 
-        public Task<bool> RequestEmailChange(int userId, string newEmail)
+        public async Task<bool> RequestEmailChange(int userId, string newEmail)
         {
-            return Task.FromResult(false);
+            try
+            {
+                var userInDb = await _userRepository.GetUserByIdAsync(userId);
+                if (userInDb == null)
+                    return false;
+
+                if (await _userRepository.EmailExistsAsync(newEmail))
+                    return false;
+
+                bool sent = await _verificationHandler.SendVerificationCode(newEmail);
+                if (!sent)
+                    return false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al solicitar cambio de correo para el usuario {userId}: {ex.Message}");
+                return false;
+            }
         }
 
-        public Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
-        { 
-            return Task.FromResult(false);
+        public async Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
+        {
+            try
+            {
+                var userInDb = await _userRepository.GetUserByIdAsync(userId);
+                if (userInDb == null)
+                    return false;
+
+                bool isValid = await _verificationHandler.VerifyCode(newEmail, verificationCode);
+                if (!isValid)
+                    return false;
+
+                userInDb.email = newEmail;
+                await _userRepository.SaveChangesAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al confirmar cambio de correo para el usuario {userId}: {ex.Message}");
+                return false;
+            }
         }
     }
 }

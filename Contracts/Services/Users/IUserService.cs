@@ -19,8 +19,11 @@ namespace Contracts.Services.Users
         Task<int> RegisterGuest();
 
         [OperationContract]
+        Task<bool> VerifyPassword(int userId, string password);
+
+        [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        Task<bool> ChangePassword(int currentUserId, string oldPassword, string newPassword);
+        Task<bool> ChangePassword(int userId, string newPassword);
 
         [OperationContract]
         Task RecoverPassword(string email);

@@ -7,7 +7,7 @@ public class UserDto
     [DataMember]
     public int UserId { get; set; }
     [DataMember]
-    public int? AvatarId { get; set; }
+    public int AvatarId { get; set; }
     [DataMember]
     public string AvatarUrl { get; set; }
     [DataMember]
@@ -17,7 +17,7 @@ public class UserDto
     [DataMember]
     public string Password { get; set; }
     [DataMember]
-    public DateTime? RegistrationDate { get; set; }
+    public DateTime RegistrationDate { get; set; }
     [DataMember]
     public string FirstName { get; set; }
     [DataMember]
