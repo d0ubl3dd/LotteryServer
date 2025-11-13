@@ -100,14 +100,19 @@ namespace BusinessLogic
             return userHandler.RecoverPassword(email);
         }
 
-        public Task<bool> ChangePassword(int currentUserId, string oldPassword, string newPassword)
+        public Task<bool> VerifyPassword(int userId, string password)
+        {
+            return userHandler.VerifyPassword(userId, password);
+        }
+
+        public Task<bool> ChangePassword(int currentUserId, string newPassword)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
                 throw new InvalidOperationException("Invalid user session for this operation.");
             }
 
-            return userHandler.ChangePassword(currentUserId, oldPassword, newPassword);
+            return userHandler.ChangePassword(currentUserId, newPassword);
         }
 
         public Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto profileData)
