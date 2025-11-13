@@ -10,6 +10,11 @@ namespace BusinessLogic.Logic
 {
     public class LobbyHandler
     {
+        private readonly LobbyManager _lobbyManager;
+        public LobbyHandler(LobbyManager lobbyManager)
+        {
+            _lobbyManager = lobbyManager;
+        }
         private PlayerClient GetClient(User user)
         {
             var client = GlobalSessionManager.Instance.GetClient(user.id_user);
@@ -28,7 +33,7 @@ namespace BusinessLogic.Logic
                 throw new FaultException<ServiceFault>(new ServiceFault { Message = "Ya estás en un lobby." });
             }
 
-            var lobbyState = LobbyManager.Instance.CreateLobby(hostClient);
+            var lobbyState = _lobbyManager.CreateLobby(hostClient);
             return Task.FromResult(lobbyState);
         }
 
@@ -40,7 +45,7 @@ namespace BusinessLogic.Logic
                 throw new FaultException<ServiceFault>(new ServiceFault { Message = "Ya estás en un lobby." });
             }
 
-            var lobbyState = LobbyManager.Instance.JoinLobby(playerClient, lobbyCode);
+            var lobbyState = _lobbyManager.JoinLobby(playerClient, lobbyCode);
             return Task.FromResult(lobbyState);
         }
 
@@ -49,7 +54,7 @@ namespace BusinessLogic.Logic
             var client = GlobalSessionManager.Instance.GetClient(currentUser.id_user);
             if (client != null)
             {
-                LobbyManager.Instance.LeaveLobby(client);
+                _lobbyManager.LeaveLobby(client);
             }
             return Task.CompletedTask;
         }
@@ -57,7 +62,7 @@ namespace BusinessLogic.Logic
         public Task KickPlayer(User currentUser, int targetPlayerId)
         {
             var hostClient = GetClient(currentUser);
-            LobbyManager.Instance.KickPlayer(hostClient, targetPlayerId);
+            _lobbyManager.KickPlayer(hostClient, targetPlayerId);
             return Task.CompletedTask;
         }
     }

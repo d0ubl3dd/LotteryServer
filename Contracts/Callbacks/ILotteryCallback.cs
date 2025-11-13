@@ -32,5 +32,14 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void ReceiveLobbyInvite(string inviterNickname, string lobbyCode);
+
+        [OperationContract(IsOneWay = true)]
+        void OnGameStarted(GameSettingsDto settings);
+
+        [OperationContract(IsOneWay = true)]
+        void OnCardDrawn(CardDto card);
+
+        [OperationContract(IsOneWay = true)]
+        void OnGameFinished();
     }
 }

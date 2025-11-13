@@ -55,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GlobalErrorHandler.cs" />
+    <Compile Include="ListExtensions.cs" />
     <Compile Include="Logic\AuthenticationHandler.cs" />
     <Compile Include="Logic\ChatHandler.cs" />
     <Compile Include="Logic\FriendHandler.cs" />
@@ -64,6 +65,8 @@
     <Compile Include="Logic\LobbyManager.cs" />
     <Compile Include="Logic\UserHandler.cs" />
     <Compile Include="Logic\VerificationHandler.cs" />
+    <Compile Include="Models\Card.cs" />
+    <Compile Include="Models\Deck.cs" />
     <Compile Include="Models\Lobby.cs" />
     <Compile Include="Models\PlayerClient.cs" />
     <Compile Include="Validation\LoginValidationResult.cs" />
