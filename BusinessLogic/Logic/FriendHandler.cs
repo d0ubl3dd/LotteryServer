@@ -240,44 +240,60 @@ namespace BusinessLogic.Logic
         }
 
 
-        public Task InviteFriendToLobby(int currentUserId, int targetFriendId, string lobbyCode)
+        public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
         {
-            if (string.IsNullOrEmpty(lobbyCode))
+            int? currentUserId = GlobalSessionManager.Instance.GetUserIdFromContext();
+
+            if (currentUserId == null)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Error de invitación: El código del lobby es nulo." });
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Error de sesión: No se pudo identificar al usuario actual." });
             }
 
-            var inviter = GlobalSessionManager.Instance.GetClient(currentUserId);
+            if (string.IsNullOrEmpty(lobbyCode))
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Error de invitación: El código del lobby es nulo." });
+            }
+
+            var inviter = GlobalSessionManager.Instance.GetClient(currentUserId.Value);
             if (inviter == null || inviter.CurrentLobby == null)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Error de sesión: No se encontró tu lobby." });
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Error de sesión: No se encontró tu lobby." });
             }
 
             if (inviter.CurrentLobby.LobbyCode != lobbyCode)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Error de invitación: No estás en el lobby correcto." });
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Error de invitación: No estás en el lobby correcto." });
             }
 
             var target = GlobalSessionManager.Instance.GetClient(targetFriendId);
             if (target == null)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Tu amigo no está conectado." });
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Tu amigo no está conectado." });
             }
 
             if (target.CurrentLobby != null)
             {
                 if (target.CurrentLobby == inviter.CurrentLobby)
                 {
-                    throw new FaultException<ServiceFault>(new ServiceFault { Message = "El jugador ya se encuentra en el lobby." });
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = "El jugador ya se encuentra en el lobby." });
                 }
                 else
                 {
-                    throw new FaultException<ServiceFault>(new ServiceFault { Message = "Tu amigo ya está en otro lobby." });
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = "Tu amigo ya está en otro lobby." });
                 }
             }
 
             target.CallbackChannel.ReceiveLobbyInvite(inviter.Nickname, lobbyCode);
+
             return Task.CompletedTask;
         }
+
     }
 }

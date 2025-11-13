@@ -255,9 +255,9 @@ namespace BusinessLogic
         public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
         {
             if (currentUser == null) throw new InvalidOperationException("Usuario no conectado.");
-
-            return friendHandler.InviteFriendToLobby(this.currentUser.id_user, targetFriendId, lobbyCode);
+            return friendHandler.InviteFriendToLobby(lobbyCode, targetFriendId);
         }
+
 
         // --- ILobbyService ---
         public Task<LobbyStateDto> CreateLobby()

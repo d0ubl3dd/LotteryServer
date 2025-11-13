@@ -3,7 +3,9 @@ using Contracts.Callbacks;
 using DataAccess;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel;
 
 namespace BusinessLogic.Logic
 {
@@ -29,11 +31,23 @@ namespace BusinessLogic.Logic
             _onlineUsers.TryGetValue(userId, out var client);
             return client;
         }
-
+            
         public PlayerClient UnregisterClient(int userId)
         {
             _onlineUsers.TryRemove(userId, out var client);
             return client;
+        }
+        public int? GetUserIdFromContext()
+        {
+            var callback = OperationContext.Current?.GetCallbackChannel<ILotteryCallback>();
+            if (callback == null) return null;
+
+            var entry = _onlineUsers.FirstOrDefault(x => x.Value.CallbackChannel == callback);
+
+            if (entry.Equals(default(KeyValuePair<int, PlayerClient>)))
+                return null;
+
+            return entry.Key;
         }
     }
 }
