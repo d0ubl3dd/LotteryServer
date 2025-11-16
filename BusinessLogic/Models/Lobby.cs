@@ -129,7 +129,7 @@ namespace BusinessLogic.Models
                     Card card = _gameDeck.DrawCard();
                     if (card == null) break;
 
-                    var cardDto = new CardDto { Id = card.Id, Name = card.Name };
+                    var cardDto = new CardDto { Id = card.Id };
 
                     BroadcastCardDrawn(cardDto);
                 }
