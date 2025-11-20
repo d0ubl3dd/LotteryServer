@@ -27,7 +27,10 @@ namespace BusinessLogic.Logic
                 );
             }
 
-            if (string.IsNullOrWhiteSpace(message)) return;
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
 
             client.CurrentLobby.BroadcastChatMessage(client.Nickname, message);
         }

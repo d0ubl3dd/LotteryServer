@@ -21,7 +21,10 @@ namespace BusinessLogic.Logic
                 var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
                 for (int i = 0; i < computedHash.Length; i++)
                 {
-                    if (computedHash[i] != storedHash[i]) return false;
+                    if (computedHash[i] != storedHash[i])
+                    {
+                        return false;
+                    }
                 }
             }
             return true;

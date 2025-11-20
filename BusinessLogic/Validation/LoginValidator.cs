@@ -10,7 +10,7 @@ namespace BusinessLogic.Validation
 {
     public static class LoginValidator
     {
-        private const int MinInputLength = 4;
+        private const int MIN_INPUT_LENGTH = 4;
 
         /// <summary>
         /// </summary>
@@ -20,7 +20,7 @@ namespace BusinessLogic.Validation
         /// <returns>A LoginValidationResult enum indicating the outcome of the validation.</returns>
         public static LoginValidationResult ValidateLoginAttempt(string userName, string password, User foundUser)
         {
-            if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password) || userName.Length < MinInputLength)
+            if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password) || userName.Length < MIN_INPUT_LENGTH)
             {
                 return LoginValidationResult.InvalidInput;
             }

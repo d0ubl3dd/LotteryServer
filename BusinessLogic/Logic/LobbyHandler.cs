@@ -20,7 +20,10 @@ namespace BusinessLogic.Logic
             var client = GlobalSessionManager.Instance.GetClient(user.id_user);
             if (client == null)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Error de sesión. No se encontró el cliente." });
+                throw new FaultException<ServiceFault>(new ServiceFault
+                {
+                    Message = "Error de sesión. No se encontró el cliente."
+                });
             }
             return client;
         }
@@ -30,7 +33,10 @@ namespace BusinessLogic.Logic
             var hostClient = GetClient(currentUser);
             if (hostClient.CurrentLobby != null)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Ya estás en un lobby." });
+                throw new FaultException<ServiceFault>(new ServiceFault
+                {
+                    Message = "Ya estás en un lobby."
+                });
             }
 
             var lobbyState = _lobbyManager.CreateLobby(hostClient);
@@ -42,7 +48,10 @@ namespace BusinessLogic.Logic
             var playerClient = GetClient(currentUser);
             if (playerClient.CurrentLobby != null)
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "Ya estás en un lobby." });
+                throw new FaultException<ServiceFault>(new ServiceFault
+                {
+                    Message = "Ya estás en un lobby."
+                });
             }
 
             var lobbyState = _lobbyManager.JoinLobby(playerClient, lobbyCode);

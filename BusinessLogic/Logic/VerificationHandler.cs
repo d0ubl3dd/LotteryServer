@@ -24,15 +24,21 @@ namespace BusinessLogic.Handlers
         public async Task<bool> SendVerificationCode(string email)
         {
             if (string.IsNullOrEmpty(email))
+            {
                 return false;
+            }
 
             string code = _random.Next(100000, 999999).ToString();
             DateTime expiration = DateTime.UtcNow.AddMinutes(5);
 
             if (_codes.ContainsKey(email))
+            {
                 _codes[email] = new VerificationEntry { Code = code, Expiration = expiration };
+            }
             else
+            {
                 _codes.Add(email, new VerificationEntry { Code = code, Expiration = expiration });
+            }
 
             try
             {
@@ -62,7 +68,9 @@ namespace BusinessLogic.Handlers
         public Task<bool> VerifyCode(string email, string code)
         {
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(code))
+            {
                 return Task.FromResult(false);
+            }
 
             if (_codes.TryGetValue(email, out var entry))
             {

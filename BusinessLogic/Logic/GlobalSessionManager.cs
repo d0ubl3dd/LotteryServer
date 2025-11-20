@@ -11,7 +11,7 @@ namespace BusinessLogic.Logic
 {
     public class GlobalSessionManager
     {
-        private static readonly Lazy<GlobalSessionManager> _instance =
+        private static readonly Lazy<GlobalSessionManager> _instance = 
             new Lazy<GlobalSessionManager>(() => new GlobalSessionManager());
         public static GlobalSessionManager Instance => _instance.Value;
 
@@ -39,15 +39,20 @@ namespace BusinessLogic.Logic
         }
         public int? GetUserIdFromContext()
         {
+            int? result = null;
+
             var callback = OperationContext.Current?.GetCallbackChannel<ILotteryCallback>();
-            if (callback == null) return null;
+            if (callback != null)
+            {
+                var entry = _onlineUsers.FirstOrDefault(x => x.Value.CallbackChannel == callback);
 
-            var entry = _onlineUsers.FirstOrDefault(x => x.Value.CallbackChannel == callback);
+                if (!entry.Equals(default(KeyValuePair<int, PlayerClient>)))
+                {
+                    result = entry.Key;
+                }
+            }
 
-            if (entry.Equals(default(KeyValuePair<int, PlayerClient>)))
-                return null;
-
-            return entry.Key;
+            return result;
         }
     }
 }

@@ -84,7 +84,10 @@ namespace BusinessLogic.Handlers
 
         public async Task LogoutUser(User userToLogout)
         {
-            if (userToLogout == null) return;
+            if (userToLogout == null)
+            {
+                return;
+            }
 
             try
             {

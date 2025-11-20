@@ -13,7 +13,7 @@ namespace BusinessLogic.Models
         public string LobbyCode { get; }
         public PlayerClient Host { get; }
         public List<PlayerClient> Players { get; } = new List<PlayerClient>();
-        public const int MaxPlayers = 4;
+        public const int MAX_PLAYERS = 4;
 
         public bool IsGameInProgress { get; private set; }
         private Deck _gameDeck;
@@ -29,7 +29,7 @@ namespace BusinessLogic.Models
 
         public bool AddPlayer(PlayerClient player)
         {
-            if (Players.Count >= MaxPlayers || Players.Any(p => p.UserId == player.UserId))
+            if (Players.Count >= MAX_PLAYERS || Players.Any(p => p.UserId == player.UserId))
             {
                 return false;
             }

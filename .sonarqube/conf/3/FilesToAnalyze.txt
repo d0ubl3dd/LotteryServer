@@ -1,0 +1,4 @@
+﻿C:\Users\carlo\source\repos\LotteryServer\Host\Program.cs
+C:\Users\carlo\source\repos\LotteryServer\Host\Properties\AssemblyInfo.cs
+C:\Users\carlo\source\repos\LotteryServer\Host\App.config
+C:\Users\carlo\source\repos\LotteryServer\Host\packages.config

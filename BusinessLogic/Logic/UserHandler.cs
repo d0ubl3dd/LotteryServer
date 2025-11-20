@@ -23,7 +23,8 @@ namespace BusinessLogic.Handlers
         }
         public async Task<int> RequestUserVerification(UserDto userData)
         {
-            if (string.IsNullOrEmpty(userData.Email) || string.IsNullOrEmpty(userData.Nickname) || string.IsNullOrEmpty(userData.Password))
+            if (string.IsNullOrEmpty(userData.Email) || string.IsNullOrEmpty(userData.Nickname) || 
+                string.IsNullOrEmpty(userData.Password))
             {
                 return -3;
             }
@@ -163,15 +164,13 @@ namespace BusinessLogic.Handlers
         {
             using (var context = new lottery_databaseEntities())
             {
-                var user = await context.User
-                    .Where(u => u.nickname == nickname)
-                    .Select(u => new FriendDto
-                    {
-                        UserId = u.id_user,
-                        Nickname = u.nickname,
-                        Status = u.status
-                    })
-                    .FirstOrDefaultAsync();
+                var user = await context.User.Where(u => u.nickname == nickname).Select(u => new FriendDto
+                {
+                    UserId = u.id_user,
+                    Nickname = u.nickname,
+                    Status = u.status
+                })
+                .FirstOrDefaultAsync();
 
                 return user;
             }
@@ -181,20 +180,18 @@ namespace BusinessLogic.Handlers
         {
             using (var context = new lottery_databaseEntities())
             {
-                var user = await context.User
-                    .Where(u => u.id_user == userId)
-                    .Select(u => new UserDto
-                    {
-                        UserId =  u.id_user,
-                        Nickname = u.nickname,
-                        Email = u.email,
-                        FirstName = u.first_name,
-                        PaternalLastName = u.paternal_last_name,
-                        MaternalLastName = u.maternal_last_name,
-                        AvatarId = u.id_avatar,
-                        AvatarUrl = u.Avatar != null ? u.Avatar.path : null                        
-                    })
-                    .FirstOrDefaultAsync();
+                var user = await context.User.Where(u => u.id_user == userId).Select(u => new UserDto
+                {
+                    UserId =  u.id_user,
+                    Nickname = u.nickname,
+                    Email = u.email,
+                    FirstName = u.first_name,
+                    PaternalLastName = u.paternal_last_name,
+                    MaternalLastName = u.maternal_last_name,
+                    AvatarId = u.id_avatar,
+                    AvatarUrl = u.Avatar != null ? u.Avatar.path : null
+                })
+                .FirstOrDefaultAsync();
                 return user;
             }
         }
@@ -205,14 +202,20 @@ namespace BusinessLogic.Handlers
             {
                 var userInDb = await _userRepository.GetUserByIdAsync(userId);
                 if (userInDb == null)
+                {
                     return false;
+                }
 
                 if (await _userRepository.EmailExistsAsync(newEmail))
+                {
                     return false;
+                }
 
                 bool sent = await _verificationHandler.SendVerificationCode(newEmail);
                 if (!sent)
+                {
                     return false;
+                }
 
                 return true;
             }
@@ -229,11 +232,15 @@ namespace BusinessLogic.Handlers
             {
                 var userInDb = await _userRepository.GetUserByIdAsync(userId);
                 if (userInDb == null)
+                {
                     return false;
+                }
 
                 bool isValid = await _verificationHandler.VerifyCode(newEmail, verificationCode);
                 if (!isValid)
+                {
                     return false;
+                }
 
                 userInDb.email = newEmail;
                 await _userRepository.SaveChangesAsync();

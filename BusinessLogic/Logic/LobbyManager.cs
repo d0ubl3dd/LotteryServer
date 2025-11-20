@@ -10,12 +10,10 @@ namespace BusinessLogic.Logic
 {
     public class LobbyManager
     {
-        private static readonly Lazy<LobbyManager> _instance =
-            new Lazy<LobbyManager>(() => new LobbyManager());
+        private static readonly Lazy<LobbyManager> _instance = new Lazy<LobbyManager>(() => new LobbyManager());
         public static LobbyManager Instance => _instance.Value;
 
-        private readonly ConcurrentDictionary<string, Lobby> _lobbies =
-            new ConcurrentDictionary<string, Lobby>();
+        private readonly ConcurrentDictionary<string, Lobby> _lobbies = new ConcurrentDictionary<string, Lobby>();
 
         private LobbyManager() { }
 
@@ -36,17 +34,26 @@ namespace BusinessLogic.Logic
         {
             if (string.IsNullOrEmpty(lobbyCode))
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "El código del lobby no puede ser nulo o vacío." });
+                throw new FaultException<ServiceFault>(new ServiceFault
+                {
+                    Message = "El código del lobby no puede ser nulo o vacío."
+                });
             }
 
             if (!_lobbies.TryGetValue(lobbyCode, out var lobby))
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "El lobby no existe." });
+                throw new FaultException<ServiceFault>(new ServiceFault
+                {
+                    Message = "El lobby no existe."
+                });
             }
 
             if (!lobby.AddPlayer(player))
             {
-                throw new FaultException<ServiceFault>(new ServiceFault { Message = "El lobby está lleno o ya estás en él." });
+                throw new FaultException<ServiceFault>(new ServiceFault
+                {
+                    Message = "El lobby está lleno o ya estás en él."
+                });
             }
 
             lobby.BroadcastPlayerJoined(player);

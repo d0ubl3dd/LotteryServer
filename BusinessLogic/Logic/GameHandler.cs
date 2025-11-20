@@ -26,7 +26,11 @@ namespace BusinessLogic.Handlers
             if (lobby == null)
             {
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "No se encontró un lobby donde seas el host." },
+                    new ServiceFault
+                    {
+                        Message = "No se encontró un lobby donde seas el host."
+                    },
+                    
                     new FaultReason("Lobby no encontrado")
                 );
             }
@@ -34,7 +38,11 @@ namespace BusinessLogic.Handlers
             if (lobby.IsGameInProgress)
             {
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "El juego en este lobby ya está en curso." },
+                    new ServiceFault
+                    {
+                        Message = "El juego en este lobby ya está en curso."
+                    },
+
                     new FaultReason("Juego en curso")
                 );
             }
@@ -53,7 +61,11 @@ namespace BusinessLogic.Handlers
             if (lobby == null)
             {
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "No se encontró un lobby donde seas el host." },
+                    new ServiceFault
+                    {
+                        Message = "No se encontró un lobby donde seas el host."
+                    },
+
                     new FaultReason("Lobby no encontrado")
                 );
             }
@@ -61,7 +73,11 @@ namespace BusinessLogic.Handlers
             if (lobby.IsGameInProgress)
             {
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "No se puede cambiar la configuración mientras el juego está en curso." },
+                    new ServiceFault
+                    {
+                        Message = "No se puede cambiar la configuración mientras el juego está en curso."
+                    },
+
                     new FaultReason("Juego en curso")
                 );
             }
