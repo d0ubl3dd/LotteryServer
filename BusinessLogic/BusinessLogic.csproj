@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Exceptions\FriendshipException.cs" />
+    <Compile Include="Exceptions\GameException.cs" />
     <Compile Include="Exceptions\LobbyException.cs" />
     <Compile Include="GlobalErrorHandler.cs" />
     <Compile Include="ListExtensions.cs" />
