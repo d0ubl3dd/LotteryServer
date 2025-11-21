@@ -30,14 +30,10 @@ namespace BusinessLogic.Handlers
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
 
                 if (lobby == null)
-                {
                     throw new LobbyNotFoundException("No se encontró un lobby donde seas el host.");
-                }
 
                 if (lobby.IsGameInProgress)
-                {
                     throw new GameAlreadyRunningException("El juego en este lobby ya está en curso.");
-                }
 
                 lobby.StartLobbyGame(settings);
 
@@ -57,14 +53,10 @@ namespace BusinessLogic.Handlers
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
 
                 if (lobby == null)
-                {
                     throw new LobbyNotFoundException("No se encontró un lobby donde seas el host.");
-                }
 
                 if (lobby.IsGameInProgress)
-                {
                     throw new GameAlreadyRunningException("No se puede cambiar la configuración mientras el juego está en curso.");
-                }
 
                 _logger.Info($"[UpdateGameSettings] Configuración actualizada por {hostUser.nickname}.");
 
@@ -93,34 +85,48 @@ namespace BusinessLogic.Handlers
 
         private void HandleException(Exception ex, string operationName)
         {
-            if (ex is FaultException<ServiceFault>)
+            var fault = ex as FaultException<ServiceFault>;
+            if (fault != null)
+                throw fault;
+
+            string errorCode;
+
+            if (ex is LobbyNotFoundException)
             {
-                throw ex;
+                errorCode = "LOBBY_NOT_FOUND";
+                _logger.Warn($"[{operationName}] {ex.Message}");
             }
-
-            if (ex is GameException)
+            else if (ex is GameAlreadyRunningException)
             {
-                _logger.Warn($"[{operationName}] Error de juego: {ex.Message}");
-
+                errorCode = "GAME_ALREADY_RUNNING";
+                _logger.Warn($"[{operationName}] {ex.Message}");
+            }
+            else if (ex is GameException)
+            {
+                errorCode = "GAME_ERROR";
+                _logger.Warn($"[{operationName}] {ex.Message}");
+            }
+            else
+            {
+                errorCode = "GAME_500";
+                _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        ErrorCode = "GAME-ERROR",
-                        Message = ex.Message
+                        ErrorCode = errorCode,
+                        Message = "Ha ocurrido un error interno en el servidor."
                     },
-                    new FaultReason(ex.Message)
+                    new FaultReason("Error interno")
                 );
             }
-
-            _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
 
             throw new FaultException<ServiceFault>(
                 new ServiceFault
                 {
-                    ErrorCode = "GAME-500",
-                    Message = "Ha ocurrido un error interno en el servidor."
+                    ErrorCode = errorCode,
+                    Message = ex.Message
                 },
-                new FaultReason("Error interno del servidor")
+                new FaultReason(ex.Message)
             );
         }
     }
