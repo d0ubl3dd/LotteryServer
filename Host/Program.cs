@@ -1,26 +1,50 @@
-﻿using System;
+﻿using BusinessLogic;
+using log4net;
+using System;
+using System.IO;
 using System.ServiceModel;
-using BusinessLogic;
 
 namespace Host
 {
     class Program
     {
+        private static readonly ILog _logger = LogManager.GetLogger(typeof(Program));
+
         static void Main(string[] args)
         {
-            using (ServiceHost host = new ServiceHost(typeof(LotteryService)))
+            string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            if (!Directory.Exists(logDir))
             {
-                host.Description.Behaviors.Add(new GlobalErrorHandlerBehavior());
-
-                host.Open();
-
-                Console.WriteLine("Servicio de Lotería iniciado. Presiona Enter para salir.");
-                Console.WriteLine($"Escuchando en: {host.Description.Endpoints[0].Address}");
-
-                Console.ReadLine();
-
-                host.Close();
+                Directory.CreateDirectory(logDir);
             }
+            log4net.Config.XmlConfigurator.Configure();
+            _logger.Info("=== INICIANDO SERVIDOR DE LOTERÍA ===");
+
+            try
+            {
+                using (ServiceHost host = new ServiceHost(typeof(LotteryService)))
+                {
+                    host.Open();
+
+                    Console.WriteLine("Servicio de Lotería iniciado. Presiona Enter para salir.");
+                    if (host.Description.Endpoints.Count > 0)
+                    {
+                        Console.WriteLine($"Escuchando en: {host.Description.Endpoints[0].Address}");
+                        _logger.Info($"Servidor escuchando en: {host.Description.Endpoints[0].Address}");
+                    }
+
+                    Console.ReadLine();
+                    host.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Fatal("El servidor no pudo iniciar.", ex);
+                Console.WriteLine($"Error fatal: {ex.Message}");
+                Console.ReadLine();
+            }
+
+            _logger.Info("=== SERVIDOR DETENIDO ===");
         }
     }
 }

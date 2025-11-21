@@ -1,8 +1,10 @@
 ﻿using Contracts.Faults;
+using log4net;
 using System;
 using System.Collections.ObjectModel;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Configuration;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
 
@@ -10,40 +12,77 @@ namespace BusinessLogic
 {
     public class GlobalErrorHandler : IErrorHandler
     {
+        private static readonly ILog _logger = LogManager.GetLogger("WCFServiceLogger");
+
         public bool HandleError(Exception error)
         {
-            Console.WriteLine($"[ERROR DE SERVICIO] Operación fallida: {error.Message}");
+            if (error is FaultException<ServiceFault>)
+            {
+                _logger.Info($"Fault controlado: {error.Message}");
+                return true;
+            }
+
+            _logger.Error("Error no controlado en el servicio WCF", error);
+
+            if (error is OutOfMemoryException || error is StackOverflowException)
+            {
+                _logger.Fatal("Error FATAL en el servicio", error);
+            }
 
             return true;
         }
 
         public void ProvideFault(Exception error, MessageVersion version, ref Message fault)
         {
+            if (error is FaultException<ServiceFault> serviceFaultException)
+            {
+                MessageFault messageFault = serviceFaultException.CreateMessageFault();
+                fault = Message.CreateMessage(version, messageFault, serviceFaultException.Action);
+                return;
+            }
+
             var serviceFault = new ServiceFault
             {
                 Message = error.Message,
-                ErrorCode = "OPER_FALLIDA"
+                ErrorCode = "SERVER_ERROR"
             };
 
-            var faultException = new FaultException<ServiceFault>(serviceFault, new FaultReason(error.Message));
+            var faultException = new FaultException<ServiceFault>(
+                serviceFault,
+                new FaultReason("Error Interno del Servidor")
+            );
 
-            MessageFault messageFault = faultException.CreateMessageFault();
-            fault = Message.CreateMessage(version, messageFault, faultException.Action);
+            MessageFault mf = faultException.CreateMessageFault();
+            fault = Message.CreateMessage(version, mf, faultException.Action);
         }
     }
 
-    public class GlobalErrorHandlerBehavior : IServiceBehavior
+    public class GlobalErrorBehavior : IServiceBehavior
     {
         public void ApplyDispatchBehavior(ServiceDescription serviceDescription, ServiceHostBase serviceHostBase)
         {
-            foreach (ChannelDispatcherBase channelDispatcherBase in serviceHostBase.ChannelDispatchers)
+            var handler = new GlobalErrorHandler();
+
+            foreach (ChannelDispatcher dispatcher in serviceHostBase.ChannelDispatchers)
             {
-                var channelDispatcher = (ChannelDispatcher)channelDispatcherBase;
-                channelDispatcher.ErrorHandlers.Add(new GlobalErrorHandler());
+                dispatcher.ErrorHandlers.Add(handler);
             }
         }
 
-        public void AddBindingParameters(ServiceDescription serviceDescription, ServiceHostBase serviceHostBase, Collection<ServiceEndpoint> endpoints, BindingParameterCollection bindingParameters) { }
-        public void Validate(ServiceDescription serviceDescription, ServiceHostBase serviceHostBase) { }
+        public void AddBindingParameters(ServiceDescription sd, ServiceHostBase sh,
+            Collection<ServiceEndpoint> ep, BindingParameterCollection bp)
+        { }
+
+        public void Validate(ServiceDescription sd, ServiceHostBase sh) { }
+    }
+
+    public class GlobalErrorBehaviorExtension : BehaviorExtensionElement
+    {
+        public override Type BehaviorType => typeof(GlobalErrorBehavior);
+
+        protected override object CreateBehavior()
+        {
+            return new GlobalErrorBehavior();
+        }
     }
 }

@@ -1,18 +1,22 @@
 ﻿using BusinessLogic.Logic;
 using Contracts.DTOs;
+using Contracts.Faults;
 using DataAccess;
 using System;
 using System.Linq;
 using System.Data.Entity;
 using System.Threading.Tasks;
 using Contracts.Services.Users;
-using Microsoft.SqlServer.Server;
 using DataAccess.DAOs;
+using System.ServiceModel;
+using log4net;
 
 namespace BusinessLogic.Handlers
 {
     public partial class UserHandler
     {
+        private static readonly ILog _logger = LogManager.GetLogger(typeof(UserHandler));
+
         private readonly IUserDAO _userRepository;
         private readonly VerificationHandler _verificationHandler;
 
@@ -21,36 +25,81 @@ namespace BusinessLogic.Handlers
             _userRepository = new UserDAO();
             _verificationHandler = new VerificationHandler();
         }
+
         public async Task<int> RequestUserVerification(UserDto userData)
         {
-            if (string.IsNullOrEmpty(userData.Email) || string.IsNullOrEmpty(userData.Nickname) || 
-                string.IsNullOrEmpty(userData.Password))
+            try
             {
-                return -3;
-            }
-            if (await _userRepository.NicknameExistsAsync(userData.Nickname))
-            {
-                Console.WriteLine("Registration failed: Nickname already exists.");
-                return -1;
-            }
+                _logger.Info($"Solicitud de verificación para correo {userData.Email}.");
 
-            if (await _userRepository.EmailExistsAsync(userData.Email))
-            {
-                Console.WriteLine("Registration failed: Email already exists.");
-                return -2;
+                if (string.IsNullOrEmpty(userData.Email) ||
+                    string.IsNullOrEmpty(userData.Nickname) ||
+                    string.IsNullOrEmpty(userData.Password))
+                {
+                    var reason = "Datos incompletos para verificación.";
+                    _logger.Error(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
+
+                if (await _userRepository.NicknameExistsAsync(userData.Nickname))
+                {
+                    var reason = $"Nickname ya existe: {userData.Nickname}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
+
+                if (await _userRepository.EmailExistsAsync(userData.Email))
+                {
+                    var reason = $"Email ya existe: {userData.Email}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
+
+                bool codeSent = await _verificationHandler.SendVerificationCode(userData.Email);
+
+                if (!codeSent)
+                {
+                    var reason = $"No se pudo enviar código de verificación a {userData.Email}";
+                    _logger.Error(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
+
+                _logger.Info($"Código de verificación enviado a {userData.Email}");
+                return 1;
             }
-            bool codeSent = await _verificationHandler.SendVerificationCode(userData.Email);
-            if (!codeSent)
+            catch (FaultException<ServiceFault>)
             {
-                Console.WriteLine($"No se pudo enviar el código de verificación a {userData.Email}");
+                throw;
             }
-            return codeSent ? 1 : 0;
+            catch (Exception ex)
+            {
+                var fatalReason = "Error inesperado en RequestUserVerification.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
+            }
         }
 
         public async Task<int> RegisterUser(UserDto userData)
         {
             try
             {
+                _logger.Info($"Intentando registrar usuario {userData.Nickname}");
+
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
                 var newUser = new User
@@ -72,12 +121,17 @@ namespace BusinessLogic.Handlers
                 _userRepository.AddUser(newUser);
                 await _userRepository.SaveChangesAsync();
 
+                _logger.Info($"Usuario registrado correctamente: {newUser.nickname} (ID {newUser.id_user})");
                 return newUser.id_user;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during user registration: {ex.Message}");
-                return 0;
+                var fatalReason = "Error inesperado durante el registro de usuario.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
             }
         }
 
@@ -85,15 +139,33 @@ namespace BusinessLogic.Handlers
         {
             try
             {
+                _logger.Info($"Verificando contraseña para userId {userId}");
+
                 var user = await _userRepository.GetUserByIdAsync(userId);
-                if (user == null) return false;
+                if (user == null)
+                {
+                    var reason = $"Usuario no encontrado en VerifyPassword: {userId}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
 
                 return PasswordHasher.VerifyPasswordHash(password, user.passwordHash, user.passwordSalt);
             }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error verifying password for user ID {userId}: {ex.Message}");
-                return false;
+                var fatalReason = $"Error inesperado verificando contraseña para userId {userId}.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
             }
         }
 
@@ -101,20 +173,40 @@ namespace BusinessLogic.Handlers
         {
             try
             {
+                _logger.Info($"Solicitud de cambio de contraseña para userId {userId}");
+
                 var user = await _userRepository.GetUserByIdAsync(userId);
-                if (user == null) return false;
+                if (user == null)
+                {
+                    var reason = $"Usuario no encontrado en ChangePassword: {userId}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
 
                 PasswordHasher.CreatePasswordHash(newPassword, out byte[] hash, out byte[] salt);
                 user.passwordHash = hash;
                 user.passwordSalt = salt;
 
                 await _userRepository.SaveChangesAsync();
+                _logger.Info($"Contraseña actualizada correctamente para userId {userId}");
+
                 return true;
+            }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error changing password for user ID {userId}: {ex.Message}");
-                return false;
+                var fatalReason = $"Error inesperado cambiando contraseña para userId {userId}.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
             }
         }
 
@@ -122,77 +214,55 @@ namespace BusinessLogic.Handlers
         {
             try
             {
+                _logger.Info($"Actualizando perfil del usuario ID {currentUserId}");
+
                 var userInDb = await _userRepository.GetUserByIdAsync(currentUserId);
                 if (userInDb == null)
-                    return (false, "Usuario no encontrado.");
+                {
+                    var reason = $"Usuario no encontrado en UpdateProfile: {currentUserId}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
+                }
 
                 if (!string.Equals(userInDb.nickname, userData.Nickname, StringComparison.OrdinalIgnoreCase))
                 {
                     if (await _userRepository.NicknameExistsAsync(userData.Nickname))
-                        return (false, "El nickname ya está en uso.");
+                    {
+                        var reason = $"El nickname ya está en uso: {userData.Nickname}";
+                        _logger.Warn(reason);
+                        throw new FaultException<ServiceFault>(
+                            new ServiceFault { Message = reason },
+                            new FaultReason(reason)
+                        );
+                    }
                 }
 
                 userInDb.first_name = userData.FirstName;
                 userInDb.paternal_last_name = userData.PaternalLastName;
                 userInDb.maternal_last_name = userData.MaternalLastName;
                 userInDb.nickname = userData.Nickname;
-                userInDb.id_avatar = userData.AvatarId;                
+                userInDb.id_avatar = userData.AvatarId;
 
                 await _userRepository.SaveChangesAsync();
+
+                _logger.Info($"Perfil actualizado correctamente para userId {currentUserId}");
                 return (true, "Perfil actualizado correctamente.");
+            }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating profile for user ID {currentUserId}: {ex.Message}");
-                return (false, "Ocurrió un error al actualizar el perfil.");
-            }
-        }
-
-        public Task<int> RegisterGuest()
-        {
-            Console.WriteLine("RegisterGuest handled by UserHandler.");
-            return Task.FromResult(-1);
-        }
-
-        public Task RecoverPassword(string email)
-        {
-            Console.WriteLine("RecoverPassword handled by UserHandler.");
-            return Task.CompletedTask;
-        }
-
-        public async Task<FriendDto> FindUserByNickname(string nickname)
-        {
-            using (var context = new lottery_databaseEntities())
-            {
-                var user = await context.User.Where(u => u.nickname == nickname).Select(u => new FriendDto
-                {
-                    UserId = u.id_user,
-                    Nickname = u.nickname,
-                    Status = u.status
-                })
-                .FirstOrDefaultAsync();
-
-                return user;
-            }
-        }
-
-        public async Task<UserDto> GetUserProfile(int userId)
-        {
-            using (var context = new lottery_databaseEntities())
-            {
-                var user = await context.User.Where(u => u.id_user == userId).Select(u => new UserDto
-                {
-                    UserId =  u.id_user,
-                    Nickname = u.nickname,
-                    Email = u.email,
-                    FirstName = u.first_name,
-                    PaternalLastName = u.paternal_last_name,
-                    MaternalLastName = u.maternal_last_name,
-                    AvatarId = u.id_avatar,
-                    AvatarUrl = u.Avatar != null ? u.Avatar.path : null
-                })
-                .FirstOrDefaultAsync();
-                return user;
+                var fatalReason = $"Error inesperado en UpdateProfile para userId {currentUserId}.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
             }
         }
 
@@ -200,29 +270,55 @@ namespace BusinessLogic.Handlers
         {
             try
             {
+                _logger.Info($"Solicitud de cambio de correo para userId {userId}.");
+
                 var userInDb = await _userRepository.GetUserByIdAsync(userId);
                 if (userInDb == null)
                 {
-                    return false;
+                    var reason = $"Usuario no encontrado en RequestEmailChange: {userId}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
                 }
 
                 if (await _userRepository.EmailExistsAsync(newEmail))
                 {
-                    return false;
+                    var reason = $"Email ya existe: {newEmail}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
                 }
 
                 bool sent = await _verificationHandler.SendVerificationCode(newEmail);
                 if (!sent)
                 {
-                    return false;
+                    var reason = $"Error enviando código a {newEmail}";
+                    _logger.Error(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
                 }
 
-                return true;
+                _logger.Info($"Código enviado exitosamente a {newEmail}");
+                return sent;
+            }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al solicitar cambio de correo para el usuario {userId}: {ex.Message}");
-                return false;
+                var fatalReason = $"Error inesperado en RequestEmailChange para userId {userId}.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
             }
         }
 
@@ -230,27 +326,157 @@ namespace BusinessLogic.Handlers
         {
             try
             {
+                _logger.Info($"Confirmando cambio de correo para userId {userId}");
+
                 var userInDb = await _userRepository.GetUserByIdAsync(userId);
                 if (userInDb == null)
                 {
-                    return false;
+                    var reason = $"Usuario no encontrado en ConfirmEmailChange: {userId}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
                 }
 
                 bool isValid = await _verificationHandler.VerifyCode(newEmail, verificationCode);
                 if (!isValid)
                 {
-                    return false;
+                    var reason = $"Código de verificación incorrecto para {newEmail}";
+                    _logger.Warn(reason);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { Message = reason },
+                        new FaultReason(reason)
+                    );
                 }
 
                 userInDb.email = newEmail;
                 await _userRepository.SaveChangesAsync();
 
+                _logger.Info($"Correo actualizado correctamente para userId {userId}");
                 return true;
+            }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al confirmar cambio de correo para el usuario {userId}: {ex.Message}");
-                return false;
+                var fatalReason = $"Error inesperado en ConfirmEmailChange para userId {userId}.";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
+            }
+        }
+
+        public Task<int> RegisterGuest()
+        {
+            _logger.Info("RegisterGuest invocado.");
+            return Task.FromResult(-1);
+        }
+
+        public Task RecoverPassword(string email)
+        {
+            _logger.Info($"RecoverPassword solicitado para {email}.");
+            return Task.CompletedTask;
+        }
+
+        public async Task<FriendDto> FindUserByNickname(string nickname)
+        {
+            try
+            {
+                _logger.Info($"Buscando usuario por nickname: {nickname}");
+
+                using (var context = new lottery_databaseEntities())
+                {
+                    var user = await context.User
+                        .Where(u => u.nickname == nickname)
+                        .Select(u => new FriendDto
+                        {
+                            UserId = u.id_user,
+                            Nickname = u.nickname,
+                            Status = u.status
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (user == null)
+                    {
+                        var reason = $"Usuario no encontrado con nickname: {nickname}";
+                        _logger.Warn(reason);
+                        throw new FaultException<ServiceFault>(
+                            new ServiceFault { Message = reason },
+                            new FaultReason(reason)
+                        );
+                    }
+
+                    return user;
+                }
+            }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var fatalReason = $"Error inesperado buscando usuario por nickname: {nickname}";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
+            }
+        }
+
+        public async Task<UserDto> GetUserProfile(int userId)
+        {
+            try
+            {
+                _logger.Info($"Obteniendo perfil para userId {userId}");
+
+                using (var context = new lottery_databaseEntities())
+                {
+                    var user = await context.User
+                        .Where(u => u.id_user == userId)
+                        .Select(u => new UserDto
+                        {
+                            UserId = u.id_user,
+                            Nickname = u.nickname,
+                            Email = u.email,
+                            FirstName = u.first_name,
+                            PaternalLastName = u.paternal_last_name,
+                            MaternalLastName = u.maternal_last_name,
+                            AvatarId = u.id_avatar,
+                            AvatarUrl = u.Avatar != null ? u.Avatar.path : null
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (user == null)
+                    {
+                        var reason = $"Usuario no encontrado para userId: {userId}";
+                        _logger.Warn(reason);
+                        throw new FaultException<ServiceFault>(
+                            new ServiceFault { Message = reason },
+                            new FaultReason(reason)
+                        );
+                    }
+
+                    return user;
+                }
+            }
+            catch (FaultException<ServiceFault>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var fatalReason = $"Error inesperado obteniendo perfil para userId: {userId}";
+                _logger.Fatal(fatalReason, ex);
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = fatalReason },
+                    new FaultReason(fatalReason)
+                );
             }
         }
     }

@@ -9,13 +9,15 @@ using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading.Tasks;
+using log4net;
 
 namespace BusinessLogic
 {
-    [ServiceBehavior(
-    InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
     public class LotteryService : ILotteryService
     {
+        private static readonly ILog _logger = LogManager.GetLogger(typeof(LotteryService));
+
         private User currentUser;
         private readonly AuthenticationHandler authHandler;
         private readonly UserHandler userHandler;
@@ -38,6 +40,8 @@ namespace BusinessLogic
             this.userHandler = new UserHandler();
             this.friendHandler = new FriendHandler();
             this.verificationHandler = new VerificationHandler();
+
+            _logger.Info("LotteryService instanciado.");
         }
 
         // --- IAuthenticationService ---
@@ -46,7 +50,10 @@ namespace BusinessLogic
             var operationContext = OperationContext.Current;
             if (operationContext == null)
             {
-                throw new Exception("Error de conexión dúplex: El contexto del servidor es nulo.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Error de conexión dúplex: El contexto del servidor es nulo." },
+                    new FaultReason("Error de conexión")
+                );
             }
 
             var channel = operationContext.Channel;
@@ -100,8 +107,9 @@ namespace BusinessLogic
         {
             return await userHandler.RequestUserVerification(userData);
         }
+
         public async Task<int> RegisterUser(UserDto userData)
-        {            
+        {
             return await userHandler.RegisterUser(userData);
         }
 
@@ -124,7 +132,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Invalid user session for this operation.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return userHandler.ChangePassword(currentUserId, newPassword);
@@ -134,7 +145,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Invalid user session for this operation.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return userHandler.UpdateProfile(currentUserId, profileData);
@@ -154,17 +168,25 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != userId)
             {
-                throw new InvalidOperationException("Invalid user session for this operation.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
-            return userHandler.RequestEmailChange(userId, newEmail);            
+
+            return userHandler.RequestEmailChange(userId, newEmail);
         }
 
         public Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
         {
             if (currentUser == null || currentUser.id_user != userId)
             {
-                throw new InvalidOperationException("Invalid user session for this operation.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
+
             return userHandler.ConfirmEmailChange(userId, newEmail, verificationCode);
         }
 
@@ -174,9 +196,9 @@ namespace BusinessLogic
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
-                        new FaultReason("Sesión inválida")
-                    );
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.SendRequestFriendship(currentUserId, targetUserId);
@@ -186,7 +208,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.AcceptFriendRequest(currentUserId, requesterId);
@@ -196,7 +221,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.RejectFriendRequest(currentUserId, requesterId);
@@ -206,17 +234,23 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.CancelFriendRequest(currentUserId, requesterId);
         }
 
-        public Task RemoveFriend(int currentUserId,int friendUserId)
+        public Task RemoveFriend(int currentUserId, int friendUserId)
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.RemoveFriend(currentUserId, friendUserId);
@@ -226,7 +260,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.GetFriends(currentUserId);
@@ -236,7 +273,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.GetPendingRequests(currentUserId);
@@ -246,7 +286,10 @@ namespace BusinessLogic
         {
             if (currentUser == null || currentUser.id_user != currentUserId)
             {
-                throw new InvalidOperationException("Sesión de usuario no válida para esta operación.");
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
+                    new FaultReason("Sesión inválida")
+                );
             }
 
             return friendHandler.GetSentRequests(currentUserId);
@@ -254,27 +297,41 @@ namespace BusinessLogic
 
         public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
         {
-            if (currentUser == null) throw new InvalidOperationException("Usuario no conectado.");
+            if (currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             return friendHandler.InviteFriendToLobby(lobbyCode, targetFriendId);
         }
-
 
         // --- ILobbyService ---
         public Task<LobbyStateDto> CreateLobby()
         {
-            if (currentUser == null) throw new InvalidOperationException("Usuario no conectado.");
+            if (currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             return lobbyHandler.CreateLobby(this.currentUser);
         }
 
         public Task<LobbyStateDto> JoinLobby(UserDto currentUserDto, string lobbyCode)
         {
-            if (currentUser == null) throw new InvalidOperationException("User not logged in.");
-            var userEntity = new User
+            if (this.currentUser == null)
             {
-                id_user = currentUserDto.UserId,
-                nickname = currentUserDto.Nickname,
-                id_avatar = (int)currentUserDto.AvatarId
-            };
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             return lobbyHandler.JoinLobby(this.currentUser, lobbyCode);
         }
 
@@ -286,20 +343,41 @@ namespace BusinessLogic
 
         public Task KickPlayer(int targetPlayerId)
         {
-            if (currentUser == null) throw new InvalidOperationException("User not logged in.");
+            if (currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             return lobbyHandler.KickPlayer(this.currentUser, targetPlayerId);
         }
 
         // --- IGameService ---
         public Task StartGame(GameSettingsDto settings)
         {
-            if (currentUser == null) throw new InvalidOperationException("User must be logged in to start a game.");
+            if (currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             return gameHandler.StartGame(this.currentUser, settings);
         }
 
         public Task UpdateGameSettings(GameSettingsDto settings)
         {
-            if (currentUser == null) throw new InvalidOperationException("User must be logged in to update game settings.");
+            if (currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             return gameHandler.UpdateGameSettings(this.currentUser, settings);
         }
 
@@ -311,7 +389,14 @@ namespace BusinessLogic
         // --- IChatService ---
         public void SendMessage(string message)
         {
-            if (currentUser == null) throw new InvalidOperationException("User must be logged in to send a message.");
+            if (currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = "Usuario no conectado." },
+                    new FaultReason("Sesión inválida")
+                );
+            }
+
             chatHandler.SendMessage(this.currentUser, message);
         }
 
@@ -320,6 +405,7 @@ namespace BusinessLogic
         {
             return verificationHandler.SendVerificationCode(email);
         }
+
         public Task<bool> VerifyCode(string email, string code)
         {
             return verificationHandler.VerifyCode(email, code);

@@ -7,17 +7,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.ServiceModel;
 using Contracts.Faults;
+using log4net;
 
 namespace BusinessLogic.Logic
 {
     public class FriendHandler
     {
+        private static readonly ILog _logger = LogManager.GetLogger(typeof(FriendHandler));
+
         public async Task SendRequestFriendship(int currentUserId, int targetUserId)
         {
+            _logger.Info($"[SendRequestFriendship] Usuario {currentUserId} intenta agregar a {targetUserId}.");
+
             try
             {
                 if (currentUserId == targetUserId)
                 {
+                    _logger.Warn($"[SendRequestFriendship] Usuario {currentUserId} intentó agregarse a sí mismo.");
                     throw new FaultException<ServiceFault>(
                         new ServiceFault
                         {
@@ -36,6 +42,7 @@ namespace BusinessLogic.Logic
 
                     if (exists)
                     {
+                        _logger.Warn($"[SendRequestFriendship] Ya existe amistad o solicitud entre {currentUserId} y {targetUserId}.");
                         throw new FaultException<ServiceFault>(
                             new ServiceFault
                             {
@@ -52,16 +59,21 @@ namespace BusinessLogic.Logic
                         id_user_receiver = targetUserId,
                         status = "Pending"
                     };
+
                     context.Friendship.Add(newRequest);
                     await context.SaveChangesAsync();
+
+                    _logger.Info($"[SendRequestFriendship] Solicitud enviada de {currentUserId} a {targetUserId}.");
                 }
             }
-            catch (FaultException<ServiceFault> ex)
+            catch (FaultException<ServiceFault>)
             {
                 throw;
             }
             catch (Exception ex)
             {
+                _logger.Fatal($"[SendRequestFriendship] Error inesperado: {ex.Message}", ex);
+
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
@@ -73,9 +85,10 @@ namespace BusinessLogic.Logic
             }
         }
 
-
         public async Task AcceptFriendRequest(int currentUserId, int requesterId)
         {
+            _logger.Info($"[AcceptFriendRequest] Usuario {currentUserId} aceptando solicitud de {requesterId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var request = await context.Friendship.FirstOrDefaultAsync(f =>
@@ -87,9 +100,12 @@ namespace BusinessLogic.Logic
                 {
                     request.status = "Accepted";
                     await context.SaveChangesAsync();
+
+                    _logger.Info($"[AcceptFriendRequest] Solicitud entre {requesterId} → {currentUserId} aceptada.");
                 }
                 else
                 {
+                    _logger.Warn($"[AcceptFriendRequest] No existe solicitud entre {requesterId} y {currentUserId}.");
                     throw new FaultException<ServiceFault>(new ServiceFault
                     {
                         Message = "No se encontró la solicitud de amistad. Es posible que el usuario la haya cancelado."
@@ -100,6 +116,8 @@ namespace BusinessLogic.Logic
 
         public async Task RejectFriendRequest(int currentUserId, int requesterId)
         {
+            _logger.Info($"[RejectFriendRequest] Usuario {currentUserId} rechazando solicitud de {requesterId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var request = await context.Friendship.FirstOrDefaultAsync(f =>
@@ -111,9 +129,12 @@ namespace BusinessLogic.Logic
                 {
                     context.Friendship.Remove(request);
                     await context.SaveChangesAsync();
+
+                    _logger.Info($"[RejectFriendRequest] Solicitud de {requesterId} → {currentUserId} rechazada.");
                 }
                 else
                 {
+                    _logger.Warn($"[RejectFriendRequest] No existe solicitud de {requesterId} para {currentUserId}.");
                     throw new FaultException<ServiceFault>(new ServiceFault
                     {
                         Message = "No se encontró la solicitud de amistad."
@@ -124,6 +145,8 @@ namespace BusinessLogic.Logic
 
         public async Task CancelFriendRequest(int currentUserId, int targetUserId)
         {
+            _logger.Info($"[CancelFriendRequest] Usuario {currentUserId} cancelando solicitud enviada a {targetUserId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var request = await context.Friendship.FirstOrDefaultAsync(f =>
@@ -135,9 +158,12 @@ namespace BusinessLogic.Logic
                 {
                     context.Friendship.Remove(request);
                     await context.SaveChangesAsync();
+
+                    _logger.Info($"[CancelFriendRequest] Solicitud cancelada {currentUserId} → {targetUserId}.");
                 }
                 else
                 {
+                    _logger.Warn($"[CancelFriendRequest] No existe solicitud pendiente de {currentUserId} a {targetUserId}.");
                     throw new FaultException<ServiceFault>(new ServiceFault
                     {
                         Message = "No se ha encontrado ninguna solicitud enviada a ese jugador."
@@ -148,6 +174,8 @@ namespace BusinessLogic.Logic
 
         public async Task RemoveFriend(int currentUserId, int friendUserId)
         {
+            _logger.Info($"[RemoveFriend] Usuario {currentUserId} eliminando amistad con {friendUserId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var friendship = await context.Friendship.FirstOrDefaultAsync(f =>
@@ -159,9 +187,12 @@ namespace BusinessLogic.Logic
                 {
                     context.Friendship.Remove(friendship);
                     await context.SaveChangesAsync();
+
+                    _logger.Info($"[RemoveFriend] Amistad entre {currentUserId} y {friendUserId} eliminada.");
                 }
                 else
                 {
+                    _logger.Warn($"[RemoveFriend] No existe amistad entre {currentUserId} y {friendUserId}.");
                     throw new FaultException<ServiceFault>(new ServiceFault
                     {
                         Message = "No se encontró la amistad. Es posible que ya la hayas eliminado."
@@ -172,6 +203,8 @@ namespace BusinessLogic.Logic
 
         public async Task<List<FriendDto>> GetFriends(int currentUserId)
         {
+            _logger.Info($"[GetFriends] Obteniendo lista de amigos para el usuario {currentUserId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var friends = await context.Friendship
@@ -194,12 +227,16 @@ namespace BusinessLogic.Logic
                     })
                     .ToListAsync();
 
+                _logger.Info($"[GetFriends] Usuario {currentUserId} tiene {friendDetails.Count} amigos.");
+
                 return friendDetails;
             }
         }
 
         public async Task<List<FriendDto>> GetPendingRequests(int currentUserId)
         {
+            _logger.Info($"[GetPendingRequests] Obteniendo solicitudes pendientes para {currentUserId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var requests = await context.Friendship
@@ -214,12 +251,16 @@ namespace BusinessLogic.Logic
                         })
                     .ToListAsync();
 
+                _logger.Info($"[GetPendingRequests] Usuario {currentUserId} tiene {requests.Count} solicitudes pendientes.");
+
                 return requests;
             }
         }
 
         public async Task<List<FriendDto>> GetSentRequests(int currentUserId)
         {
+            _logger.Info($"[GetSentRequests] Obteniendo solicitudes enviadas por {currentUserId}.");
+
             using (var context = new lottery_databaseEntities())
             {
                 var requests = await context.Friendship
@@ -235,17 +276,21 @@ namespace BusinessLogic.Logic
                         })
                     .ToListAsync();
 
+                _logger.Info($"[GetSentRequests] Usuario {currentUserId} ha enviado {requests.Count} solicitudes.");
+
                 return requests;
             }
         }
 
-
         public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
         {
+            _logger.Info($"[InviteFriendToLobby] Invitando a {targetFriendId} al lobby {lobbyCode}.");
+
             int? currentUserId = GlobalSessionManager.Instance.GetUserIdFromContext();
 
             if (currentUserId == null)
             {
+                _logger.Error("[InviteFriendToLobby] No se pudo identificar al usuario actual.");
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
@@ -255,6 +300,7 @@ namespace BusinessLogic.Logic
 
             if (string.IsNullOrEmpty(lobbyCode))
             {
+                _logger.Error("[InviteFriendToLobby] Código de lobby nulo.");
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
@@ -265,6 +311,7 @@ namespace BusinessLogic.Logic
             var inviter = GlobalSessionManager.Instance.GetClient(currentUserId.Value);
             if (inviter == null || inviter.CurrentLobby == null)
             {
+                _logger.Error("[InviteFriendToLobby] El usuario no tiene lobby.");
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
@@ -274,6 +321,7 @@ namespace BusinessLogic.Logic
 
             if (inviter.CurrentLobby.LobbyCode != lobbyCode)
             {
+                _logger.Warn("[InviteFriendToLobby] Intento de invitación desde un lobby diferente.");
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
@@ -284,17 +332,22 @@ namespace BusinessLogic.Logic
             var target = GlobalSessionManager.Instance.GetClient(targetFriendId);
             if (target == null)
             {
+                _logger.Warn($"[InviteFriendToLobby] Usuario {targetFriendId} no está conectado.");
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        Message = "Tu amigo no está conectado."
-                    });
+                        Message = "Tu amigo no está conectado.",
+                        ErrorCode = "FRIEND_NOT_CONNECTED"
+                    },
+                    new FaultReason("El amigo no está conectado.")
+                );
             }
 
             if (target.CurrentLobby != null)
             {
                 if (target.CurrentLobby == inviter.CurrentLobby)
                 {
+                    _logger.Info($"[InviteFriendToLobby] {targetFriendId} ya está en el lobby.");
                     throw new FaultException<ServiceFault>(
                         new ServiceFault
                         {
@@ -303,6 +356,7 @@ namespace BusinessLogic.Logic
                 }
                 else
                 {
+                    _logger.Warn($"[InviteFriendToLobby] {targetFriendId} ya está en otro lobby.");
                     throw new FaultException<ServiceFault>(
                         new ServiceFault
                         {
@@ -313,8 +367,9 @@ namespace BusinessLogic.Logic
 
             target.CallbackChannel.ReceiveLobbyInvite(inviter.Nickname, lobbyCode);
 
+            _logger.Info($"[InviteFriendToLobby] Invitación enviada a {targetFriendId}.");
+
             return Task.CompletedTask;
         }
-
     }
 }
