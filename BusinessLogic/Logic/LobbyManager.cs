@@ -41,7 +41,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = "Error inesperado creando un lobby.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    { 
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -56,7 +59,10 @@ namespace BusinessLogic.Logic
                     var reason = "El código del lobby no puede ser nulo o vacío.";
                     _logger.Error($"Jugador {player.UserId} intentó unirse con código vacío.");
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -66,7 +72,10 @@ namespace BusinessLogic.Logic
                     var reason = "El lobby no existe.";
                     _logger.Error($"Jugador {player.UserId} intentó unirse a lobby inexistente {lobbyCode}.");
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -76,7 +85,10 @@ namespace BusinessLogic.Logic
                     var reason = "El lobby está lleno o ya estás en él.";
                     _logger.Error($"Jugador {player.UserId} no pudo unirse al lobby {lobbyCode}: lleno o ya presente.");
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -100,7 +112,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al jugador {player?.UserId} unirse al lobby {lobbyCode}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    { 
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -132,7 +147,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al jugador {player?.UserId} salir del lobby.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    { 
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -148,7 +166,10 @@ namespace BusinessLogic.Logic
                     var reason = "No tienes permiso para expulsar jugadores.";
                     _logger.Error($"Host {host.UserId} intentó expulsar sin permiso.");
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -159,7 +180,10 @@ namespace BusinessLogic.Logic
                     var reason = "El jugador no está en tu lobby.";
                     _logger.Error($"Intento inválido de expulsión: jugador {targetPlayerId} no está en el lobby {lobby.LobbyCode}");
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -169,7 +193,10 @@ namespace BusinessLogic.Logic
                     var reason = "No puedes expulsarte a ti mismo.";
                     _logger.Error($"Host {host.UserId} intentó expulsarse a sí mismo en el lobby {lobby.LobbyCode}");
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -190,7 +217,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al expulsar jugador {targetPlayerId} por host {host.UserId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    { 
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -208,9 +238,10 @@ namespace BusinessLogic.Logic
             string code;
             do
             {
-                code = new string(Enumerable.Repeat(chars, 6)
-                  .Select(s => s[random.Next(s.Length)]).ToArray());
-            } while (_lobbies.ContainsKey(code));
+                code = new string(Enumerable.Repeat(chars, 6).Select(s => s[random.Next(s.Length)]).ToArray());
+            } 
+            while (_lobbies.ContainsKey(code));
+            
             return code;
         }
     }

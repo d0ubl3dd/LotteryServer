@@ -33,7 +33,10 @@ namespace BusinessLogic.Logic
                     var reason = "Error de sesión. No se encontró el cliente.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        {
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -50,7 +53,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = "Error inesperado obteniendo cliente para usuario.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -69,7 +75,10 @@ namespace BusinessLogic.Logic
                     var reason = "Ya estás en un lobby.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault
+                        {
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -89,7 +98,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = "Error inesperado al crear lobby.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -108,7 +120,10 @@ namespace BusinessLogic.Logic
                     var reason = "Ya estás en un lobby.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        {
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -128,7 +143,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al unirse al lobby {lobbyCode}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -152,7 +170,10 @@ namespace BusinessLogic.Logic
                     var reason = $"No se encontró cliente activo para {currentUser.nickname} al intentar salir del lobby.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        {
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -169,7 +190,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = "Error inesperado al salir del lobby.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -199,7 +223,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al expulsar jugador {targetPlayerId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }

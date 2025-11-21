@@ -29,7 +29,10 @@ namespace BusinessLogic.Logic
                 _logger.Error($"El usuario {currentUser.nickname} intentó enviar mensaje pero NO está en un lobby.");
 
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "No estás en un lobby para chatear." },
+                    new ServiceFault 
+                    {
+                        Message = "No estás en un lobby para chatear." 
+                    },
                     new FaultReason("No estás en un lobby")
                 );
             }
@@ -50,7 +53,10 @@ namespace BusinessLogic.Logic
                 _logger.Fatal($"Error FATAL al intentar enviar un mensaje en lobby por el usuario {client.Nickname}.", ex);
 
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "Ocurrió un error al enviar tu mensaje." },
+                    new ServiceFault 
+                    {
+                        Message = "Ocurrió un error al enviar tu mensaje." 
+                    },
                     new FaultReason("Error al enviar mensaje")
                 );
             }

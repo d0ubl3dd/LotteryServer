@@ -35,7 +35,10 @@ namespace BusinessLogic.Handlers
                 var reason = "Intento de envío de código fallido: email vacío.";
                 _logger.Warn(reason);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = reason },
+                    new ServiceFault 
+                    {
+                        Message = reason 
+                    },
                     new FaultReason(reason)
                 );
             }
@@ -74,7 +77,10 @@ namespace BusinessLogic.Handlers
                 var reason = $"No se pudo enviar el código de verificación al email {email}: {ex.Message}";
                 _logger.Warn(reason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = reason },
+                    new ServiceFault 
+                    {
+                        Message = reason 
+                    },
                     new FaultReason(reason)
                 );
             }
@@ -83,7 +89,10 @@ namespace BusinessLogic.Handlers
                 var fatalReason = "Error interno enviando código de verificación.";
                 _logger.Error(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -96,7 +105,10 @@ namespace BusinessLogic.Handlers
                 var reason = "Intento de verificación inválido: email o código vacío.";
                 _logger.Warn(reason);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = reason },
+                    new ServiceFault 
+                    {
+                        Message = reason
+                    },
                     new FaultReason(reason)
                 );
             }

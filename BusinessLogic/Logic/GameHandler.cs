@@ -11,8 +11,7 @@ namespace BusinessLogic.Handlers
 {
     public class GameHandler
     {
-        private static readonly log4net.ILog _logger =
-            log4net.LogManager.GetLogger(typeof(GameHandler));
+        private static readonly log4net.ILog _logger = log4net.LogManager.GetLogger(typeof(GameHandler));
 
         private readonly LobbyManager _lobbyManager;
 

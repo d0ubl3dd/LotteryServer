@@ -36,7 +36,10 @@ namespace BusinessLogic.Logic
                     var reason = "Parámetros de registro inválidos.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -55,7 +58,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = "Error inesperado al registrar cliente.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -70,7 +76,10 @@ namespace BusinessLogic.Logic
                     var reason = $"Cliente con UserId {userId} no encontrado.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        {
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -88,7 +97,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al obtener cliente {userId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -109,7 +121,10 @@ namespace BusinessLogic.Logic
                     var reason = $"Usuario {userId} no estaba registrado.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        {
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -124,7 +139,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = $"Error inesperado al desconectar cliente {userId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }
@@ -140,7 +158,10 @@ namespace BusinessLogic.Logic
                     var reason = "No se pudo obtener el usuario desde el contexto.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault
+                        { 
+                            Message = reason 
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -156,7 +177,10 @@ namespace BusinessLogic.Logic
                     var reason = "Callback no registrado en GlobalSessionManager.";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault { Message = reason },
+                        new ServiceFault 
+                        {
+                            Message = reason
+                        },
                         new FaultReason(reason)
                     );
                 }
@@ -171,7 +195,10 @@ namespace BusinessLogic.Logic
                 var fatalReason = "Error inesperado al obtener usuario desde contexto.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = fatalReason },
+                    new ServiceFault 
+                    {
+                        Message = fatalReason 
+                    },
                     new FaultReason(fatalReason)
                 );
             }

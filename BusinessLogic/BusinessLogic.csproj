@@ -59,6 +59,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Exceptions\FriendshipException.cs" />
+    <Compile Include="Exceptions\LobbyException.cs" />
     <Compile Include="GlobalErrorHandler.cs" />
     <Compile Include="ListExtensions.cs" />
     <Compile Include="Logging\LoggerService.cs" />
