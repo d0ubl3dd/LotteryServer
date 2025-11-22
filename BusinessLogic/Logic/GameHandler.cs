@@ -33,13 +33,11 @@ namespace BusinessLogic.Handlers
                     throw new LobbyNotFoundException("No se encontró un lobby donde seas el host.");
 
                 if (lobby.IsGameInProgress)
-                    throw new GameAlreadyRunningException("El juego en este lobby ya está en curso.");
+                    throw new GameAlreadyRunningException("El juego ya está en curso en este lobby.");
 
                 lobby.StartLobbyGame(settings);
 
                 _logger.Info($"[StartGame] Juego iniciado por {hostUser.nickname}.");
-
-                await Task.CompletedTask;
 
             }, "StartGame");
         }
@@ -60,8 +58,6 @@ namespace BusinessLogic.Handlers
 
                 _logger.Info($"[UpdateGameSettings] Configuración actualizada por {hostUser.nickname}.");
 
-                await Task.CompletedTask;
-
             }, "UpdateGameSettings");
         }
 
@@ -69,6 +65,29 @@ namespace BusinessLogic.Handlers
         {
             _logger.Info("[GetScoreboard] Scoreboard solicitado.");
             return Task.CompletedTask;
+        }
+
+        public async Task DeclareWin(int userId)
+        {
+            await ExecuteFaultSafeAsync(async () =>
+            {
+                _logger.Info($"[DeclareWin] Usuario {userId} reclama victoria.");
+
+                // 1. Buscar el lobby del usuario
+                // Lógica para validar si realmente ganó (revisar cartón vs cartas salidas)
+                // Si ganó -> Notificar a todos
+                // Si no ganó -> throw new InvalidDeclarationException(...)
+
+                // Ejemplo simplificado:
+                Lobby lobby = _lobbyManager.FindLobbyByHostId(userId);
+                if (lobby == null) throw new LobbyNotFoundException("No estás en un lobby.");
+
+                // ... Lógica de validación ...
+
+                // Si es válido, avisar a los clientes:
+                lobby.NotifyGameWin(userId);
+
+            }, "DeclareWin");
         }
 
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
@@ -85,49 +104,47 @@ namespace BusinessLogic.Handlers
 
         private void HandleException(Exception ex, string operationName)
         {
-            var fault = ex as FaultException<ServiceFault>;
-            if (fault != null)
-                throw fault;
+            if (ex is FaultException<ServiceFault>)
+                throw ex;
 
             string errorCode;
+            string clientMessage;
 
-            if (ex is LobbyNotFoundException)
+            switch (ex)
             {
-                errorCode = "LOBBY_NOT_FOUND";
-                _logger.Warn($"[{operationName}] {ex.Message}");
-            }
-            else if (ex is GameAlreadyRunningException)
-            {
-                errorCode = "GAME_ALREADY_RUNNING";
-                _logger.Warn($"[{operationName}] {ex.Message}");
-            }
-            else if (ex is GameException)
-            {
-                errorCode = "GAME_ERROR";
-                _logger.Warn($"[{operationName}] {ex.Message}");
-            }
-            else
-            {
-                errorCode = "GAME_500";
-                _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        ErrorCode = errorCode,
-                        Message = "Ha ocurrido un error interno en el servidor."
-                    },
-                    new FaultReason("Error interno")
-                );
+                case LobbyNotFoundException _:
+                    errorCode = "LOBBY_NOT_FOUND";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
+
+                case GameAlreadyRunningException _:
+                    errorCode = "GAME_ALREADY_RUNNING";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
+
+                case GameException _:
+                    errorCode = "GAME_ERROR";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
+
+                default:
+                    errorCode = "GAME_500";
+                    clientMessage = "Ha ocurrido un error interno en el servidor.";
+
+                    _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
+                    break;
             }
 
-            throw new FaultException<ServiceFault>(
-                new ServiceFault
-                {
-                    ErrorCode = errorCode,
-                    Message = ex.Message
-                },
-                new FaultReason(ex.Message)
-            );
+            var fault = new ServiceFault
+            {
+                ErrorCode = errorCode,
+                Message = clientMessage
+            };
+
+            throw new FaultException<ServiceFault>(fault, new FaultReason(clientMessage));
         }
     }
 }

@@ -90,6 +90,18 @@ namespace BusinessLogic.Models
             BroadcastToAll(client => client.OnGameFinished());
         }
 
+        public void NotifyGameWin(int winnerId)
+        {
+            var winner = Players.FirstOrDefault(p => p.UserId == winnerId);
+
+            if (winner != null)
+            {
+                StopLobbyGame();
+
+                BroadcastToAll(client => client.NotifyWinner(winner.Nickname));
+            }
+        }
+
         public void StartLobbyGame(GameSettingsDto settings)
         {
             if (IsGameInProgress) return;

@@ -386,6 +386,13 @@ namespace BusinessLogic
             return gameHandler.GetScoreboard();
         }
 
+        public async Task DeclareWin(int userId)
+        {
+            // Usamos tu manejador seguro de errores
+            // Asegúrate de tener un método similar en GameHandler o créalo
+            await gameHandler.DeclareWin(userId);
+        }
+
         // --- IChatService ---
         public void SendMessage(string message)
         {

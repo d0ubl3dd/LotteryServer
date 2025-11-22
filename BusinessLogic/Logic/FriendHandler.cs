@@ -1,14 +1,14 @@
-﻿using Contracts.DTOs;
+﻿using BusinessLogic.Exceptions;
+using Contracts.DTOs;
+using Contracts.Faults;
 using DataAccess;
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
-using System.Threading.Tasks;
 using System.ServiceModel;
-using Contracts.Faults;
-using log4net;
-using BusinessLogic.Exceptions;
+using System.Threading.Tasks;
 
 namespace BusinessLogic.Logic
 {
@@ -23,7 +23,7 @@ namespace BusinessLogic.Logic
                 _logger.Info($"[SendRequestFriendship] Usuario {currentUserId} intenta agregar a {targetUserId}.");
 
                 if (currentUserId == targetUserId)
-                    throw new InvalidFriendshipRequestException("No puedes agregarte a ti mismo como amigo.");
+                    throw new InvalidFriendshipRequestException("No puedes agregarte a ti mismo.");
 
                 using (var context = new lottery_databaseEntities())
                 {
@@ -32,20 +32,19 @@ namespace BusinessLogic.Logic
                         (f.id_user_sender == targetUserId && f.id_user_receiver == currentUserId));
 
                     if (exists)
-                        throw new FriendshipDuplicateException($"Ya existe amistad o solicitud entre {currentUserId} y {targetUserId}.");
+                        throw new FriendshipDuplicateException("Ya existe una solicitud o amistad previa.");
 
-                    var newRequest = new Friendship
+                    context.Friendship.Add(new Friendship
                     {
                         id_user_sender = currentUserId,
                         id_user_receiver = targetUserId,
                         status = "Pending"
-                    };
+                    });
 
-                    context.Friendship.Add(newRequest);
                     await context.SaveChangesAsync();
-
-                    _logger.Info($"[SendRequestFriendship] Solicitud enviada de {currentUserId} a {targetUserId}.");
+                    _logger.Info($"[SendRequestFriendship] Solicitud enviada.");
                 }
+
             }, "SendRequestFriendship");
         }
 
@@ -53,7 +52,7 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[AcceptFriendRequest] Usuario {currentUserId} aceptando solicitud de {requesterId}.");
+                _logger.Info($"[AcceptFriendRequest] Aceptando solicitud de {requesterId}.");
 
                 using (var context = new lottery_databaseEntities())
                 {
@@ -63,13 +62,14 @@ namespace BusinessLogic.Logic
                         f.status == "Pending");
 
                     if (request == null)
-                        throw new FriendshipNotFoundException($"No se encontró la solicitud de amistad.");
+                        throw new FriendshipNotFoundException("No existe la solicitud.");
 
                     request.status = "Accepted";
                     await context.SaveChangesAsync();
 
-                    _logger.Info($"[AcceptFriendRequest] Solicitud entre {requesterId} -> {currentUserId} aceptada.");
+                    _logger.Info($"[AcceptFriendRequest] Solicitud aceptada.");
                 }
+
             }, "AcceptFriendRequest");
         }
 
@@ -77,7 +77,7 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[RejectFriendRequest] Usuario {currentUserId} rechazando solicitud de {requesterId}.");
+                _logger.Info($"[RejectFriendRequest] Rechazando solicitud de {requesterId}.");
 
                 using (var context = new lottery_databaseEntities())
                 {
@@ -87,13 +87,14 @@ namespace BusinessLogic.Logic
                         f.status == "Pending");
 
                     if (request == null)
-                        throw new FriendshipNotFoundException($"No se encontró la solicitud de amistad.");
+                        throw new FriendshipNotFoundException("La solicitud no existe.");
 
                     context.Friendship.Remove(request);
                     await context.SaveChangesAsync();
 
-                    _logger.Info($"[RejectFriendRequest] Solicitud de {requesterId} -> {currentUserId} rechazada.");
+                    _logger.Info($"[RejectFriendRequest] Solicitud rechazada.");
                 }
+
             }, "RejectFriendRequest");
         }
 
@@ -101,7 +102,7 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[CancelFriendRequest] Usuario {currentUserId} cancelando solicitud enviada a {targetUserId}.");
+                _logger.Info($"[CancelFriendRequest] Cancelando solicitud a {targetUserId}.");
 
                 using (var context = new lottery_databaseEntities())
                 {
@@ -111,13 +112,14 @@ namespace BusinessLogic.Logic
                         f.status == "Pending");
 
                     if (request == null)
-                        throw new FriendshipNotFoundException($"No se encontró solicitud pendiente.");
+                        throw new FriendshipNotFoundException("No existe solicitud pendiente.");
 
                     context.Friendship.Remove(request);
                     await context.SaveChangesAsync();
 
-                    _logger.Info($"[CancelFriendRequest] Solicitud cancelada {currentUserId} -> {targetUserId}.");
+                    _logger.Info($"[CancelFriendRequest] Solicitud cancelada.");
                 }
+
             }, "CancelFriendRequest");
         }
 
@@ -125,7 +127,7 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[RemoveFriend] Usuario {currentUserId} eliminando amistad con {friendUserId}.");
+                _logger.Info($"[RemoveFriend] Eliminando amistad.");
 
                 using (var context = new lottery_databaseEntities())
                 {
@@ -135,13 +137,14 @@ namespace BusinessLogic.Logic
                         f.status == "Accepted");
 
                     if (friendship == null)
-                        throw new FriendshipNotFoundException($"No existe amistad entre {currentUserId} y {friendUserId}");
+                        throw new FriendshipNotFoundException("No existe una amistad con ese usuario.");
 
                     context.Friendship.Remove(friendship);
                     await context.SaveChangesAsync();
 
-                    _logger.Info($"[RemoveFriend] Amistad entre {currentUserId} y {friendUserId} eliminada.");
+                    _logger.Info("[RemoveFriend] Amistad eliminada.");
                 }
+
             }, "RemoveFriend");
         }
 
@@ -149,17 +152,18 @@ namespace BusinessLogic.Logic
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[GetFriends] Obteniendo lista de amigos para el usuario {currentUserId}.");
+                _logger.Info($"[GetFriends] Lista de amigos para {currentUserId}.");
 
                 using (var context = new lottery_databaseEntities())
                 {
                     var friends = await context.Friendship
                         .Where(f => (f.id_user_sender == currentUserId || f.id_user_receiver == currentUserId)
                                     && f.status == "Accepted")
-                        .Select(f => new { FriendUserId = f.id_user_sender == currentUserId ? f.id_user_receiver : f.id_user_sender })
                         .ToListAsync();
 
-                    var friendIds = friends.Select(f => f.FriendUserId).ToList();
+                    var friendIds = friends.Select(f =>
+                        f.id_user_sender == currentUserId ? f.id_user_receiver : f.id_user_sender).ToList();
+
                     var friendDetails = await context.User
                         .Where(u => friendIds.Contains(u.id_user))
                         .Select(u => new FriendDto
@@ -170,9 +174,10 @@ namespace BusinessLogic.Logic
                         })
                         .ToListAsync();
 
-                    _logger.Info($"[GetFriends] Usuario {currentUserId} tiene {friendDetails.Count} amigos.");
+                    _logger.Info($"[GetFriends] {friendDetails.Count} amigos encontrados.");
                     return friendDetails;
                 }
+
             }, "GetFriends");
         }
 
@@ -180,25 +185,23 @@ namespace BusinessLogic.Logic
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[GetPendingRequests] Obteniendo solicitudes pendientes para {currentUserId}.");
+                _logger.Info($"[GetPendingRequests] Solicitudes recibidas para {currentUserId}.");
 
                 using (var context = new lottery_databaseEntities())
                 {
-                    var requests = await context.Friendship
+                    return await context.Friendship
                         .Where(f => f.id_user_receiver == currentUserId && f.status == "Pending")
                         .Join(context.User,
-                            friendship => friendship.id_user_sender,
-                            user => user.id_user,
-                            (friendship, user) => new FriendDto
+                            f => f.id_user_sender,
+                            u => u.id_user,
+                            (f, u) => new FriendDto
                             {
-                                FriendId = user.id_user,
-                                Nickname = user.nickname
+                                FriendId = u.id_user,
+                                Nickname = u.nickname
                             })
                         .ToListAsync();
-
-                    _logger.Info($"[GetPendingRequests] Usuario {currentUserId} tiene {requests.Count} solicitudes pendientes.");
-                    return requests;
                 }
+
             }, "GetPendingRequests");
         }
 
@@ -206,26 +209,24 @@ namespace BusinessLogic.Logic
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[GetSentRequests] Obteniendo solicitudes enviadas por {currentUserId}.");
+                _logger.Info($"[GetSentRequests] Solicitudes enviadas por {currentUserId}.");
 
                 using (var context = new lottery_databaseEntities())
                 {
-                    var requests = await context.Friendship
+                    return await context.Friendship
                         .Where(f => f.id_user_sender == currentUserId && f.status == "Pending")
                         .Join(context.User,
-                            friendship => friendship.id_user_receiver,
-                            user => user.id_user,
-                            (friendship, user) => new FriendDto
+                            f => f.id_user_receiver,
+                            u => u.id_user,
+                            (f, u) => new FriendDto
                             {
                                 FriendId = currentUserId,
-                                UserId = user.id_user,
-                                Nickname = user.nickname
+                                UserId = u.id_user,
+                                Nickname = u.nickname
                             })
                         .ToListAsync();
-
-                    _logger.Info($"[GetSentRequests] Usuario {currentUserId} ha enviado {requests.Count} solicitudes.");
-                    return requests;
                 }
+
             }, "GetSentRequests");
         }
 
@@ -239,40 +240,27 @@ namespace BusinessLogic.Logic
                 if (currentUserId == null)
                     throw new UserNotConnectedException("Usuario no autenticado.");
 
-                try
+                var inviter = GlobalSessionManager.Instance.GetClient(currentUserId.Value);
+                if (inviter == null || inviter.CurrentLobby == null)
+                    throw new LobbyException("No tienes un lobby activo.");
+
+                if (inviter.CurrentLobby.LobbyCode != lobbyCode)
+                    throw new LobbyException("Intento de invitación desde un lobby diferente.");
+
+                var target = GlobalSessionManager.Instance.GetClient(targetFriendId);
+                if (target == null)
+                    throw new UserNotConnectedException("El amigo no está conectado.");
+
+                if (target.CurrentLobby != null)
                 {
-                    var inviter = GlobalSessionManager.Instance.GetClient(currentUserId.Value);
-
-                    if (inviter == null || inviter.CurrentLobby == null)
-                        throw new LobbyException("El usuario no tiene lobby.");
-
-                    if (inviter.CurrentLobby.LobbyCode != lobbyCode)
-                        throw new LobbyException("Intento de invitación desde otro lobby.");
-
-                    try
-                    {
-                        var target = GlobalSessionManager.Instance.GetClient(targetFriendId);
-
-                        if (target.CurrentLobby != null)
-                        {
-                            if (target.CurrentLobby == inviter.CurrentLobby)
-                                throw new UserAlreadyInLobbyException($"El jugador {targetFriendId} ya está en el lobby.");
-                            else
-                                throw new UserAlreadyInLobbyException($"El jugador {targetFriendId} está en otro lobby.");
-                        }
-
-                        target.CallbackChannel.ReceiveLobbyInvite(inviter.Nickname, lobbyCode);
-                        _logger.Info($"[InviteFriendToLobby] Invitación enviada a {targetFriendId}.");
-                    }
-                    catch (Exception)
-                    {
-                        throw new UserNotConnectedException($"El amigo {targetFriendId} no está conectado.");
-                    }
+                    if (target.CurrentLobby == inviter.CurrentLobby)
+                        throw new UserAlreadyInLobbyException("El usuario ya está en este lobby.");
+                    else
+                        throw new UserAlreadyInLobbyException("El usuario está en otro lobby.");
                 }
-                catch (Exception ex) when (!(ex is UserNotConnectedException))
-                {
-                    throw new LobbyException("Error de sesión: No se encontró tu conexión activa.");
-                }
+
+                target.CallbackChannel.ReceiveLobbyInvite(inviter.Nickname, lobbyCode);
+                _logger.Info("[InviteFriendToLobby] Invitación enviada.");
 
             }, "InviteFriendToLobby");
         }
@@ -298,84 +286,70 @@ namespace BusinessLogic.Logic
             catch (Exception ex)
             {
                 HandleException(ex, operationName);
-                return default(T);
+                return default;
             }
         }
 
         private void HandleException(Exception ex, string operationName)
         {
             if (ex is FaultException<ServiceFault>)
-            {
                 throw ex;
-            }
 
-            if (ex is FriendshipNotFoundException)
+            string errorCode;
+            string clientMessage;
+
+            switch (ex)
             {
-                _logger.Warn($"[{operationName}] No encontrado: {ex.Message}");
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    { 
-                        ErrorCode = "FR-404",
-                        Message = ex.Message 
-                    },
-                    new FaultReason(ex.Message)
-                );
-            }
+                case FriendshipNotFoundException _:
+                    errorCode = "FRIEND_NOT_FOUND";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
 
-            if (ex is InvalidFriendshipRequestException)
-            {
-                _logger.Warn($"[{operationName}] Solicitud inválida: {ex.Message}");
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { ErrorCode = "FR-001", Message = ex.Message },
-                    new FaultReason(ex.Message)
-                );
-            }
+                case InvalidFriendshipRequestException _:
+                    errorCode = "FRIEND_INVALID";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
 
-            if (ex is FriendshipDuplicateException)
-            {
-                _logger.Warn($"[{operationName}] Duplicado: {ex.Message}");
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { ErrorCode = "FR-002", Message = ex.Message },
-                    new FaultReason(ex.Message)
-                );
-            }
+                case FriendshipDuplicateException _:
+                    errorCode = "FRIEND_DUPLICATE";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
 
-            if (ex is UserNotConnectedException)
-            {
-                _logger.Warn($"[{operationName}] Usuario desconectado: {ex.Message}");
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { ErrorCode = "LOBBY-001", Message = ex.Message },
-                    new FaultReason("El usuario no está disponible.")
-                );
-            }
+                case UserNotConnectedException _:
+                    errorCode = "USER_OFFLINE";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
 
-            if (ex is UserAlreadyInLobbyException)
-            {
-                _logger.Warn($"[{operationName}] Conflicto de Lobby: {ex.Message}");
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { ErrorCode = "LOBBY-002", Message = ex.Message },
-                    new FaultReason(ex.Message)
-                );
-            }
+                case UserAlreadyInLobbyException _:
+                    errorCode = "USER_IN_LOBBY";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
 
-            if (ex is LobbyException)
-            {
-                _logger.Warn($"[{operationName}] Error de Lobby: {ex.Message}");
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { ErrorCode = "LOBBY-GENERIC", Message = ex.Message },
-                    new FaultReason(ex.Message)
-                );
-            }
+                case LobbyException _:
+                    errorCode = "LOBBY_ERROR";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    break;
 
-            _logger.Fatal($"[{operationName}] Error INESPERADO: {ex}", ex);
+                default:
+                    errorCode = "FR-500";
+                    clientMessage = "Error interno del servidor.";
+                    _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
+                    break;
+            }
 
             throw new FaultException<ServiceFault>(
                 new ServiceFault
                 {
-                    ErrorCode = "FR-500",
-                    Message = "Ha ocurrido un error interno en el servidor."
+                    ErrorCode = errorCode,
+                    Message = clientMessage
                 },
-                new FaultReason("Error interno del servidor.")
+                new FaultReason(clientMessage)
             );
         }
     }

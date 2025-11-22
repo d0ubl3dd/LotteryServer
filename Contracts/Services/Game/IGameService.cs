@@ -20,5 +20,8 @@ namespace Contracts.Services.Game
 
         [OperationContract]
         Task GetScoreboard();
+
+        [OperationContract]
+        Task DeclareWin(int userId);
     }
 }
