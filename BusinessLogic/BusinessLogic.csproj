@@ -78,6 +78,7 @@
     <Compile Include="Models\Deck.cs" />
     <Compile Include="Models\Lobby.cs" />
     <Compile Include="Models\PlayerClient.cs" />
+    <Compile Include="Services\EmailService.cs" />
     <Compile Include="Validation\LoginValidationResult.cs" />
     <Compile Include="LotteryService.cs" />
     <Compile Include="PasswordHasher.cs" />

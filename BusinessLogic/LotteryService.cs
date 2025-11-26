@@ -1,9 +1,11 @@
 ﻿using BusinessLogic.Handlers;
 using BusinessLogic.Logic;
+using BusinessLogic.Services;
 using Contracts;
 using Contracts.Callbacks;
 using Contracts.DTOs;
 using Contracts.Faults;
+using Contracts.Services.Email;
 using DataAccess;
 using DataAccess.DAOs;
 using log4net;
@@ -33,9 +35,12 @@ namespace BusinessLogic
         {
             IUserDao userDao = new UserDao();
             IFriendshipDao friendshipDao = new FriendshipDao();
+            IEmailService emailService = new EmailService();
+
             var lobbyManagerInstance = LobbyManager.Instance;
             var sessionManagerInstance = GlobalSessionManager.Instance;
 
+            this.verificationHandler = new VerificationHandler(emailService);
             this.lobbyHandler = new LobbyHandler(lobbyManagerInstance);
             this.gameHandler = new GameHandler(lobbyManagerInstance);
             this.chatHandler = new ChatHandler(sessionManagerInstance);
@@ -43,7 +48,6 @@ namespace BusinessLogic
             this.friendHandler = new FriendHandler(sessionManagerInstance, friendshipDao);
             this.userHandler = new UserHandler(userDao, this.verificationHandler);
 
-            this.verificationHandler = new VerificationHandler();
 
             _logger.Info("LotteryService instanciado.");
         }

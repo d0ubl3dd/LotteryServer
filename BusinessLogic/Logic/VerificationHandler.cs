@@ -1,10 +1,10 @@
 ﻿using Contracts.Faults;
+using Contracts.Services;
+using Contracts.Services.Email;
 using Contracts.Services.Users;
 using log4net;
 using System;
 using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Mail;
 using System.ServiceModel;
 using System.Threading.Tasks;
 
@@ -13,6 +13,8 @@ namespace BusinessLogic.Handlers
     public class VerificationHandler : IVerificationService
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(VerificationHandler));
+
+        private readonly IEmailService _emailService;
 
         private class VerificationEntry
         {
@@ -25,8 +27,10 @@ namespace BusinessLogic.Handlers
 
         private readonly Random _random = new Random();
 
-        private readonly string _senderEmail = "coilvicapplication@gmail.com";
-        private readonly string _senderPassword = "aorv zezj pazz cdqj";
+        public VerificationHandler(IEmailService emailService)
+        {
+            _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
+        }
 
         public async Task<bool> SendVerificationCode(string email)
         {
@@ -35,9 +39,9 @@ namespace BusinessLogic.Handlers
                 var reason = "Intento de envío de código fallido: email vacío.";
                 _logger.Warn(reason);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
-                        Message = reason 
+                        Message = reason
                     },
                     new FaultReason(reason)
                 );
@@ -50,50 +54,25 @@ namespace BusinessLogic.Handlers
 
                 _codes[email] = new VerificationEntry { Code = code, Expiration = expiration };
 
-                using (var smtp = new SmtpClient("smtp.gmail.com"))
-                {
-                    smtp.Port = 587;
-                    smtp.Credentials = new NetworkCredential(_senderEmail, _senderPassword);
-                    smtp.EnableSsl = true;
+                string subject = "Código de verificación";
+                string body = $"Tu código de verificación es: {code}\n\nExpira en 5 minutos.";
 
-                    var message = new MailMessage
-                    {
-                        From = new MailAddress(_senderEmail, "Lottery App"),
-                        Subject = "Código de verificación",
-                        Body = $"Tu código de verificación es: {code}\n\nExpira en 5 minutos.",
-                        IsBodyHtml = false
-                    };
-
-                    message.To.Add(email);
-
-                    await smtp.SendMailAsync(message);
-                }
+                await _emailService.SendEmailAsync(email, subject, body);
 
                 _logger.Info($"Código de verificación enviado correctamente a {email}.");
                 return true;
             }
-            catch (SmtpException ex)
-            {
-                var reason = $"No se pudo enviar el código de verificación al email {email}: {ex.Message}";
-                _logger.Warn(reason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = reason 
-                    },
-                    new FaultReason(reason)
-                );
-            }
             catch (Exception ex)
             {
-                var fatalReason = "Error interno enviando código de verificación.";
-                _logger.Error(fatalReason, ex);
+                var reason = $"No se pudo enviar el código de verificación al email {email}: {ex.Message}";
+                _logger.Error(reason, ex);
+
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = "Ocurrió un error al enviar el correo de verificación."
                     },
-                    new FaultReason(fatalReason)
+                    new FaultReason(reason)
                 );
             }
         }
@@ -105,7 +84,7 @@ namespace BusinessLogic.Handlers
                 var reason = "Intento de verificación inválido: email o código vacío.";
                 _logger.Warn(reason);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
                         Message = reason
                     },
