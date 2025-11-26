@@ -5,11 +5,13 @@ using Contracts.Callbacks;
 using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
+using DataAccess.DAOs;
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading.Tasks;
-using log4net;
+using System.Web.SessionState;
 
 namespace BusinessLogic
 {
@@ -29,16 +31,18 @@ namespace BusinessLogic
 
         public LotteryService()
         {
+            IUserDao userDao = new UserDao();
+            IFriendshipDao friendshipDao = new FriendshipDao();
             var lobbyManagerInstance = LobbyManager.Instance;
             var sessionManagerInstance = GlobalSessionManager.Instance;
 
             this.lobbyHandler = new LobbyHandler(lobbyManagerInstance);
             this.gameHandler = new GameHandler(lobbyManagerInstance);
             this.chatHandler = new ChatHandler(sessionManagerInstance);
+            this.authHandler = new AuthenticationHandler(userDao);
+            this.friendHandler = new FriendHandler(sessionManagerInstance, friendshipDao);
+            this.userHandler = new UserHandler(userDao, this.verificationHandler);
 
-            this.authHandler = new AuthenticationHandler();
-            this.userHandler = new UserHandler();
-            this.friendHandler = new FriendHandler();
             this.verificationHandler = new VerificationHandler();
 
             _logger.Info("LotteryService instanciado.");

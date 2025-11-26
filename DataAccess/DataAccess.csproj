@@ -54,50 +54,52 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Avatar.cs">
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
     <Compile Include="Banned.cs">
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
-    <Compile Include="DAOs\IUserDAO.cs" />
-    <Compile Include="DAOs\UserDAO.cs" />
+    <Compile Include="DAOs\FriendshipDao.cs" />
+    <Compile Include="DAOs\IFriendshipDao.cs" />
+    <Compile Include="DAOs\IUserDao.cs" />
+    <Compile Include="DAOs\UserDao.cs" />
     <Compile Include="Friendship.cs">
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
     <Compile Include="Game.cs">
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
-    <Compile Include="LotteryDatabaseModel.Context.cs">
+    <Compile Include="LotteryDataModel.Context.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>LotteryDatabaseModel.Context.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.Context.tt</DependentUpon>
     </Compile>
-    <Compile Include="LotteryDatabaseModel.cs">
+    <Compile Include="LotteryDataModel.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
-    <Compile Include="LotteryDatabaseModel.Designer.cs">
+    <Compile Include="LotteryDataModel.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
+      <DependentUpon>LotteryDataModel.edmx</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SocialMedia.cs">
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
     <Compile Include="User.cs">
-      <DependentUpon>LotteryDatabaseModel.tt</DependentUpon>
+      <DependentUpon>LotteryDataModel.tt</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <EntityDeploy Include="LotteryDatabaseModel.edmx">
+    <EntityDeploy Include="LotteryDataModel.edmx">
       <Generator>EntityModelCodeGenerator</Generator>
-      <LastGenOutput>LotteryDatabaseModel.Designer.cs</LastGenOutput>
+      <LastGenOutput>LotteryDataModel.Designer.cs</LastGenOutput>
     </EntityDeploy>
-    <None Include="LotteryDatabaseModel.edmx.diagram">
-      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
+    <None Include="LotteryDataModel.edmx.diagram">
+      <DependentUpon>LotteryDataModel.edmx</DependentUpon>
     </None>
     <None Include="packages.config" />
   </ItemGroup>
@@ -105,15 +107,15 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="LotteryDatabaseModel.Context.tt">
+    <Content Include="LotteryDataModel.Context.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
-      <LastGenOutput>LotteryDatabaseModel.Context.cs</LastGenOutput>
+      <DependentUpon>LotteryDataModel.edmx</DependentUpon>
+      <LastGenOutput>LotteryDataModel.Context.cs</LastGenOutput>
     </Content>
-    <Content Include="LotteryDatabaseModel.tt">
+    <Content Include="LotteryDataModel.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <DependentUpon>LotteryDatabaseModel.edmx</DependentUpon>
-      <LastGenOutput>LotteryDatabaseModel.cs</LastGenOutput>
+      <DependentUpon>LotteryDataModel.edmx</DependentUpon>
+      <LastGenOutput>LotteryDataModel.cs</LastGenOutput>
     </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

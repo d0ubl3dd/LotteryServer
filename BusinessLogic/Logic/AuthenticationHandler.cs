@@ -12,18 +12,19 @@ namespace BusinessLogic.Handlers
     public class AuthenticationHandler
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(AuthenticationHandler));
-        private readonly IUserDAO userDAO;
 
-        public AuthenticationHandler()
+        private readonly IUserDao _userDAO;
+
+        public AuthenticationHandler(IUserDao userDAO)
         {
-            userDAO = new UserDAO();
+            _userDAO = userDAO ?? throw new ArgumentNullException(nameof(userDAO));
         }
 
         public async Task<User> LoginUser(string userName, string password)
         {
             _logger.Info($"Intento de login para el usuario: {userName}");
 
-            User foundUser = await userDAO.GetUserByNicknameAsync(userName);
+            User foundUser = await _userDAO.GetUserByNicknameAsync(userName);
 
             var validationResult = LoginValidator.ValidateLoginAttempt(userName, password, foundUser);
 
@@ -31,14 +32,14 @@ namespace BusinessLogic.Handlers
             {
                 _logger.Info($"Login exitoso para el usuario: {userName}");
 
-                var userToUpdate = await userDAO.GetUserByIdAsync(foundUser.id_user);
+                var userToUpdate = await _userDAO.GetUserByIdAsync(foundUser.id_user);
                 if (userToUpdate != null)
                 {
                     userToUpdate.status = "Online";
                     userToUpdate.failedLoginAttempts = 0;
                     userToUpdate.lastLoginDate = DateTime.UtcNow;
 
-                    await userDAO.SaveChangesAsync();
+                    await _userDAO.SaveChangesAsync();
                 }
 
                 return userToUpdate;
@@ -49,7 +50,7 @@ namespace BusinessLogic.Handlers
 
                 if (foundUser != null)
                 {
-                    var userToUpdate = await userDAO.GetUserByIdAsync(foundUser.id_user);
+                    var userToUpdate = await _userDAO.GetUserByIdAsync(foundUser.id_user);
                     if (userToUpdate != null)
                     {
                         userToUpdate.failedLoginAttempts++;
@@ -62,7 +63,7 @@ namespace BusinessLogic.Handlers
 
                         try
                         {
-                            await userDAO.SaveChangesAsync();
+                            await _userDAO.SaveChangesAsync();
                         }
                         catch (Exception ex)
                         {
@@ -110,11 +111,11 @@ namespace BusinessLogic.Handlers
 
             try
             {
-                var userInDb = await userDAO.GetUserByIdAsync(userToLogout.id_user);
+                var userInDb = await _userDAO.GetUserByIdAsync(userToLogout.id_user);
                 if (userInDb != null)
                 {
                     userInDb.status = "Offline";
-                    await userDAO.SaveChangesAsync();
+                    await _userDAO.SaveChangesAsync();
 
                     _logger.Info($"Usuario {userInDb.nickname} cerró sesión correctamente.");
                 }

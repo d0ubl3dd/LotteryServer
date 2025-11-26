@@ -10,10 +10,10 @@ using System.Data.Entity;
 
 namespace DataAccess.DAOs
 {
-    public class UserDAO : IUserDAO
+    public class UserDao : IUserDao
     {
         private readonly lottery_databaseEntities _context;
-        public UserDAO()
+        public UserDao()
         {
             _context = new lottery_databaseEntities();
         }

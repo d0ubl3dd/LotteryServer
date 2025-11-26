@@ -3,10 +3,7 @@ using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
 using System;
-using System.Linq;
-using System.Data.Entity;
 using System.Threading.Tasks;
-using Contracts.Services.Users;
 using DataAccess.DAOs;
 using System.ServiceModel;
 using log4net;
@@ -17,13 +14,13 @@ namespace BusinessLogic.Handlers
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(UserHandler));
 
-        private readonly IUserDAO _userRepository;
+        private readonly IUserDao _userRepository;
         private readonly VerificationHandler _verificationHandler;
 
-        public UserHandler()
+        public UserHandler(IUserDao userDao, VerificationHandler verificationHandler)
         {
-            _userRepository = new UserDAO();
-            _verificationHandler = new VerificationHandler();
+            _userRepository = userDao ?? throw new ArgumentNullException(nameof(userDao));
+            _verificationHandler = verificationHandler ?? throw new ArgumentNullException(nameof(verificationHandler));
         }
 
         public async Task<int> RequestUserVerification(UserDto userData)
@@ -50,9 +47,8 @@ namespace BusinessLogic.Handlers
                 if (await _userRepository.NicknameExistsAsync(userData.Nickname))
                 {
                     var reason = $"Nickname ya existe: {userData.Nickname}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
                             Message = reason
                         },
@@ -63,11 +59,10 @@ namespace BusinessLogic.Handlers
                 if (await _userRepository.EmailExistsAsync(userData.Email))
                 {
                     var reason = $"Email ya existe: {userData.Email}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -80,9 +75,9 @@ namespace BusinessLogic.Handlers
                     var reason = $"No se pudo enviar código de verificación a {userData.Email}";
                     _logger.Error(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -102,7 +97,7 @@ namespace BusinessLogic.Handlers
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = fatalReason
                     },
                     new FaultReason(fatalReason)
                 );
@@ -146,7 +141,7 @@ namespace BusinessLogic.Handlers
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = fatalReason
                     },
                     new FaultReason(fatalReason)
                 );
@@ -163,11 +158,10 @@ namespace BusinessLogic.Handlers
                 if (user == null)
                 {
                     var reason = $"Usuario no encontrado en VerifyPassword: {userId}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -186,7 +180,7 @@ namespace BusinessLogic.Handlers
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = fatalReason
                     },
                     new FaultReason(fatalReason)
                 );
@@ -203,11 +197,10 @@ namespace BusinessLogic.Handlers
                 if (user == null)
                 {
                     var reason = $"Usuario no encontrado en ChangePassword: {userId}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -231,7 +224,7 @@ namespace BusinessLogic.Handlers
                 var fatalReason = $"Error inesperado cambiando contraseña para userId {userId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
                         Message = fatalReason
                     },
@@ -250,11 +243,10 @@ namespace BusinessLogic.Handlers
                 if (userInDb == null)
                 {
                     var reason = $"Usuario no encontrado en UpdateProfile: {currentUserId}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -265,11 +257,10 @@ namespace BusinessLogic.Handlers
                     if (await _userRepository.NicknameExistsAsync(userData.Nickname))
                     {
                         var reason = $"El nickname ya está en uso: {userData.Nickname}";
-                        _logger.Warn(reason);
                         throw new FaultException<ServiceFault>(
-                            new ServiceFault 
+                            new ServiceFault
                             {
-                                Message = reason 
+                                Message = reason
                             },
                             new FaultReason(reason)
                         );
@@ -296,7 +287,7 @@ namespace BusinessLogic.Handlers
                 var fatalReason = $"Error inesperado en UpdateProfile para userId {currentUserId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
                         Message = fatalReason
                     },
@@ -315,11 +306,10 @@ namespace BusinessLogic.Handlers
                 if (userInDb == null)
                 {
                     var reason = $"Usuario no encontrado en RequestEmailChange: {userId}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -328,7 +318,6 @@ namespace BusinessLogic.Handlers
                 if (await _userRepository.EmailExistsAsync(newEmail))
                 {
                     var reason = $"Email ya existe: {newEmail}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
                         new ServiceFault
                         {
@@ -346,7 +335,7 @@ namespace BusinessLogic.Handlers
                     throw new FaultException<ServiceFault>(
                         new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -366,7 +355,7 @@ namespace BusinessLogic.Handlers
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = fatalReason
                     },
                     new FaultReason(fatalReason)
                 );
@@ -383,11 +372,10 @@ namespace BusinessLogic.Handlers
                 if (userInDb == null)
                 {
                     var reason = $"Usuario no encontrado en ConfirmEmailChange: {userId}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
-                        new ServiceFault 
+                        new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -397,11 +385,10 @@ namespace BusinessLogic.Handlers
                 if (!isValid)
                 {
                     var reason = $"Código de verificación incorrecto para {newEmail}";
-                    _logger.Warn(reason);
                     throw new FaultException<ServiceFault>(
                         new ServiceFault
                         {
-                            Message = reason 
+                            Message = reason
                         },
                         new FaultReason(reason)
                     );
@@ -422,9 +409,9 @@ namespace BusinessLogic.Handlers
                 var fatalReason = $"Error inesperado en ConfirmEmailChange para userId {userId}.";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = fatalReason
                     },
                     new FaultReason(fatalReason)
                 );
@@ -449,33 +436,26 @@ namespace BusinessLogic.Handlers
             {
                 _logger.Info($"Buscando usuario por nickname: {nickname}");
 
-                using (var context = new lottery_databaseEntities())
+                var user = await _userRepository.GetUserByNicknameAsync(nickname);
+
+                if (user == null)
                 {
-                    var user = await context.User
-                        .Where(u => u.nickname == nickname)
-                        .Select(u => new FriendDto
+                    var reason = $"Usuario no encontrado con nickname: {nickname}";
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault
                         {
-                            UserId = u.id_user,
-                            Nickname = u.nickname,
-                            Status = u.status
-                        })
-                        .FirstOrDefaultAsync();
-
-                    if (user == null)
-                    {
-                        var reason = $"Usuario no encontrado con nickname: {nickname}";
-                        _logger.Warn(reason);
-                        throw new FaultException<ServiceFault>(
-                            new ServiceFault 
-                            {
-                                Message = reason 
-                            },
-                            new FaultReason(reason)
-                        );
-                    }
-
-                    return user;
+                            Message = reason
+                        },
+                        new FaultReason(reason)
+                    );
                 }
+
+                return new FriendDto
+                {
+                    UserId = user.id_user,
+                    Nickname = user.nickname,
+                    Status = user.status
+                };
             }
             catch (FaultException<ServiceFault>)
             {
@@ -486,7 +466,7 @@ namespace BusinessLogic.Handlers
                 var fatalReason = $"Error inesperado buscando usuario por nickname: {nickname}";
                 _logger.Fatal(fatalReason, ex);
                 throw new FaultException<ServiceFault>(
-                    new ServiceFault 
+                    new ServiceFault
                     {
                         Message = fatalReason
                     },
@@ -501,38 +481,31 @@ namespace BusinessLogic.Handlers
             {
                 _logger.Info($"Obteniendo perfil para userId {userId}");
 
-                using (var context = new lottery_databaseEntities())
+                var user = await _userRepository.GetUserByIdAsync(userId);
+
+                if (user == null)
                 {
-                    var user = await context.User
-                        .Where(u => u.id_user == userId)
-                        .Select(u => new UserDto
+                    var reason = $"Usuario no encontrado para userId: {userId}";
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault
                         {
-                            UserId = u.id_user,
-                            Nickname = u.nickname,
-                            Email = u.email,
-                            FirstName = u.first_name,
-                            PaternalLastName = u.paternal_last_name,
-                            MaternalLastName = u.maternal_last_name,
-                            AvatarId = u.id_avatar,
-                            AvatarUrl = u.Avatar != null ? u.Avatar.path : null
-                        })
-                        .FirstOrDefaultAsync();
-
-                    if (user == null)
-                    {
-                        var reason = $"Usuario no encontrado para userId: {userId}";
-                        _logger.Warn(reason);
-                        throw new FaultException<ServiceFault>(
-                            new ServiceFault 
-                            {
-                                Message = reason
-                            },
-                            new FaultReason(reason)
-                        );
-                    }
-
-                    return user;
+                            Message = reason
+                        },
+                        new FaultReason(reason)
+                    );
                 }
+
+                return new UserDto
+                {
+                    UserId = user.id_user,
+                    Nickname = user.nickname,
+                    Email = user.email,
+                    FirstName = user.first_name,
+                    PaternalLastName = user.paternal_last_name,
+                    MaternalLastName = user.maternal_last_name,
+                    AvatarId = user.id_avatar,
+                    AvatarUrl = user.Avatar?.path
+                };
             }
             catch (FaultException<ServiceFault>)
             {
@@ -545,7 +518,7 @@ namespace BusinessLogic.Handlers
                 throw new FaultException<ServiceFault>(
                     new ServiceFault
                     {
-                        Message = fatalReason 
+                        Message = fatalReason
                     },
                     new FaultReason(fatalReason)
                 );

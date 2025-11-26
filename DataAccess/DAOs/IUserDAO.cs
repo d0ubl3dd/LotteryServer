@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace DataAccess.DAOs
 {
-    public interface IUserDAO
+    public interface IUserDao
     {
         Task<bool> NicknameExistsAsync(string nickname);
         Task<bool> EmailExistsAsync(string email);
