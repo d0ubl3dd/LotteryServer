@@ -398,7 +398,7 @@ namespace BusinessLogic
         {
             // Usamos tu manejador seguro de errores
             // Asegúrate de tener un método similar en GameHandler o créalo
-            await gameHandler.DeclareWin(userId);
+            //await gameHandler.DeclareWin(userId);
         }
 
         // --- IChatService ---

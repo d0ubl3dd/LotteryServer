@@ -1,7 +1,8 @@
-﻿using BusinessLogic.Models;
+﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Models;
 using Contracts.Callbacks;
-using DataAccess;
 using Contracts.Faults;
+using DataAccess;
 using log4net;
 using System;
 using System.Collections.Concurrent;
@@ -29,184 +30,152 @@ namespace BusinessLogic.Logic
 
         public void RegisterClient(User user, ILotteryCallback callback)
         {
-            try
+            ExecuteFaultSafe(() =>
             {
-                if (user == null || callback == null)
-                {
-                    var reason = "Parámetros de registro inválidos.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                if (user == null) throw new ArgumentNullException(nameof(user), "El usuario es nulo.");
+                if (callback == null) throw new ArgumentNullException(nameof(callback), "El callback es nulo.");
 
                 var client = new PlayerClient(user, callback);
+
                 _onlineUsers[user.id_user] = client;
-                _logger.Info($"Usuario registrado: {user.id_user} - {user.nickname}");
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al registrar cliente: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado al registrar cliente.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+                _logger.Info($"[RegisterClient] Usuario registrado: {user.id_user} - {user.nickname}");
+
+            }, "RegisterClient");
         }
 
         public PlayerClient GetClient(int userId)
         {
-            try
+            return ExecuteFaultSafe(() =>
             {
                 if (!_onlineUsers.TryGetValue(userId, out var client))
                 {
-                    var reason = $"Cliente con UserId {userId} no encontrado.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        {
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new ClientNotFoundException($"El cliente con ID {userId} no está conectado.");
                 }
 
-                _logger.Info($"Cliente obtenido: {userId}");
+                _logger.Info($"[GetClient] Cliente recuperado: {userId}");
                 return client;
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al obtener cliente: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado al obtener cliente {userId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "GetClient");
         }
 
         public PlayerClient UnregisterClient(int userId)
         {
-            try
+            return ExecuteFaultSafe(() =>
             {
-                _onlineUsers.TryRemove(userId, out var client);
-                if (client != null)
+                if (!_onlineUsers.TryRemove(userId, out var client))
                 {
-                    _logger.Info($"Usuario desconectado: {userId}");
-                    return client;
+                    throw new ClientNotFoundException($"No se pudo desconectar al usuario {userId} porque no estaba registrado.");
                 }
-                else
-                {
-                    var reason = $"Usuario {userId} no estaba registrado.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        {
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al desconectar cliente: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado al desconectar cliente {userId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+                _logger.Info($"[UnregisterClient] Usuario eliminado de memoria: {userId}");
+                return client;
+
+            }, "UnregisterClient");
         }
 
         public int? GetUserIdFromContext()
         {
-            try
+            return ExecuteFaultSafe(() =>
             {
-                var callback = OperationContext.Current?.GetCallbackChannel<ILotteryCallback>();
+                var context = OperationContext.Current;
+                if (context == null)
+                {
+                    throw new SessionContextException("El OperationContext actual es nulo.");
+                }
+
+                var callback = context.GetCallbackChannel<ILotteryCallback>();
                 if (callback == null)
                 {
-                    var reason = "No se pudo obtener el usuario desde el contexto.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new SessionContextException("No se pudo obtener el canal de callback del contexto.");
                 }
 
                 var entry = _onlineUsers.FirstOrDefault(x => x.Value.CallbackChannel == callback);
-                if (!entry.Equals(default(KeyValuePair<int, PlayerClient>)))
+
+                if (entry.Value == null)
                 {
-                    _logger.Info($"Usuario obtenido desde contexto: {entry.Key}");
-                    return entry.Key;
+                    throw new SessionContextException("El callback del contexto no corresponde a ningún usuario registrado.");
                 }
-                else
-                {
-                    var reason = "Callback no registrado en GlobalSessionManager.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al obtener usuario desde contexto: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado al obtener usuario desde contexto.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+                _logger.Info($"[GetUserIdFromContext] Usuario identificado: {entry.Key}");
+                return (int?)entry.Key;
+
+            }, "GetUserIdFromContext");
         }
 
         public IEnumerable<PlayerClient> GetAllOnlineUsers()
         {
             return _onlineUsers.Values;
+        }
+
+        private void ExecuteFaultSafe(Action action, string operationName)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                HandleException(ex, operationName);
+            }
+        }
+
+        private T ExecuteFaultSafe<T>(Func<T> action, string operationName)
+        {
+            try
+            {
+                return action();
+            }
+            catch (Exception ex)
+            {
+                HandleException(ex, operationName);
+                return default;
+            }
+        }
+
+        private void HandleException(Exception ex, string operationName)
+        {
+            if (ex is FaultException<ServiceFault>)
+                throw ex;
+
+            string errorCode;
+            string clientMessage;
+
+            switch (ex)
+            {
+                case ClientNotFoundException _:
+                    errorCode = "SESSION_CLIENT_NOT_FOUND";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Cliente no encontrado en memoria.");
+                    break;
+
+                case SessionContextException _:
+                    errorCode = "SESSION_CONTEXT_ERROR";
+                    clientMessage = "Error de comunicación o sesión perdida.";
+                    _logger.Error($"[{operationName}] Error de contexto WCF: {ex.Message}");
+                    break;
+
+                case ArgumentNullException _:
+                    errorCode = "SESSION_BAD_REQUEST";
+                    clientMessage = "Datos de sesión inválidos.";
+                    _logger.Error($"[{operationName}] Argumento nulo: {ex.Message}");
+                    break;
+
+                default:
+                    errorCode = "SESSION_INTERNAL_ERROR";
+                    clientMessage = "Error interno en el gestor de sesiones.";
+                    _logger.Fatal($"[{operationName}] Error crítico inesperado: {ex}", ex);
+                    break;
+            }
+
+            throw new FaultException<ServiceFault>(
+                new ServiceFault
+                {
+                    ErrorCode = errorCode,
+                    Message = clientMessage
+                },
+                new FaultReason(clientMessage)
+            );
         }
     }
 }

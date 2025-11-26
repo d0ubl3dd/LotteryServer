@@ -1,4 +1,5 @@
-﻿using BusinessLogic.Models;
+﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Models;
 using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
@@ -12,224 +13,184 @@ namespace BusinessLogic.Logic
     public class LobbyHandler
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LobbyHandler));
-
         private readonly LobbyManager _lobbyManager;
 
         public LobbyHandler(LobbyManager lobbyManager)
         {
-            _lobbyManager = lobbyManager;
+            _lobbyManager = lobbyManager ?? throw new ArgumentNullException(nameof(lobbyManager));
+        }
+        private PlayerClient GetClientOrThrow(User user)
+        {
+            _logger.Info($"[GetClient] Buscando sesión para {user.nickname} (ID {user.id_user}).");
+
+            var client = GlobalSessionManager.Instance.GetClient(user.id_user);
+
+            if (client == null)
+            {
+                throw new UserNotConnectedException("No se encontró una sesión activa para realizar esta acción.");
+            }
+
+            return client;
         }
 
-        private PlayerClient GetClient(User user)
+        public async Task<LobbyStateDto> CreateLobby(User currentUser)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Obteniendo cliente para el usuario {user.nickname} (ID {user.id_user}).");
+                if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
 
-                var client = GlobalSessionManager.Instance.GetClient(user.id_user);
+                _logger.Info($"[CreateLobby] Intento de creación por {currentUser.nickname}.");
 
-                if (client == null)
-                {
-                    var reason = "Error de sesión. No se encontró el cliente.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        {
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                return client;
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al obtener cliente: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado obteniendo cliente para usuario.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
-        }
-
-        public Task<LobbyStateDto> CreateLobby(User currentUser)
-        {
-            try
-            {
-                _logger.Info($"Intento de crear lobby por {currentUser.nickname}.");
-
-                var hostClient = GetClient(currentUser);
+                var hostClient = GetClientOrThrow(currentUser);
 
                 if (hostClient.CurrentLobby != null)
                 {
-                    var reason = "Ya estás en un lobby.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new UserAlreadyInLobbyException("Ya te encuentras dentro de un lobby.");
                 }
 
                 var lobbyState = _lobbyManager.CreateLobby(hostClient);
-                _logger.Info($"Lobby creado correctamente por {currentUser.nickname}. Código: {lobbyState.LobbyCode}");
 
-                return Task.FromResult(lobbyState);
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al crear lobby: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado al crear lobby.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+                _logger.Info($"[CreateLobby] Lobby creado: {lobbyState.LobbyCode}");
+                return lobbyState;
+
+            }, "CreateLobby");
         }
 
-        public Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
+        public async Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Usuario {currentUser.nickname} intentando unirse al lobby {lobbyCode}.");
+                if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+                if (string.IsNullOrWhiteSpace(lobbyCode)) throw new ArgumentException("El código de lobby es inválido.");
 
-                var playerClient = GetClient(currentUser);
+                _logger.Info($"[JoinLobby] {currentUser.nickname} intenta unirse a {lobbyCode}.");
+
+                var playerClient = GetClientOrThrow(currentUser);
 
                 if (playerClient.CurrentLobby != null)
                 {
-                    var reason = "Ya estás en un lobby.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        {
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new UserAlreadyInLobbyException("Debes salir de tu lobby actual antes de unirte a otro.");
                 }
 
                 var lobbyState = _lobbyManager.JoinLobby(playerClient, lobbyCode);
-                _logger.Info($"Usuario {currentUser.nickname} se unió correctamente al lobby {lobbyCode}.");
 
-                return Task.FromResult(lobbyState);
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error($"Error controlado al unirse al lobby {lobbyCode}: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado al unirse al lobby {lobbyCode}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+                _logger.Info($"[JoinLobby] Unión exitosa al lobby {lobbyCode}.");
+                return lobbyState;
+
+            }, "JoinLobby");
         }
 
-        public Task LeaveLobby(User currentUser)
+        public async Task LeaveLobby(User currentUser)
         {
-            try
+            await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Usuario {currentUser.nickname} solicitó salir de su lobby actual.");
+                if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
 
-                var client = GlobalSessionManager.Instance.GetClient(currentUser.id_user);
+                _logger.Info($"[LeaveLobby] {currentUser.nickname} solicita salir.");
 
-                if (client != null)
-                {
-                    _lobbyManager.LeaveLobby(client);
-                    _logger.Info($"Usuario {currentUser.nickname} salió correctamente del lobby.");
-                }
-                else
-                {
-                    var reason = $"No se encontró cliente activo para {currentUser.nickname} al intentar salir del lobby.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        {
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                var client = GetClientOrThrow(currentUser);
 
-                return Task.CompletedTask;
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error("Error controlado al salir del lobby: " + fault.Reason.ToString());
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado al salir del lobby.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+                _lobbyManager.LeaveLobby(client);
+
+                _logger.Info($"[LeaveLobby] Salida exitosa.");
+
+            }, "LeaveLobby");
         }
 
-        public Task KickPlayer(User currentUser, int targetPlayerId)
+        public async Task KickPlayer(User currentUser, int targetPlayerId)
         {
-            try
+            await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Usuario {currentUser.nickname} intentando expulsar al jugador con ID {targetPlayerId}.");
+                if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
 
-                var hostClient = GetClient(currentUser);
+                _logger.Info($"[KickPlayer] {currentUser.nickname} intenta expulsar al ID {targetPlayerId}.");
+
+                var hostClient = GetClientOrThrow(currentUser);
+
+                if (hostClient.CurrentLobby == null)
+                    throw new LobbyException("No estás en un lobby para expulsar a alguien.");
 
                 _lobbyManager.KickPlayer(hostClient, targetPlayerId);
 
-                _logger.Info($"Jugador {targetPlayerId} expulsado correctamente por {currentUser.nickname}.");
+                _logger.Info($"[KickPlayer] Jugador {targetPlayerId} expulsado.");
 
-                return Task.CompletedTask;
-            }
-            catch (FaultException<ServiceFault> fault)
+            }, "KickPlayer");
+        }
+
+        private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
+        {
+            try
             {
-                _logger.Error($"Error controlado al expulsar jugador {targetPlayerId}: " + fault.Reason.ToString());
-                throw;
+                await action();
             }
             catch (Exception ex)
             {
-                var fatalReason = $"Error inesperado al expulsar jugador {targetPlayerId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    {
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
+                HandleException(ex, operationName);
             }
+        }
+
+        private async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string operationName)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception ex)
+            {
+                HandleException(ex, operationName);
+                return default;
+            }
+        }
+
+        private void HandleException(Exception ex, string operationName)
+        {
+            if (ex is FaultException<ServiceFault>)
+                throw ex;
+
+            string errorCode;
+            string clientMessage;
+
+            switch (ex)
+            {
+                case UserAlreadyInLobbyException _:
+                    errorCode = "LOBBY_USER_ALREADY_IN";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Usuario ya en lobby.");
+                    break;
+
+                case UserNotConnectedException _:
+                    errorCode = "LOBBY_USER_OFFLINE";
+                    clientMessage = "No hay conexión activa con el usuario.";
+                    _logger.Warn($"[{operationName}] Usuario offline.");
+                    break;
+
+                case LobbyException _:
+                    errorCode = "LOBBY_ERROR";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Error de lobby: {ex.Message}");
+                    break;
+
+                case ArgumentNullException _:
+                    errorCode = "LOBBY_BAD_REQUEST";
+                    clientMessage = "Datos de solicitud inválidos.";
+                    _logger.Error($"[{operationName}] Argumento inválido: {ex.Message}");
+                    break;
+
+                default:
+                    errorCode = "LOBBY_INTERNAL_ERROR";
+                    clientMessage = "Ocurrió un error inesperado.";
+                    _logger.Fatal($"[{operationName}] Error crítico: {ex}", ex);
+                    break;
+            }
+
+            throw new FaultException<ServiceFault>(
+                new ServiceFault
+                {
+                    ErrorCode = errorCode,
+                    Message = clientMessage
+                },
+                new FaultReason(clientMessage)
+            );
         }
     }
 }

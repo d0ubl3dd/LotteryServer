@@ -1,11 +1,10 @@
-﻿using BusinessLogic.Models;
+﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Models;
 using Contracts.DTOs;
-using Contracts.Faults;
 using log4net;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.ServiceModel;
 
 namespace BusinessLogic.Logic
 {
@@ -22,213 +21,128 @@ namespace BusinessLogic.Logic
 
         public LobbyStateDto CreateLobby(PlayerClient host)
         {
-            try
-            {
-                var lobbyCode = GenerateLobbyCode();
-                var lobby = new Lobby(lobbyCode, host);
-                _lobbies[lobbyCode] = lobby;
+            if (host == null) throw new ArgumentNullException(nameof(host));
 
-                _logger.Info($"Lobby creado: {lobbyCode} por host {host.UserId}");
+            var lobbyCode = GenerateLobbyCode();
+            var lobby = new Lobby(lobbyCode, host);
 
-                return new LobbyStateDto
-                {
-                    LobbyCode = lobbyCode,
-                    Players = lobby.GetPlayerDTOs()
-                };
-            }
-            catch (Exception ex)
+            if (!_lobbies.TryAdd(lobbyCode, lobby))
             {
-                var fatalReason = "Error inesperado creando un lobby.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    { 
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
+                throw new LobbyException("Error interno al registrar el lobby en memoria.");
             }
+
+            _logger.Info($"[LobbyManager] Lobby creado: {lobbyCode} por host {host.UserId}");
+
+            return new LobbyStateDto
+            {
+                LobbyCode = lobbyCode,
+                Players = lobby.GetPlayerDTOs()
+            };
         }
 
         public LobbyStateDto JoinLobby(PlayerClient player, string lobbyCode)
         {
-            try
+            if (string.IsNullOrEmpty(lobbyCode))
             {
-                if (string.IsNullOrEmpty(lobbyCode))
-                {
-                    var reason = "El código del lobby no puede ser nulo o vacío.";
-                    _logger.Error($"Jugador {player.UserId} intentó unirse con código vacío.");
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                if (!_lobbies.TryGetValue(lobbyCode, out var lobby))
-                {
-                    var reason = "El lobby no existe.";
-                    _logger.Error($"Jugador {player.UserId} intentó unirse a lobby inexistente {lobbyCode}.");
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                if (!lobby.AddPlayer(player))
-                {
-                    var reason = "El lobby está lleno o ya estás en él.";
-                    _logger.Error($"Jugador {player.UserId} no pudo unirse al lobby {lobbyCode}: lleno o ya presente.");
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                lobby.BroadcastPlayerJoined(player);
-                _logger.Info($"Jugador {player.UserId} se unió al lobby {lobbyCode}");
-
-                return new LobbyStateDto
-                {
-                    LobbyCode = lobbyCode,
-                    Players = lobby.GetPlayerDTOs()
-                };
+                throw new ArgumentException("El código del lobby no puede ser vacío.");
             }
-            catch (FaultException<ServiceFault> fault)
+
+            if (!_lobbies.TryGetValue(lobbyCode, out var lobby))
             {
-                _logger.Error($"Error controlado al jugador {player?.UserId} unirse al lobby {lobbyCode}: {fault.Reason}", fault);
-                throw;
+                throw new LobbyNotFoundException($"El lobby {lobbyCode} no existe.");
             }
-            catch (Exception ex)
+
+            if (lobby.Players.Any(p => p.UserId == player.UserId))
             {
-                var fatalReason = $"Error inesperado al jugador {player?.UserId} unirse al lobby {lobbyCode}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    { 
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
+                throw new UserAlreadyInLobbyException("Ya te encuentras unido a este lobby.");
             }
+
+            const int MAX_PLAYERS = 4;
+            if (lobby.Players.Count >= MAX_PLAYERS)
+            {
+                throw new LobbyFullException("El lobby está lleno, no se admiten más jugadores.");
+            }
+
+            if (!lobby.AddPlayer(player))
+            {
+                throw new LobbyException("No se pudo unir al lobby (posible error de concurrencia).");
+            }
+
+            lobby.BroadcastPlayerJoined(player);
+            _logger.Info($"[LobbyManager] Jugador {player.UserId} se unió al lobby {lobbyCode}");
+
+            return new LobbyStateDto
+            {
+                LobbyCode = lobbyCode,
+                Players = lobby.GetPlayerDTOs()
+            };
         }
 
         public void LeaveLobby(PlayerClient player)
         {
-            try
+            if (player?.CurrentLobby == null) return;
+
+            var lobby = player.CurrentLobby;
+
+            lobby.RemovePlayer(player);
+
+            if (player.UserId == lobby.Host.UserId)
             {
-                if (player?.CurrentLobby == null) return;
-
-                var lobby = player.CurrentLobby;
-                lobby.RemovePlayer(player);
-
-                if (player.UserId == lobby.Host.UserId)
-                {
-                    lobby.BroadcastLobbyClosed();
-                    _lobbies.TryRemove(lobby.LobbyCode, out _);
-                    _logger.Info($"Host {player.UserId} cerró el lobby {lobby.LobbyCode}");
-                }
-                else
-                {
-                    lobby.BroadcastPlayerLeft(player.UserId);
-                    _logger.Info($"Jugador {player.UserId} salió del lobby {lobby.LobbyCode}");
-                }
+                lobby.BroadcastLobbyClosed();
+                _lobbies.TryRemove(lobby.LobbyCode, out _);
+                _logger.Info($"[LobbyManager] Host {player.UserId} cerró el lobby {lobby.LobbyCode}");
             }
-            catch (Exception ex)
+            else
             {
-                var fatalReason = $"Error inesperado al jugador {player?.UserId} salir del lobby.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    { 
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
+                lobby.BroadcastPlayerLeft(player.UserId);
+                _logger.Info($"[LobbyManager] Jugador {player.UserId} salió del lobby {lobby.LobbyCode}");
             }
         }
 
         public void KickPlayer(PlayerClient host, int targetPlayerId)
         {
+            var lobby = host.CurrentLobby;
+
+            if (lobby == null || lobby.Host.UserId != host.UserId)
+            {
+                throw new LobbyActionNotAllowedException("No tienes permisos de Host para expulsar jugadores.");
+            }
+
+            if (host.UserId == targetPlayerId)
+            {
+                throw new LobbyActionNotAllowedException("No puedes expulsarte a ti mismo.");
+            }
+
+            var playerToKick = GlobalSessionManager.Instance.GetClient(targetPlayerId);
+
+            if (playerToKick == null || playerToKick.CurrentLobby != lobby)
+            {
+                throw new ClientNotFoundException("El jugador objetivo no se encuentra en tu lobby.");
+            }
+
+            lobby.RemovePlayer(playerToKick);
+            lobby.BroadcastKicked(targetPlayerId);
+
             try
             {
-                var lobby = host.CurrentLobby;
-                if (lobby == null || lobby.Host.UserId != host.UserId)
-                {
-                    var reason = "No tienes permiso para expulsar jugadores.";
-                    _logger.Error($"Host {host.UserId} intentó expulsar sin permiso.");
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                var playerToKick = GlobalSessionManager.Instance.GetClient(targetPlayerId);
-                if (playerToKick == null || playerToKick.CurrentLobby != lobby)
-                {
-                    var reason = "El jugador no está en tu lobby.";
-                    _logger.Error($"Intento inválido de expulsión: jugador {targetPlayerId} no está en el lobby {lobby.LobbyCode}");
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                if (playerToKick.UserId == host.UserId)
-                {
-                    var reason = "No puedes expulsarte a ti mismo.";
-                    _logger.Error($"Host {host.UserId} intentó expulsarse a sí mismo en el lobby {lobby.LobbyCode}");
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault 
-                        { 
-                            Message = reason 
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
-                lobby.RemovePlayer(playerToKick);
-                lobby.BroadcastKicked(targetPlayerId);
                 playerToKick.CallbackChannel.YouWereKicked();
-
-                _logger.Info($"Jugador {targetPlayerId} expulsado del lobby {lobby.LobbyCode} por host {host.UserId}");
-            }
-            catch (FaultException<ServiceFault> fault)
-            {
-                _logger.Error($"Error controlado al expulsar jugador {targetPlayerId} por host {host.UserId}: {fault.Reason}", fault);
-                throw;
             }
             catch (Exception ex)
             {
-                var fatalReason = $"Error inesperado al expulsar jugador {targetPlayerId} por host {host.UserId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault 
-                    { 
-                        Message = fatalReason 
-                    },
-                    new FaultReason(fatalReason)
-                );
+                _logger.Warn($"[LobbyManager] No se pudo enviar notificación de kick al usuario {targetPlayerId}: {ex.Message}");
             }
+
+            _logger.Info($"[LobbyManager] Jugador {targetPlayerId} expulsado del lobby {lobby.LobbyCode}");
         }
 
         public Lobby FindLobbyByHostId(int hostUserId)
         {
             return _lobbies.Values.FirstOrDefault(lobby => lobby.Host.UserId == hostUserId);
+        }
+
+        public Lobby FindLobbyByPlayerId(int userId)
+        {
+            return _lobbies.Values.FirstOrDefault(lobby => lobby.Players.Any(p => p.UserId == userId));
         }
 
         private string GenerateLobbyCode()
@@ -239,9 +153,9 @@ namespace BusinessLogic.Logic
             do
             {
                 code = new string(Enumerable.Repeat(chars, 6).Select(s => s[random.Next(s.Length)]).ToArray());
-            } 
+            }
             while (_lobbies.ContainsKey(code));
-            
+
             return code;
         }
     }

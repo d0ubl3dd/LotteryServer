@@ -1,19 +1,19 @@
-﻿using BusinessLogic.Logic;
+﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Logic;
 using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
-using System;
-using System.Threading.Tasks;
 using DataAccess.DAOs;
-using System.ServiceModel;
 using log4net;
+using System;
+using System.ServiceModel;
+using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
 {
     public partial class UserHandler
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(UserHandler));
-
         private readonly IUserDao _userRepository;
         private readonly VerificationHandler _verificationHandler;
 
@@ -25,90 +25,45 @@ namespace BusinessLogic.Handlers
 
         public async Task<int> RequestUserVerification(UserDto userData)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Solicitud de verificación para correo {userData.Email}.");
+                _logger.Info($"[RequestVerification] Procesando solicitud para {userData.Email}.");
 
                 if (string.IsNullOrEmpty(userData.Email) ||
                     string.IsNullOrEmpty(userData.Nickname) ||
                     string.IsNullOrEmpty(userData.Password))
                 {
-                    var reason = "Datos incompletos para verificación.";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new ArgumentException("Los datos de registro están incompletos.");
                 }
 
                 if (await _userRepository.NicknameExistsAsync(userData.Nickname))
                 {
-                    var reason = $"Nickname ya existe: {userData.Nickname}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new UserAlreadyExistsException($"El nickname '{userData.Nickname}' ya está en uso.");
                 }
 
                 if (await _userRepository.EmailExistsAsync(userData.Email))
                 {
-                    var reason = $"Email ya existe: {userData.Email}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new UserAlreadyExistsException($"El correo '{userData.Email}' ya está registrado.");
                 }
 
                 bool codeSent = await _verificationHandler.SendVerificationCode(userData.Email);
 
                 if (!codeSent)
                 {
-                    var reason = $"No se pudo enviar código de verificación a {userData.Email}";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new VerificationException("No se pudo enviar el correo de verificación. Inténtalo más tarde.");
                 }
 
-                _logger.Info($"Código de verificación enviado a {userData.Email}");
+                _logger.Info($"[RequestVerification] Código enviado a {userData.Email}");
                 return 1;
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado en RequestUserVerification.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "RequestUserVerification");
         }
 
         public async Task<int> RegisterUser(UserDto userData)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Intentando registrar usuario {userData.Nickname}");
+                _logger.Info($"[RegisterUser] Registrando: {userData.Nickname}");
 
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -131,139 +86,55 @@ namespace BusinessLogic.Handlers
                 _userRepository.AddUser(newUser);
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"Usuario registrado correctamente: {newUser.nickname} (ID {newUser.id_user})");
+                _logger.Info($"[RegisterUser] Registro exitoso. ID: {newUser.id_user}");
                 return newUser.id_user;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = "Error inesperado durante el registro de usuario.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "RegisterUser");
         }
 
         public async Task<bool> VerifyPassword(int userId, string password)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Verificando contraseña para userId {userId}");
-
-                var user = await _userRepository.GetUserByIdAsync(userId);
-                if (user == null)
-                {
-                    var reason = $"Usuario no encontrado en VerifyPassword: {userId}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
-
+                var user = await GetUserOrThrow(userId);
                 return PasswordHasher.VerifyPasswordHash(password, user.passwordHash, user.passwordSalt);
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado verificando contraseña para userId {userId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "VerifyPassword");
         }
 
         public async Task<bool> ChangePassword(int userId, string newPassword)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Solicitud de cambio de contraseña para userId {userId}");
+                _logger.Info($"[ChangePassword] Solicitud para ID {userId}");
 
-                var user = await _userRepository.GetUserByIdAsync(userId);
-                if (user == null)
-                {
-                    var reason = $"Usuario no encontrado en ChangePassword: {userId}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                var user = await GetUserOrThrow(userId);
 
                 PasswordHasher.CreatePasswordHash(newPassword, out byte[] hash, out byte[] salt);
                 user.passwordHash = hash;
                 user.passwordSalt = salt;
 
                 await _userRepository.SaveChangesAsync();
-                _logger.Info($"Contraseña actualizada correctamente para userId {userId}");
 
+                _logger.Info($"[ChangePassword] Éxito para ID {userId}");
                 return true;
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado cambiando contraseña para userId {userId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "ChangePassword");
         }
 
         public async Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Actualizando perfil del usuario ID {currentUserId}");
+                _logger.Info($"[UpdateProfile] ID {currentUserId}");
 
-                var userInDb = await _userRepository.GetUserByIdAsync(currentUserId);
-                if (userInDb == null)
-                {
-                    var reason = $"Usuario no encontrado en UpdateProfile: {currentUserId}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                var userInDb = await GetUserOrThrow(currentUserId);
 
                 if (!string.Equals(userInDb.nickname, userData.Nickname, StringComparison.OrdinalIgnoreCase))
                 {
                     if (await _userRepository.NicknameExistsAsync(userData.Nickname))
                     {
-                        var reason = $"El nickname ya está en uso: {userData.Nickname}";
-                        throw new FaultException<ServiceFault>(
-                            new ServiceFault
-                            {
-                                Message = reason
-                            },
-                            new FaultReason(reason)
-                        );
+                        throw new UserAlreadyExistsException($"El nickname '{userData.Nickname}' ya está ocupado.");
                     }
                 }
 
@@ -275,179 +146,87 @@ namespace BusinessLogic.Handlers
 
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"Perfil actualizado correctamente para userId {currentUserId}");
+                _logger.Info($"[UpdateProfile] Perfil actualizado para ID {currentUserId}");
                 return (true, "Perfil actualizado correctamente.");
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado en UpdateProfile para userId {currentUserId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "UpdateProfile");
         }
 
         public async Task<bool> RequestEmailChange(int userId, string newEmail)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Solicitud de cambio de correo para userId {userId}.");
+                _logger.Info($"[RequestEmailChange] Usuario {userId} solicita cambio a {newEmail}");
 
-                var userInDb = await _userRepository.GetUserByIdAsync(userId);
-                if (userInDb == null)
-                {
-                    var reason = $"Usuario no encontrado en RequestEmailChange: {userId}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                await GetUserOrThrow(userId);
 
                 if (await _userRepository.EmailExistsAsync(newEmail))
                 {
-                    var reason = $"Email ya existe: {newEmail}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new UserAlreadyExistsException("Ese correo ya está asociado a otra cuenta.");
                 }
 
                 bool sent = await _verificationHandler.SendVerificationCode(newEmail);
                 if (!sent)
                 {
-                    var reason = $"Error enviando código a {newEmail}";
-                    _logger.Error(reason);
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new VerificationException("Error al enviar el código de confirmación al nuevo correo.");
                 }
 
-                _logger.Info($"Código enviado exitosamente a {newEmail}");
-                return sent;
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado en RequestEmailChange para userId {userId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+                return true;
+
+            }, "RequestEmailChange");
         }
 
         public async Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Confirmando cambio de correo para userId {userId}");
+                _logger.Info($"[ConfirmEmailChange] Usuario {userId}");
 
-                var userInDb = await _userRepository.GetUserByIdAsync(userId);
-                if (userInDb == null)
-                {
-                    var reason = $"Usuario no encontrado en ConfirmEmailChange: {userId}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                var userInDb = await GetUserOrThrow(userId);
 
                 bool isValid = await _verificationHandler.VerifyCode(newEmail, verificationCode);
                 if (!isValid)
                 {
-                    var reason = $"Código de verificación incorrecto para {newEmail}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new VerificationException("El código de verificación es incorrecto o ha expirado.");
                 }
 
                 userInDb.email = newEmail;
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"Correo actualizado correctamente para userId {userId}");
+                _logger.Info($"[ConfirmEmailChange] Correo actualizado para ID {userId}");
                 return true;
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado en ConfirmEmailChange para userId {userId}.";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+
+            }, "ConfirmEmailChange");
         }
 
         public Task<int> RegisterGuest()
         {
-            _logger.Info("RegisterGuest invocado.");
-            return Task.FromResult(-1);
+            return ExecuteFaultSafeAsync(async () =>
+            {
+                _logger.Info("[RegisterGuest] Registrando invitado.");
+                return await Task.FromResult(-1);
+
+            }, "RegisterGuest");
         }
 
         public Task RecoverPassword(string email)
         {
-            _logger.Info($"RecoverPassword solicitado para {email}.");
-            return Task.CompletedTask;
+            return ExecuteFaultSafeAsync(async () =>
+            {
+                _logger.Info($"[RecoverPassword] Solicitud para {email}.");
+                await Task.CompletedTask;
+
+            }, "RecoverPassword");
         }
 
         public async Task<FriendDto> FindUserByNickname(string nickname)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Buscando usuario por nickname: {nickname}");
-
                 var user = await _userRepository.GetUserByNicknameAsync(nickname);
-
                 if (user == null)
                 {
-                    var reason = $"Usuario no encontrado con nickname: {nickname}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
+                    throw new UserNotFoundException($"No se encontró usuario con nickname: {nickname}");
                 }
 
                 return new FriendDto
@@ -456,44 +235,14 @@ namespace BusinessLogic.Handlers
                     Nickname = user.nickname,
                     Status = user.status
                 };
-            }
-            catch (FaultException<ServiceFault>)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                var fatalReason = $"Error inesperado buscando usuario por nickname: {nickname}";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
-            }
+            }, "FindUserByNickname");
         }
 
         public async Task<UserDto> GetUserProfile(int userId)
         {
-            try
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"Obteniendo perfil para userId {userId}");
-
-                var user = await _userRepository.GetUserByIdAsync(userId);
-
-                if (user == null)
-                {
-                    var reason = $"Usuario no encontrado para userId: {userId}";
-                    throw new FaultException<ServiceFault>(
-                        new ServiceFault
-                        {
-                            Message = reason
-                        },
-                        new FaultReason(reason)
-                    );
-                }
+                var user = await GetUserOrThrow(userId);
 
                 return new UserDto
                 {
@@ -506,23 +255,94 @@ namespace BusinessLogic.Handlers
                     AvatarId = user.id_avatar,
                     AvatarUrl = user.Avatar?.path
                 };
-            }
-            catch (FaultException<ServiceFault>)
+
+            }, "GetUserProfile");
+        }
+
+        private async Task<User> GetUserOrThrow(int userId)
+        {
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null)
             {
-                throw;
+                throw new UserNotFoundException($"El usuario con ID {userId} no existe.");
+            }
+            return user;
+        }
+
+        private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
+        {
+            try
+            {
+                await action();
             }
             catch (Exception ex)
             {
-                var fatalReason = $"Error inesperado obteniendo perfil para userId: {userId}";
-                _logger.Fatal(fatalReason, ex);
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        Message = fatalReason
-                    },
-                    new FaultReason(fatalReason)
-                );
+                HandleException(ex, operationName);
             }
+        }
+
+        private async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string operationName)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception ex)
+            {
+                HandleException(ex, operationName);
+                return default;
+            }
+        }
+
+        private void HandleException(Exception ex, string operationName)
+        {
+            if (ex is FaultException<ServiceFault>)
+                throw ex;
+
+            string errorCode;
+            string clientMessage;
+
+            switch (ex)
+            {
+                case UserNotFoundException _:
+                    errorCode = "USER_NOT_FOUND";
+                    clientMessage = "Usuario no encontrado.";
+                    _logger.Warn($"[{operationName}] {ex.Message}");
+                    break;
+
+                case UserAlreadyExistsException _:
+                    errorCode = "USER_DUPLICATE";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Conflicto de datos: {ex.Message}");
+                    break;
+
+                case VerificationException _:
+                    errorCode = "USER_VERIFICATION_ERROR";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Error de verificación: {ex.Message}");
+                    break;
+
+                case ArgumentException _:
+                    errorCode = "USER_BAD_REQUEST";
+                    clientMessage = "Datos de entrada inválidos o incompletos.";
+                    _logger.Error($"[{operationName}] Validación fallida: {ex.Message}");
+                    break;
+
+                default:
+                    errorCode = "USER_INTERNAL_ERROR";
+                    clientMessage = "Error interno procesando la solicitud de usuario.";
+                    _logger.Fatal($"[{operationName}] Error crítico: {ex}", ex);
+                    break;
+            }
+
+            throw new FaultException<ServiceFault>(
+                new ServiceFault
+                {
+                    ErrorCode = errorCode,
+                    Message = clientMessage
+                },
+                new FaultReason(clientMessage)
+            );
         }
     }
 }

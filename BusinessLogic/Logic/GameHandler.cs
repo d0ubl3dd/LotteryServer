@@ -18,13 +18,16 @@ namespace BusinessLogic.Handlers
 
         public GameHandler(LobbyManager lobbyManager)
         {
-            _lobbyManager = lobbyManager;
+            _lobbyManager = lobbyManager ?? throw new ArgumentNullException(nameof(lobbyManager));
         }
 
         public async Task StartGame(User hostUser, GameSettingsDto settings)
         {
             await ExecuteFaultSafeAsync(async () =>
             {
+                if (hostUser == null) throw new ArgumentNullException(nameof(hostUser));
+                if (settings == null) throw new ArgumentNullException(nameof(settings));
+
                 _logger.Info($"[StartGame] Host {hostUser.nickname} intenta iniciar partida.");
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
@@ -37,7 +40,7 @@ namespace BusinessLogic.Handlers
 
                 lobby.StartLobbyGame(settings);
 
-                _logger.Info($"[StartGame] Juego iniciado por {hostUser.nickname}.");
+                _logger.Info($"[StartGame] Juego iniciado exitosamente por {hostUser.nickname}.");
 
             }, "StartGame");
         }
@@ -46,49 +49,58 @@ namespace BusinessLogic.Handlers
         {
             await ExecuteFaultSafeAsync(async () =>
             {
+                if (hostUser == null) throw new ArgumentNullException(nameof(hostUser));
+
                 _logger.Info($"[UpdateGameSettings] Host {hostUser.nickname} intenta actualizar configuración.");
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
 
                 if (lobby == null)
-                    throw new LobbyNotFoundException("No se encontró un lobby donde seas el host.");
+                    throw new LobbyNotFoundException("No se encontró el lobby para editar.");
 
                 if (lobby.IsGameInProgress)
-                    throw new GameAlreadyRunningException("No se puede cambiar la configuración mientras el juego está en curso.");
+                    throw new GameAlreadyRunningException("No se puede cambiar la configuración durante una partida.");
 
-                _logger.Info($"[UpdateGameSettings] Configuración actualizada por {hostUser.nickname}.");
+
+                _logger.Info($"[UpdateGameSettings] Configuración actualizada.");
 
             }, "UpdateGameSettings");
         }
 
-        public Task GetScoreboard()
+        public async Task GetScoreboard()
         {
-            _logger.Info("[GetScoreboard] Scoreboard solicitado.");
-            return Task.CompletedTask;
-        }
+            await ExecuteFaultSafeAsync(async () =>
+            {
+                _logger.Info("[GetScoreboard] Scoreboard solicitado.");
 
+                await Task.CompletedTask;
+
+            }, "GetScoreboard");
+        }
+        /*
         public async Task DeclareWin(int userId)
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[DeclareWin] Usuario {userId} reclama victoria.");
+                _logger.Info($"[DeclareWin] Usuario {userId} canta victoria (¡BUENAS!).");
 
-                // 1. Buscar el lobby del usuario
-                // Lógica para validar si realmente ganó (revisar cartón vs cartas salidas)
-                // Si ganó -> Notificar a todos
-                // Si no ganó -> throw new InvalidDeclarationException(...)
+                Lobby lobby = _lobbyManager.FindLobbyByPlayerId(userId);
 
-                // Ejemplo simplificado:
-                Lobby lobby = _lobbyManager.FindLobbyByHostId(userId);
-                if (lobby == null) throw new LobbyNotFoundException("No estás en un lobby.");
+                if (lobby == null)
+                    throw new LobbyNotFoundException("No estás en una partida activa.");
 
-                // ... Lógica de validación ...
+                bool esVictoriaValida = lobby.ValidateWinCondition(userId);
 
-                // Si es válido, avisar a los clientes:
+                if (!esVictoriaValida)
+                {
+                    throw new InvalidGameActionException("Tu tabla no cumple las condiciones para ganar.");
+                }
+
                 lobby.NotifyGameWin(userId);
+                _logger.Info($"[DeclareWin] Victoria validada para {userId}.");
 
             }, "DeclareWin");
-        }
+        }*/
 
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
@@ -113,38 +125,44 @@ namespace BusinessLogic.Handlers
             switch (ex)
             {
                 case LobbyNotFoundException _:
-                    errorCode = "LOBBY_NOT_FOUND";
+                    errorCode = "GAME_LOBBY_NOT_FOUND";
                     clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    _logger.Warn($"[{operationName}] Lobby no encontrado.");
                     break;
 
                 case GameAlreadyRunningException _:
-                    errorCode = "GAME_ALREADY_RUNNING";
+                    errorCode = "GAME_ALREADY_ACTIVE";
                     clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    _logger.Warn($"[{operationName}] Intento de modificar juego activo.");
                     break;
 
-                case GameException _:
-                    errorCode = "GAME_ERROR";
+                case InvalidGameActionException _:
+                    errorCode = "GAME_ACTION_INVALID";
                     clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] {clientMessage}");
+                    _logger.Warn($"[{operationName}] Acción de juego inválida: {ex.Message}");
+                    break;
+
+                case ArgumentNullException _:
+                    errorCode = "GAME_BAD_REQUEST";
+                    clientMessage = "Datos de partida incompletos.";
+                    _logger.Error($"[{operationName}] Argumento nulo.");
                     break;
 
                 default:
-                    errorCode = "GAME_500";
-                    clientMessage = "Ha ocurrido un error interno en el servidor.";
-
+                    errorCode = "GAME_INTERNAL_ERROR";
+                    clientMessage = "Error interno del servidor de juego.";
                     _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
                     break;
             }
 
-            var fault = new ServiceFault
-            {
-                ErrorCode = errorCode,
-                Message = clientMessage
-            };
-
-            throw new FaultException<ServiceFault>(fault, new FaultReason(clientMessage));
+            throw new FaultException<ServiceFault>(
+                new ServiceFault
+                {
+                    ErrorCode = errorCode,
+                    Message = clientMessage
+                },
+                new FaultReason(clientMessage)
+            );
         }
     }
 }

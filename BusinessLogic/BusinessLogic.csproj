@@ -59,9 +59,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Exceptions\AuthException.cs" />
+    <Compile Include="Exceptions\ChatException.cs" />
     <Compile Include="Exceptions\FriendshipException.cs" />
     <Compile Include="Exceptions\GameException.cs" />
     <Compile Include="Exceptions\LobbyException.cs" />
+    <Compile Include="Exceptions\SessionException.cs" />
+    <Compile Include="Exceptions\UserManagementException.cs" />
     <Compile Include="GlobalErrorHandler.cs" />
     <Compile Include="ListExtensions.cs" />
     <Compile Include="Logging\LoggerService.cs" />

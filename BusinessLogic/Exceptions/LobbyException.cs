@@ -16,4 +16,14 @@ namespace BusinessLogic.Exceptions
     {
         public UserAlreadyInLobbyException(string message) : base(message) { }
     }
+
+    public class LobbyFullException : LobbyException
+    {
+        public LobbyFullException(string message) : base(message) { }
+    }
+
+    public class LobbyActionNotAllowedException : LobbyException
+    {
+        public LobbyActionNotAllowedException(string message) : base(message) { }
+    }
 }
