@@ -17,6 +17,11 @@ namespace BusinessLogic.Logging
             _logger.Info(message);
         }
 
+        public void Warn(string message)
+        {
+            _logger.Warn(message);
+        }
+
         public void Error(string message, Exception ex = null)
         {
             _logger.Error(message, ex);
