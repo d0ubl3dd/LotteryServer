@@ -1,5 +1,5 @@
 ﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Logic;
+using BusinessLogic.Logic; // Para PasswordHasher
 using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
@@ -223,8 +223,12 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (string.IsNullOrWhiteSpace(nickname))
+                    throw new ArgumentException("El nickname a buscar no puede estar vacío.");
+
                 var user = await _userRepository.GetUserByNicknameAsync(nickname);
-                if (user == null)
+
+                if (user == null || !string.Equals(user.nickname, nickname, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new UserNotFoundException($"No se encontró usuario con nickname: {nickname}");
                 }
@@ -235,6 +239,7 @@ namespace BusinessLogic.Handlers
                     Nickname = user.nickname,
                     Status = user.status
                 };
+
             }, "FindUserByNickname");
         }
 
@@ -259,6 +264,8 @@ namespace BusinessLogic.Handlers
             }, "GetUserProfile");
         }
 
+        // --- Helpers ---
+
         private async Task<User> GetUserOrThrow(int userId)
         {
             var user = await _userRepository.GetUserByIdAsync(userId);
@@ -268,6 +275,8 @@ namespace BusinessLogic.Handlers
             }
             return user;
         }
+
+        // --- Wrapper Seguro ---
 
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
@@ -313,24 +322,24 @@ namespace BusinessLogic.Handlers
                 case UserAlreadyExistsException _:
                     errorCode = "USER_DUPLICATE";
                     clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Conflicto de datos: {ex.Message}");
+                    _logger.Warn($"[{operationName}] Conflicto: {ex.Message}");
                     break;
 
                 case VerificationException _:
                     errorCode = "USER_VERIFICATION_ERROR";
                     clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Error de verificación: {ex.Message}");
+                    _logger.Warn($"[{operationName}] Verificación fallida: {ex.Message}");
                     break;
 
                 case ArgumentException _:
                     errorCode = "USER_BAD_REQUEST";
-                    clientMessage = "Datos de entrada inválidos o incompletos.";
-                    _logger.Error($"[{operationName}] Validación fallida: {ex.Message}");
+                    clientMessage = "Datos inválidos.";
+                    _logger.Error($"[{operationName}] Args: {ex.Message}");
                     break;
 
                 default:
                     errorCode = "USER_INTERNAL_ERROR";
-                    clientMessage = "Error interno procesando la solicitud de usuario.";
+                    clientMessage = "Error interno del servidor.";
                     _logger.Fatal($"[{operationName}] Error crítico: {ex}", ex);
                     break;
             }

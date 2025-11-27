@@ -152,6 +152,12 @@ namespace BusinessLogic.Logic
 
             switch (ex)
             {
+                case LobbyActionNotAllowedException _:
+                    errorCode = "LOBBY_ACTION_DENIED";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Acción denegada: {clientMessage}");
+                    break;
+
                 case LobbyNotFoundException _:
                     errorCode = "LOBBY_NOT_FOUND";
                     clientMessage = "El código ingresado no corresponde a ningún lobby activo.";

@@ -32,6 +32,7 @@ namespace Contracts.Services.Users
         Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData);
 
         [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
         Task<FriendDto> FindUserByNickname(string nickname);
 
         [OperationContract]
