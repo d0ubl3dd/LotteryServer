@@ -152,6 +152,12 @@ namespace BusinessLogic.Logic
 
             switch (ex)
             {
+                case LobbyNotFoundException _:
+                    errorCode = "LOBBY_NOT_FOUND";
+                    clientMessage = "El código ingresado no corresponde a ningún lobby activo.";
+                    _logger.Warn($"[{operationName}] Intento de unión a lobby inexistente.");
+                    break;
+
                 case UserAlreadyInLobbyException _:
                     errorCode = "LOBBY_USER_ALREADY_IN";
                     clientMessage = ex.Message;
@@ -164,6 +170,12 @@ namespace BusinessLogic.Logic
                     _logger.Warn($"[{operationName}] Usuario offline.");
                     break;
 
+                case LobbyFullException _:
+                    errorCode = "LOBBY_FULL";
+                    clientMessage = "El lobby está lleno.";
+                    _logger.Warn($"[{operationName}] Lobby lleno.");
+                    break;
+
                 case LobbyException _:
                     errorCode = "LOBBY_ERROR";
                     clientMessage = ex.Message;
@@ -174,6 +186,11 @@ namespace BusinessLogic.Logic
                     errorCode = "LOBBY_BAD_REQUEST";
                     clientMessage = "Datos de solicitud inválidos.";
                     _logger.Error($"[{operationName}] Argumento inválido: {ex.Message}");
+                    break;
+
+                case ClientNotFoundException _:
+                    errorCode = "LOBBY_SESSION_ERROR";
+                    clientMessage = "Error de sesión.";
                     break;
 
                 default:
