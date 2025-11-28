@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Exceptions; // Asumo que crearás estas excepciones o usas las existentes
+﻿using BusinessLogic.Exceptions;
 using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
@@ -28,7 +28,14 @@ namespace BusinessLogic.Handlers
                 _logger.Info($"[LoginUser] Intento de login para: {userName}");
 
                 User foundUser = await _userDAO.GetUserByNicknameAsync(userName);
-                var validationResult = LoginValidator.ValidateLoginAttempt(userName, password, foundUser);
+
+                bool isBanned = false;
+                if (foundUser != null)
+                {
+                    isBanned = await _userDAO.IsUserBannedAsync(foundUser.id_user);
+                }
+
+                var validationResult = LoginValidator.ValidateLoginAttempt(userName, password, foundUser, isBanned);
 
                 if (validationResult == LoginValidationResult.Success)
                 {
@@ -37,12 +44,9 @@ namespace BusinessLogic.Handlers
                 }
                 else
                 {
-                    // Manejamos la lógica de fallo (contadores, bloqueo) antes de lanzar la excepción
                     await HandleFailedLogin(foundUser, validationResult);
-
-                    // Lanzamos la excepción correspondiente para que HandleException la procese
                     ThrowLoginException(validationResult);
-                    return null; // Este código es inalcanzable, pero necesario para el compilador
+                    return null;
                 }
 
             }, "LoginUser");
@@ -74,8 +78,6 @@ namespace BusinessLogic.Handlers
             }, "LogoutUser");
         }
 
-        // --- Métodos Auxiliares de Lógica de Negocio ---
-
         private async Task HandleSuccessfulLogin(User foundUser)
         {
             var userToUpdate = await _userDAO.GetUserByIdAsync(foundUser.id_user);
@@ -106,7 +108,6 @@ namespace BusinessLogic.Handlers
                         _logger.Warn($"[LoginUser] La cuenta de {userToUpdate.nickname} ha sido BLOQUEADA.");
                     }
 
-                    // Guardamos el intento fallido. Si esto falla, el wrapper atrapará la DBException
                     await _userDAO.SaveChangesAsync();
                 }
             }
@@ -118,10 +119,16 @@ namespace BusinessLogic.Handlers
             {
                 case LoginValidationResult.UserNotFound:
                     throw new UserNotFoundException("El usuario no existe.");
+
                 case LoginValidationResult.IncorrectPassword:
                     throw new IncorrectPasswordException("Contraseña incorrecta.");
+
                 case LoginValidationResult.AccountLocked:
                     throw new AccountLockedException("Tu cuenta está bloqueada por demasiados intentos.");
+
+                case LoginValidationResult.AccountBanned:
+                    throw new AccountBannedException("Tu cuenta ha sido suspendida.");
+
                 default:
                     throw new InvalidOperationException("Error de validación desconocido.");
             }
@@ -178,6 +185,12 @@ namespace BusinessLogic.Handlers
                     errorCode = "AUTH_ACCOUNT_LOCKED";
                     clientMessage = ex.Message;
                     _logger.Warn($"[{operationName}] Cuenta bloqueada.");
+                    break;
+
+                case AccountBannedException _:
+                    errorCode = "AUTH_ACCOUNT_BANNED";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Cuenta baneada intentó ingresar.");
                     break;
 
                 case ArgumentNullException _:

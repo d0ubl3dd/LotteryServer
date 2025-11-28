@@ -59,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Exceptions\AccountBannedException.cs" />
     <Compile Include="Exceptions\AuthException.cs" />
     <Compile Include="Exceptions\ChatException.cs" />
     <Compile Include="Exceptions\FriendshipException.cs" />
@@ -69,6 +70,7 @@
     <Compile Include="GlobalErrorHandler.cs" />
     <Compile Include="ListExtensions.cs" />
     <Compile Include="Logging\LoggerService.cs" />
+    <Compile Include="Logic\AdminHandler.cs" />
     <Compile Include="Logic\AuthenticationHandler.cs" />
     <Compile Include="Logic\ChatHandler.cs" />
     <Compile Include="Logic\FriendHandler.cs" />
