@@ -11,7 +11,5 @@ namespace DataAccess.DAOs
         Task<int> SaveChangesAsync();
         Task<User> GetUserByNicknameAsync(string nickname);
         Task<User> GetUserByIdAsync(int id);
-        Task<bool> IsUserBannedAsync(int userId);
-        Task BanUserAsync(Banned banInfo);
     }
 }

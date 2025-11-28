@@ -29,13 +29,7 @@ namespace BusinessLogic.Handlers
 
                 User foundUser = await _userDAO.GetUserByNicknameAsync(userName);
 
-                bool isBanned = false;
-                if (foundUser != null)
-                {
-                    isBanned = await _userDAO.IsUserBannedAsync(foundUser.id_user);
-                }
-
-                var validationResult = LoginValidator.ValidateLoginAttempt(userName, password, foundUser, isBanned);
+                var validationResult = LoginValidator.ValidateLoginAttempt(userName, password, foundUser);
 
                 if (validationResult == LoginValidationResult.Success)
                 {
@@ -185,12 +179,6 @@ namespace BusinessLogic.Handlers
                     errorCode = "AUTH_ACCOUNT_LOCKED";
                     clientMessage = ex.Message;
                     _logger.Warn($"[{operationName}] Cuenta bloqueada.");
-                    break;
-
-                case AccountBannedException _:
-                    errorCode = "AUTH_ACCOUNT_BANNED";
-                    clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Cuenta baneada intentó ingresar.");
                     break;
 
                 case ArgumentNullException _:

@@ -42,7 +42,6 @@ namespace LotteryServer.Tests.Handlers
             };
 
             _mockUserDao.Setup(dao => dao.GetUserByNicknameAsync(username)).ReturnsAsync(dbUser);
-            _mockUserDao.Setup(dao => dao.IsUserBannedAsync(dbUser.id_user)).ReturnsAsync(false);
             _mockUserDao.Setup(dao => dao.GetUserByIdAsync(dbUser.id_user)).ReturnsAsync(dbUser);
 
             User result = await _handler.LoginUser(username, password);
@@ -86,7 +85,6 @@ namespace LotteryServer.Tests.Handlers
             };
 
             _mockUserDao.Setup(dao => dao.GetUserByNicknameAsync(username)).ReturnsAsync(dbUser);
-            _mockUserDao.Setup(dao => dao.IsUserBannedAsync(dbUser.id_user)).ReturnsAsync(false);
             _mockUserDao.Setup(dao => dao.GetUserByIdAsync(dbUser.id_user)).ReturnsAsync(dbUser);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
@@ -109,28 +107,11 @@ namespace LotteryServer.Tests.Handlers
             };
 
             _mockUserDao.Setup(dao => dao.GetUserByNicknameAsync(username)).ReturnsAsync(dbUser);
-            _mockUserDao.Setup(dao => dao.IsUserBannedAsync(dbUser.id_user)).ReturnsAsync(false);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
                 _handler.LoginUser(username, "anyPass"));
 
             Assert.Equal("AUTH_ACCOUNT_LOCKED", ex.Detail.ErrorCode);
-        }
-
-        [Fact]
-        public async Task LoginUser_AccountBanned_ThrowsFault_AccountBanned()
-        {
-            string username = "Baneado";
-            var dbUser = new User { id_user = 3, nickname = username };
-
-            _mockUserDao.Setup(dao => dao.GetUserByNicknameAsync(username)).ReturnsAsync(dbUser);
-
-            _mockUserDao.Setup(dao => dao.IsUserBannedAsync(dbUser.id_user)).ReturnsAsync(true);
-
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.LoginUser(username, "anyPass"));
-
-            Assert.Equal("AUTH_ACCOUNT_BANNED", ex.Detail.ErrorCode);
         }
     }
 }

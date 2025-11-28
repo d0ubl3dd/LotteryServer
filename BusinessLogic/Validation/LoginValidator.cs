@@ -18,7 +18,7 @@ namespace BusinessLogic.Validation
         /// <param name="password">The password provided by the user.</param>
         /// <param name="foundUser">The user entity retrieved from the database.</param>
         /// <returns>A LoginValidationResult enum indicating the outcome of the validation.</returns>
-        public static LoginValidationResult ValidateLoginAttempt(string userName, string password, User foundUser, bool isUserBanned)
+        public static LoginValidationResult ValidateLoginAttempt(string userName, string password, User foundUser)
         {
             if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password) || userName.Length < MIN_INPUT_LENGTH)
             {
@@ -28,11 +28,6 @@ namespace BusinessLogic.Validation
             if (foundUser == null)
             {
                 return LoginValidationResult.UserNotFound;
-            }
-
-            if (isUserBanned)
-            {
-                return LoginValidationResult.AccountBanned;
             }
 
             if (foundUser.isLocked == true)

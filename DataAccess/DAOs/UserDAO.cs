@@ -47,16 +47,5 @@ namespace DataAccess.DAOs
         {
             return await _context.User.FindAsync(id);
         }
-
-        public async Task<bool> IsUserBannedAsync(int userId)
-        {
-            return await _context.Banned.AnyAsync(b => b.id_user == userId && b.unbanned_at == null);
-        }
-
-        public async Task BanUserAsync(Banned banInfo)
-        {
-            _context.Banned.Add(banInfo);
-            await _context.SaveChangesAsync();
-        }
     }
 }

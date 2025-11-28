@@ -14,7 +14,7 @@ namespace LotteryServer.Tests.Validation
             string pass = "password123";
             User dbUser = new User();
 
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser, false);
+            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser);
 
             Assert.Equal(LoginValidationResult.InvalidInput, result);
         }
@@ -26,7 +26,7 @@ namespace LotteryServer.Tests.Validation
             string pass = "password123";
             User dbUser = new User();
 
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser, false);
+            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser);
 
             Assert.Equal(LoginValidationResult.InvalidInput, result);
         }
@@ -38,22 +38,9 @@ namespace LotteryServer.Tests.Validation
             string pass = "password123";
             User dbUser = null;
 
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser, false);
+            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser);
 
             Assert.Equal(LoginValidationResult.UserNotFound, result);
-        }
-
-        [Fact]
-        public void ValidateLoginAttempt_UserBanned_ReturnsAccountBanned()
-        {
-            string user = "bannedUser";
-            string pass = "password123";
-            User dbUser = new User();
-            bool isBanned = true;
-
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser, isBanned);
-
-            Assert.Equal(LoginValidationResult.AccountBanned, result);
         }
 
         [Fact]
@@ -63,7 +50,7 @@ namespace LotteryServer.Tests.Validation
             string pass = "password123";
             User dbUser = new User { isLocked = true };
 
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser, false);
+            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser);
 
             Assert.Equal(LoginValidationResult.AccountLocked, result);
         }
@@ -83,7 +70,7 @@ namespace LotteryServer.Tests.Validation
                 passwordSalt = passwordSalt
             };
 
-            var result = LoginValidator.ValidateLoginAttempt("validUser", password, dbUser, false);
+            var result = LoginValidator.ValidateLoginAttempt("validUser", password, dbUser);
 
             Assert.Equal(LoginValidationResult.Success, result);
         }
@@ -104,7 +91,7 @@ namespace LotteryServer.Tests.Validation
                 passwordSalt = passwordSalt
             };
 
-            var result = LoginValidator.ValidateLoginAttempt("validUser", wrongPassword, dbUser, false);
+            var result = LoginValidator.ValidateLoginAttempt("validUser", wrongPassword, dbUser);
 
             Assert.Equal(LoginValidationResult.IncorrectPassword, result);
         }

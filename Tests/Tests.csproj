@@ -97,7 +97,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Class1.cs" />
-    <Compile Include="Handlers\AdminHandlerTests.cs" />
     <Compile Include="Handlers\AuthenticationHandlerTests.cs" />
     <Compile Include="Handlers\ChatHandlerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
