@@ -12,7 +12,7 @@ using System.ServiceModel;
 
 namespace BusinessLogic.Logic
 {
-    public class GlobalSessionManager
+    public class GlobalSessionManager : ISessionManager
     {
         private static readonly Lazy<GlobalSessionManager> _instance =
             new Lazy<GlobalSessionManager>(() => new GlobalSessionManager());

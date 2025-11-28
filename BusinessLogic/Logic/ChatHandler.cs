@@ -10,9 +10,9 @@ namespace BusinessLogic.Logic
     public class ChatHandler
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(ChatHandler));
-        private readonly GlobalSessionManager _sessionManager;
+        private readonly ISessionManager _sessionManager;
 
-        public ChatHandler(GlobalSessionManager sessionManager)
+        public ChatHandler(ISessionManager sessionManager)
         {
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
         }

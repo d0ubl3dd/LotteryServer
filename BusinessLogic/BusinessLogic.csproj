@@ -76,6 +76,7 @@
     <Compile Include="Logic\FriendHandler.cs" />
     <Compile Include="Logic\GameHandler.cs" />
     <Compile Include="Logic\GlobalSessionManager.cs" />
+    <Compile Include="Logic\ISessionManager.cs" />
     <Compile Include="Logic\LobbyHandler.cs" />
     <Compile Include="Logic\LobbyManager.cs" />
     <Compile Include="Logic\UserHandler.cs" />

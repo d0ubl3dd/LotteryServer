@@ -5,18 +5,15 @@ using BusinessLogic.Exceptions;
 using System.ServiceModel;
 using DataAccess.DAOs;
 using DataAccess;
-using log4net; // Necesario para el Logger
+using log4net;
 
 namespace BusinessLogic.Logic
 {
-    // CAMBIO: public para poder probarla
     public class AdminHandler
     {
-        // CAMBIO: Declaramos las dependencias
         private static readonly ILog _logger = LogManager.GetLogger(typeof(AdminHandler));
         private readonly IUserDao _userDAO;
 
-        // CAMBIO: Constructor para inyección de dependencias
         public AdminHandler(IUserDao userDAO)
         {
             _userDAO = userDAO ?? throw new ArgumentNullException(nameof(userDAO));
@@ -26,29 +23,24 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                // 1. Validar que el Admin existe
                 var admin = await _userDAO.GetUserByIdAsync(adminId);
                 if (admin == null)
                 {
                     throw new UserNotFoundException("El administrador no existe.");
                 }
 
-                // 2. Validar que el usuario a banear existe
                 var targetUser = await _userDAO.GetUserByIdAsync(targetUserId);
                 if (targetUser == null)
                 {
                     throw new UserNotFoundException("El usuario a banear no existe.");
                 }
 
-                // 3. Verificar si YA está baneado
                 bool isAlreadyBanned = await _userDAO.IsUserBannedAsync(targetUserId);
                 if (isAlreadyBanned)
                 {
-                    // Convertimos la InvalidOperation en una excepción controlada si prefieres
                     throw new InvalidOperationException("El usuario ya se encuentra baneado.");
                 }
 
-                // 4. Crear el registro de Baneo
                 var banInfo = new Banned
                 {
                     id_user = targetUserId,
@@ -58,10 +50,8 @@ namespace BusinessLogic.Logic
                     unbanned_at = null
                 };
 
-                // 5. Guardar en BD
                 await _userDAO.BanUserAsync(banInfo);
 
-                // 6. Forzar desconexión
                 targetUser.status = "Offline";
                 await _userDAO.SaveChangesAsync();
 
@@ -69,8 +59,6 @@ namespace BusinessLogic.Logic
 
             }, "BanUser");
         }
-
-        // --- MÉTODOS DE AYUDA PARA MANEJO DE ERRORES (Copiados de tus otros Handlers) ---
 
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
