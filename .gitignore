@@ -92,7 +92,3 @@ node_modules/
 
 # Optional: track only .user files in .vs folders
 !**/.vs/*.user
-
-# Archivos App.config que no quiero subir
-DataAccess/App.config
-Host/App.config
