@@ -96,10 +96,3 @@ node_modules/
 # Archivos App.config que no quiero subir
 DataAccess/App.config
 Host/App.config
-
-# Ignorar TODOS los modelos EDMX y sus generados
-DataAccess/*.edmx
-DataAccess/*.edmx.diagram
-DataAccess/*.tt
-DataAccess/*Designer.cs
-DataAccess/*Context.cs
