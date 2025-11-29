@@ -10,19 +10,23 @@ namespace BusinessLogic.Validation
 {
     public static class LoginValidator
     {
-        private const int MIN_INPUT_LENGTH = 4;
+        private const int MIN_NICKNAME_LENGTH = 4;
 
-        /// <summary>
-        /// </summary>
-        /// <param name="userName">The username provided by the user.</param>
-        /// <param name="password">The password provided by the user.</param>
-        /// <param name="foundUser">The user entity retrieved from the database.</param>
-        /// <returns>A LoginValidationResult enum indicating the outcome of the validation.</returns>
         public static LoginValidationResult ValidateLoginAttempt(string userName, string password, User foundUser)
         {
-            if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password) || userName.Length < MIN_INPUT_LENGTH)
+            if (string.IsNullOrWhiteSpace(userName))
             {
-                return LoginValidationResult.InvalidInput;
+                return LoginValidationResult.EmptyUserName;
+            }
+
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                return LoginValidationResult.EmptyPassword;
+            }
+
+            if (userName.Length < MIN_NICKNAME_LENGTH)
+            {
+                return LoginValidationResult.NicknameTooShort;
             }
 
             if (foundUser == null)

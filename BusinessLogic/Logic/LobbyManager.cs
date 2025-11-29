@@ -120,7 +120,10 @@ namespace BusinessLogic.Logic
                 throw new ClientNotFoundException("El jugador objetivo no se encuentra en tu lobby.");
             }
 
+            lobby.BanPlayer(targetPlayerId);
+
             lobby.RemovePlayer(playerToKick);
+
             lobby.BroadcastKicked(targetPlayerId);
 
             try
@@ -132,7 +135,7 @@ namespace BusinessLogic.Logic
                 _logger.Warn($"[LobbyManager] No se pudo enviar notificación de kick al usuario {targetPlayerId}: {ex.Message}");
             }
 
-            _logger.Info($"[LobbyManager] Jugador {targetPlayerId} expulsado del lobby {lobby.LobbyCode}");
+            _logger.Info($"[LobbyManager] Jugador {targetPlayerId} expulsado y baneado del lobby {lobby.LobbyCode}");
         }
 
         public Lobby FindLobbyByHostId(int hostUserId)

@@ -120,9 +120,6 @@ namespace BusinessLogic.Handlers
                 case LoginValidationResult.AccountLocked:
                     throw new AccountLockedException("Tu cuenta está bloqueada por demasiados intentos.");
 
-                case LoginValidationResult.AccountBanned:
-                    throw new AccountBannedException("Tu cuenta ha sido suspendida.");
-
                 default:
                     throw new InvalidOperationException("Error de validación desconocido.");
             }

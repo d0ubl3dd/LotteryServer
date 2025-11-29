@@ -3,6 +3,7 @@ using BusinessLogic.Models;
 using Contracts.Callbacks;
 using Contracts.Faults;
 using DataAccess;
+using DataAccess.DAOs;
 using log4net;
 using System;
 using System.Collections.Concurrent;
@@ -23,8 +24,11 @@ namespace BusinessLogic.Logic
         private readonly ConcurrentDictionary<int, PlayerClient> _onlineUsers =
             new ConcurrentDictionary<int, PlayerClient>();
 
+        private readonly IUserDao _userDao;
+
         private GlobalSessionManager()
         {
+            _userDao = new UserDao();
             _logger.Info("GlobalSessionManager inicializado.");
         }
 
@@ -32,15 +36,28 @@ namespace BusinessLogic.Logic
         {
             ExecuteFaultSafe(() =>
             {
-                if (user == null) throw new ArgumentNullException(nameof(user), "El usuario es nulo.");
-                if (callback == null) throw new ArgumentNullException(nameof(callback), "El callback es nulo.");
+                if (user == null) throw new ArgumentNullException(nameof(user));
+                if (callback == null) throw new ArgumentNullException(nameof(callback));
 
                 var client = new PlayerClient(user, callback);
-
                 _onlineUsers[user.id_user] = client;
+
+                try
+                {
+                    _userDao.UpdateStatusAsync(user.id_user, "Online").GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"[RegisterClient] No se pudo actualizar status en BD para {user.id_user}: {ex.Message}");
+                }
 
                 _logger.Info($"[RegisterClient] Usuario registrado: {user.id_user} - {user.nickname}");
 
+                if (callback is ICommunicationObject channel)
+                {
+                    channel.Closed += (s, e) => AutoDisconnect(user.id_user);
+                    channel.Faulted += (s, e) => AutoDisconnect(user.id_user);
+                }
             }, "RegisterClient");
         }
 
@@ -65,13 +82,42 @@ namespace BusinessLogic.Logic
             {
                 if (!_onlineUsers.TryRemove(userId, out var client))
                 {
-                    throw new ClientNotFoundException($"No se pudo desconectar al usuario {userId} porque no estaba registrado.");
+                    _logger.Warn($"[UnregisterClient] Usuario {userId} ya estaba desconectado. No se toma acción.");
+                    return null;
                 }
 
-                _logger.Info($"[UnregisterClient] Usuario eliminado de memoria: {userId}");
+                try
+                {
+                    _userDao.UpdateStatusAsync(userId, "Offline").GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn($"[UnregisterClient] No se pudo actualizar status en BD para {userId}: {ex.Message}");
+                }
+
+                _logger.Info($"[UnregisterClient] Usuario desconectado y marcado como Offline: {userId}");
                 return client;
 
             }, "UnregisterClient");
+        }
+
+        private void AutoDisconnect(int userId)
+        {
+            try
+            {
+                if (!_onlineUsers.ContainsKey(userId))
+                {
+                    _logger.Warn($"[AutoDisconnect] Usuario {userId} ya estaba desconectado. Ignorando evento duplicado.");
+                    return;
+                }
+
+                _logger.Warn($"[AutoDisconnect] Detectada desconexión para userId={userId}. Procediendo a limpiar sesión.");
+                UnregisterClient(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"[AutoDisconnect] Error al desconectar automáticamente userId={userId}: {ex.Message}");
+            }
         }
 
         public int? GetUserIdFromContext()
@@ -146,7 +192,7 @@ namespace BusinessLogic.Logic
                 case ClientNotFoundException _:
                     errorCode = "SESSION_CLIENT_NOT_FOUND";
                     clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Cliente no encontrado en memoria.");
+                    _logger.Warn($"[{operationName}] Cliente no encontrado.");
                     break;
 
                 case SessionContextException _:

@@ -1,4 +1,5 @@
-﻿using Contracts.Callbacks;
+﻿using BusinessLogic.Logic;
+using Contracts.Callbacks;
 using Contracts.DTOs;
 using System;
 using System.Collections.Generic;
@@ -13,12 +14,21 @@ namespace BusinessLogic.Models
         public string LobbyCode { get; }
         public PlayerClient Host { get; }
         public List<PlayerClient> Players { get; } = new List<PlayerClient>();
+        private HashSet<int> _bannedPlayers = new HashSet<int>();
         public const int MAX_PLAYERS = 4;
 
         public bool IsGameInProgress { get; private set; }
         private Deck _gameDeck;
         private Task _gameLoopTask;
         private CancellationTokenSource _gameCts;
+
+        private readonly HashSet<string> _forbiddenWords = new HashSet<string>
+        {
+            "puto", "puta", "pendejo", "mierda", "verga", "chingar",
+            "idiota", "imbecil"
+        };
+        private readonly Dictionary<int, Dictionary<string, int>> _messageHistory
+        = new Dictionary<int, Dictionary<string, int>>();
 
         public Lobby(string code, PlayerClient host)
         {
@@ -29,6 +39,11 @@ namespace BusinessLogic.Models
 
         public bool AddPlayer(PlayerClient player)
         {
+            if (_bannedPlayers.Contains(player.UserId))
+            {
+                return false;
+            }
+
             if (Players.Count >= MAX_PLAYERS || Players.Any(p => p.UserId == player.UserId))
             {
                 return false;
@@ -67,8 +82,42 @@ namespace BusinessLogic.Models
 
         public void BroadcastChatMessage(string nickname, string message)
         {
+            var sender = Players.FirstOrDefault(p => p.Nickname == nickname);
+            if (sender == null) return;
+
+            int userId = sender.UserId;
+
+            // Crear historial de spam para el usuario si no existe
+            if (!_messageHistory.ContainsKey(userId))
+                _messageHistory[userId] = new Dictionary<string, int>();
+
+            var history = _messageHistory[userId];
+
+            foreach (var word in _forbiddenWords)
+            {
+                if (message.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    LobbyManager.Instance.KickPlayer(Host, userId);
+                    return;
+                }
+            }
+
+            // ==== (2) DETECTAR SPAM ====
+            if (!history.ContainsKey(message))
+                history[message] = 0;
+
+            history[message]++;
+
+            if (history[message] > 10) // más de 10 mensajes iguales
+            {
+                LobbyManager.Instance.KickPlayer(Host, userId);
+                return;
+            }
+
+            // ==== (3) SI TODO OK → ENVIAR MENSAJE ====
             BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
         }
+
 
         public void BroadcastLobbyClosed()
         {
@@ -163,6 +212,11 @@ namespace BusinessLogic.Models
                     BroadcastGameFinished();
                 }
             }
+        }
+
+        public void BanPlayer(int userId)
+        {
+            _bannedPlayers.Add(userId);
         }
 
         // --- Helpers ---

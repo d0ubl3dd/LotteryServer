@@ -1,5 +1,6 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Logic; // Para PasswordHasher
+using BusinessLogic.Validation;
 using Contracts.DTOs;
 using Contracts.Faults;
 using DataAccess;
@@ -29,23 +30,28 @@ namespace BusinessLogic.Handlers
             {
                 _logger.Info($"[RequestVerification] Procesando solicitud para {userData.Email}.");
 
-                if (string.IsNullOrEmpty(userData.Email) ||
-                    string.IsNullOrEmpty(userData.Nickname) ||
-                    string.IsNullOrEmpty(userData.Password))
+                // 1. Convertimos DTO a Entidad temporal para el validador
+                var tempUser = new User
                 {
-                    throw new ArgumentException("Los datos de registro están incompletos.");
+                    nickname = userData.Nickname,
+                    email = userData.Email,
+                    first_name = userData.FirstName,
+                    paternal_last_name = userData.PaternalLastName
+                };
+
+                // 2. Consultamos existencia en BD
+                bool nickExists = await _userRepository.NicknameExistsAsync(userData.Nickname);
+                bool emailExists = await _userRepository.EmailExistsAsync(userData.Email);
+
+                // 3. ¡USAMOS EL VALIDADOR CENTRALIZADO!
+                var validationResult = RegistrationValidator.Validate(tempUser, userData.Password, nickExists, emailExists);
+
+                if (validationResult != RegistrationValidationResult.Success)
+                {
+                    ThrowRegistrationException(validationResult);
                 }
 
-                if (await _userRepository.NicknameExistsAsync(userData.Nickname))
-                {
-                    throw new UserAlreadyExistsException($"El nickname '{userData.Nickname}' ya está en uso.");
-                }
-
-                if (await _userRepository.EmailExistsAsync(userData.Email))
-                {
-                    throw new UserAlreadyExistsException($"El correo '{userData.Email}' ya está registrado.");
-                }
-
+                // 4. Si pasa la validación, enviamos el código
                 bool codeSent = await _verificationHandler.SendVerificationCode(userData.Email);
 
                 if (!codeSent)
@@ -54,7 +60,7 @@ namespace BusinessLogic.Handlers
                 }
 
                 _logger.Info($"[RequestVerification] Código enviado a {userData.Email}");
-                return 1;
+                return 1; // Retorna éxito
 
             }, "RequestUserVerification");
         }
@@ -64,6 +70,9 @@ namespace BusinessLogic.Handlers
             return await ExecuteFaultSafeAsync(async () =>
             {
                 _logger.Info($"[RegisterUser] Registrando: {userData.Nickname}");
+
+                // Opcional: Podrías volver a validar aquí por seguridad, 
+                // pero si el flujo obliga a verificar código antes, asumimos que los datos ya fueron revisados.
 
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -264,8 +273,6 @@ namespace BusinessLogic.Handlers
             }, "GetUserProfile");
         }
 
-        // --- Helpers ---
-
         private async Task<User> GetUserOrThrow(int userId)
         {
             var user = await _userRepository.GetUserByIdAsync(userId);
@@ -274,6 +281,42 @@ namespace BusinessLogic.Handlers
                 throw new UserNotFoundException($"El usuario con ID {userId} no existe.");
             }
             return user;
+        }
+
+        private void ThrowRegistrationException(RegistrationValidationResult result)
+        {
+            switch (result)
+            {
+                case RegistrationValidationResult.EmptyNickname:
+                case RegistrationValidationResult.EmptyEmail:
+                case RegistrationValidationResult.EmptyPassword:
+                case RegistrationValidationResult.EmptyName:
+                    throw new ArgumentException("Todos los campos son obligatorios.");
+
+                case RegistrationValidationResult.InvalidNicknameLength:
+                    throw new ArgumentException($"El nickname debe tener al menos 4 caracteres.");
+
+                case RegistrationValidationResult.InvalidEmailFormat:
+                    throw new ArgumentException("El formato del correo electrónico no es válido.");
+
+                case RegistrationValidationResult.PasswordTooShort:
+                    throw new ArgumentException("La contraseña debe tener al menos 8 caracteres.");
+
+                case RegistrationValidationResult.PasswordNoUpperCase:
+                    throw new ArgumentException("La contraseña debe contener al menos una letra mayúscula.");
+
+                case RegistrationValidationResult.PasswordNoSpecialCharacter:
+                    throw new ArgumentException("La contraseña debe contener al menos un carácter especial.");
+
+                case RegistrationValidationResult.NicknameAlreadyExists:
+                    throw new UserAlreadyExistsException("El nombre de usuario ya está en uso.");
+
+                case RegistrationValidationResult.EmailAlreadyExists:
+                    throw new UserAlreadyExistsException("El correo electrónico ya está registrado.");
+
+                default:
+                    throw new InvalidOperationException("Error de validación desconocido.");
+            }
         }
 
         // --- Wrapper Seguro ---

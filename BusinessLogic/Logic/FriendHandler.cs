@@ -137,6 +137,11 @@ namespace BusinessLogic.Logic
 
                 var users = await _friendshipDao.GetAcceptedFriendsAsync(currentUserId);
 
+                foreach (var u in users)
+                {
+                    _logger.Warn($"[GetFriends] Amigo {u.nickname} status='{u.status}'");
+                }
+
                 return users.Select(u => new FriendDto
                 {
                     FriendId = u.id_user,

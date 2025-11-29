@@ -9,10 +9,11 @@ namespace BusinessLogic.Validation
     public enum LoginValidationResult
     {
         Success,
-        InvalidInput,
+        EmptyUserName,
+        EmptyPassword,
+        NicknameTooShort,
         UserNotFound,
         IncorrectPassword,
-        AccountBanned,
         AccountLocked
     }
 }
