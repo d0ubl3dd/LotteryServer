@@ -97,14 +97,9 @@ node_modules/
 DataAccess/App.config
 Host/App.config
 
-# Archivos de pruebas que no quiero subir
-Tests/Validation/LoginValidatorTests.cs
-
-# Archivos EF que no quiero subir
-DataAccess/LotteryDatabaseModel.Context.cs
-DataAccess/LotteryDatabaseModel.Context.tt
-DataAccess/LotteryDatabaseModel.Designer.cs
-DataAccess/LotteryDatabaseModel.cs
-DataAccess/LotteryDatabaseModel.edmx
-DataAccess/LotteryDatabaseModel.edmx.diagram
-DataAccess/LotteryDatabaseModel.tt
+# Ignorar TODOS los modelos EDMX y sus generados
+DataAccess/*.edmx
+DataAccess/*.edmx.diagram
+DataAccess/*.tt
+DataAccess/*Designer.cs
+DataAccess/*Context.cs
