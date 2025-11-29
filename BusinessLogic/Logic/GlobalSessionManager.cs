@@ -42,15 +42,6 @@ namespace BusinessLogic.Logic
                 var client = new PlayerClient(user, callback);
                 _onlineUsers[user.id_user] = client;
 
-                try
-                {
-                    _userDao.UpdateStatusAsync(user.id_user, "Online").GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warn($"[RegisterClient] No se pudo actualizar status en BD para {user.id_user}: {ex.Message}");
-                }
-
                 _logger.Info($"[RegisterClient] Usuario registrado: {user.id_user} - {user.nickname}");
 
                 if (callback is ICommunicationObject channel)
@@ -84,15 +75,6 @@ namespace BusinessLogic.Logic
                 {
                     _logger.Warn($"[UnregisterClient] Usuario {userId} ya estaba desconectado. No se toma acción.");
                     return null;
-                }
-
-                try
-                {
-                    _userDao.UpdateStatusAsync(userId, "Offline").GetAwaiter().GetResult();
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warn($"[UnregisterClient] No se pudo actualizar status en BD para {userId}: {ex.Message}");
                 }
 
                 _logger.Info($"[UnregisterClient] Usuario desconectado y marcado como Offline: {userId}");
