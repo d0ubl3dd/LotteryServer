@@ -92,3 +92,19 @@ node_modules/
 
 # Optional: track only .user files in .vs folders
 !**/.vs/*.user
+
+# Archivos App.config que no quiero subir
+DataAccess/App.config
+Host/App.config
+
+# Archivos de pruebas que no quiero subir
+Tests/Validation/LoginValidatorTests.cs
+
+# Archivos EF que no quiero subir
+DataAccess/LotteryDatabaseModel.Context.cs
+DataAccess/LotteryDatabaseModel.Context.tt
+DataAccess/LotteryDatabaseModel.Designer.cs
+DataAccess/LotteryDatabaseModel.cs
+DataAccess/LotteryDatabaseModel.edmx
+DataAccess/LotteryDatabaseModel.edmx.diagram
+DataAccess/LotteryDatabaseModel.tt
