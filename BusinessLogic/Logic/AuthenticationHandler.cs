@@ -1,9 +1,8 @@
 ﻿using BusinessLogic.Exceptions;
-using Contracts.DTOs;
+using BusinessLogic.Validation;
 using Contracts.Faults;
 using DataAccess;
 using DataAccess.DAOs;
-using BusinessLogic.Validation;
 using log4net;
 using System;
 using System.ServiceModel;
@@ -57,15 +56,22 @@ namespace BusinessLogic.Handlers
 
                 _logger.Info($"[LogoutUser] Cerrando sesión para {userToLogout.nickname}.");
 
-                var userInDb = await _userDAO.GetUserByIdAsync(userToLogout.id_user);
-
-                if (userInDb == null)
+                if (userToLogout.id_user > 0)
                 {
-                    throw new UserNotFoundException("El usuario a desconectar no se encuentra en la BD.");
-                }
+                    var userInDb = await _userDAO.GetUserByIdAsync(userToLogout.id_user);
 
-                userInDb.status = "Offline";
-                await _userDAO.SaveChangesAsync();
+                    if (userInDb == null)
+                    {
+                        throw new UserNotFoundException("El usuario a desconectar no se encuentra en la BD.");
+                    }
+
+                    userInDb.status = "Offline";
+                    await _userDAO.SaveChangesAsync();
+                }
+                else
+                {
+                    _logger.Info($"[LogoutUser] Usuario invitado {userToLogout.nickname} desconectado (limpieza en memoria).");
+                }
 
                 _logger.Info($"[LogoutUser] Sesión cerrada correctamente.");
 
@@ -124,6 +130,8 @@ namespace BusinessLogic.Handlers
                     throw new InvalidOperationException("Error de validación desconocido.");
             }
         }
+
+        // --- MANEJO DE ERRORES ---
 
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
@@ -199,11 +207,7 @@ namespace BusinessLogic.Handlers
             }
 
             throw new FaultException<ServiceFault>(
-                new ServiceFault
-                {
-                    ErrorCode = errorCode,
-                    Message = clientMessage
-                },
+                new ServiceFault { ErrorCode = errorCode, Message = clientMessage },
                 new FaultReason(clientMessage)
             );
         }

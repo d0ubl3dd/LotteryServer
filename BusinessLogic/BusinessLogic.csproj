@@ -65,6 +65,7 @@
     <Compile Include="Exceptions\ForbiddenWordException.cs" />
     <Compile Include="Exceptions\FriendshipException.cs" />
     <Compile Include="Exceptions\GameException.cs" />
+    <Compile Include="Exceptions\GuestException.cs" />
     <Compile Include="Exceptions\LobbyException.cs" />
     <Compile Include="Exceptions\SessionException.cs" />
     <Compile Include="Exceptions\UserManagementException.cs" />
@@ -76,6 +77,7 @@
     <Compile Include="Logic\FriendHandler.cs" />
     <Compile Include="Logic\GameHandler.cs" />
     <Compile Include="Logic\GlobalSessionManager.cs" />
+    <Compile Include="Logic\GuestHandler.cs" />
     <Compile Include="Logic\ISessionManager.cs" />
     <Compile Include="Logic\LobbyHandler.cs" />
     <Compile Include="Logic\LobbyManager.cs" />

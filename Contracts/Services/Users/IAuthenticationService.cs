@@ -13,6 +13,10 @@ namespace Contracts.Services.Users
         Task<UserDto> LoginUser(string username, string password);
 
         [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
+        Task<UserDto> LoginGuest(string nickname);
+
+        [OperationContract]
         Task LogoutUser();
     }
 }

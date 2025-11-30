@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading.Tasks;
-using System.Web.SessionState;
 
 namespace BusinessLogic
 {
@@ -22,14 +21,15 @@ namespace BusinessLogic
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LotteryService));
 
-        private User currentUser;
-        private readonly AuthenticationHandler authHandler;
-        private readonly UserHandler userHandler;
-        private readonly FriendHandler friendHandler;
-        private readonly LobbyHandler lobbyHandler;
-        private readonly GameHandler gameHandler;
-        private readonly ChatHandler chatHandler;
-        private readonly VerificationHandler verificationHandler;
+        private User _currentUser;
+        private readonly AuthenticationHandler _authHandler;
+        private readonly UserHandler _userHandler;
+        private readonly FriendHandler _friendHandler;
+        private readonly LobbyHandler _lobbyHandler;
+        private readonly GameHandler _gameHandler;
+        private readonly ChatHandler _chatHandler;
+        private readonly VerificationHandler _verificationHandler;
+        private readonly GuestHandler _guestHandler;
 
         public LotteryService()
         {
@@ -40,19 +40,20 @@ namespace BusinessLogic
             var lobbyManagerInstance = LobbyManager.Instance;
             var sessionManagerInstance = GlobalSessionManager.Instance;
 
-            this.verificationHandler = new VerificationHandler(emailService);
-            this.lobbyHandler = new LobbyHandler(lobbyManagerInstance);
-            this.gameHandler = new GameHandler(lobbyManagerInstance);
-            this.chatHandler = new ChatHandler(sessionManagerInstance);
-            this.authHandler = new AuthenticationHandler(userDao);
-            this.friendHandler = new FriendHandler(sessionManagerInstance, friendshipDao);
-            this.userHandler = new UserHandler(userDao, this.verificationHandler);
-
+            _verificationHandler = new VerificationHandler(emailService);
+            _lobbyHandler = new LobbyHandler(lobbyManagerInstance);
+            _gameHandler = new GameHandler(lobbyManagerInstance);
+            _chatHandler = new ChatHandler(sessionManagerInstance);
+            _authHandler = new AuthenticationHandler(userDao);
+            _friendHandler = new FriendHandler(sessionManagerInstance, friendshipDao);
+            _userHandler = new UserHandler(userDao, _verificationHandler);
+            _guestHandler = new GuestHandler();
 
             _logger.Info("LotteryService instanciado.");
         }
 
         // --- IAuthenticationService ---
+
         public async Task<UserDto> LoginUser(string username, string password)
         {
             var operationContext = OperationContext.Current;
@@ -67,78 +68,107 @@ namespace BusinessLogic
             var channel = operationContext.Channel;
             var callback = operationContext.GetCallbackChannel<ILotteryCallback>();
 
-            this.currentUser = await authHandler.LoginUser(username, password);
+            _currentUser = await _authHandler.LoginUser(username, password);
 
-            if (this.currentUser == null)
+            if (_currentUser == null)
             {
                 return null;
             }
 
-            GlobalSessionManager.Instance.RegisterClient(this.currentUser, callback);
+            GlobalSessionManager.Instance.RegisterClient(_currentUser, callback);
             channel.Faulted += OnChannelFaulted;
             channel.Closing += OnChannelFaulted;
 
             return new UserDto
             {
-                UserId = this.currentUser.id_user,
-                Nickname = this.currentUser.nickname,
-                AvatarId = this.currentUser.id_avatar
+                UserId = _currentUser.id_user,
+                Nickname = _currentUser.nickname,
+                AvatarId = _currentUser.id_avatar
             };
+        }
+
+        public async Task<UserDto> LoginGuest(string nickname)
+        {
+            User guestUser = await _guestHandler.LoginGuest(nickname);
+
+            if (guestUser != null)
+            {
+                var callback = OperationContext.Current.GetCallbackChannel<ILotteryCallback>();
+                _currentUser = guestUser;
+
+                GlobalSessionManager.Instance.RegisterClient(guestUser, callback);
+
+                var channel = OperationContext.Current.Channel;
+                channel.Faulted += OnChannelFaulted;
+                channel.Closing += OnChannelFaulted;
+
+                return new UserDto
+                {
+                    UserId = guestUser.id_user,
+                    Nickname = guestUser.nickname,
+                    AvatarId = guestUser.id_avatar,
+                    IsHost = false,
+                    Score = 0,
+                    Email = "Invitado"
+                };
+            }
+            return null;
         }
 
         public Task LogoutUser()
         {
-            var userToLogout = this.currentUser;
-            this.currentUser = null;
+            var userToLogout = _currentUser;
+            _currentUser = null;
 
             if (userToLogout != null)
             {
-                lobbyHandler.LeaveLobby(userToLogout);
+                _lobbyHandler.LeaveLobby(userToLogout);
                 GlobalSessionManager.Instance.UnregisterClient(userToLogout.id_user);
             }
 
-            return authHandler.LogoutUser(userToLogout);
+            return _authHandler.LogoutUser(userToLogout);
         }
 
         private void OnChannelFaulted(object sender, EventArgs e)
         {
-            if (this.currentUser != null)
+            if (_currentUser != null)
             {
-                lobbyHandler.LeaveLobby(this.currentUser);
-                GlobalSessionManager.Instance.UnregisterClient(this.currentUser.id_user);
-                this.currentUser = null;
+                _lobbyHandler.LeaveLobby(_currentUser);
+                GlobalSessionManager.Instance.UnregisterClient(_currentUser.id_user);
+                _currentUser = null;
             }
         }
 
         // --- IUserService ---
+
         public async Task<int> RequestUserVerification(UserDto userData)
         {
-            return await userHandler.RequestUserVerification(userData);
+            return await _userHandler.RequestUserVerification(userData);
         }
 
         public async Task<int> RegisterUser(UserDto userData)
         {
-            return await userHandler.RegisterUser(userData);
+            return await _userHandler.RegisterUser(userData);
         }
 
         public Task<int> RegisterGuest()
         {
-            return userHandler.RegisterGuest();
+            return _userHandler.RegisterGuest();
         }
 
         public Task RecoverPassword(string email)
         {
-            return userHandler.RecoverPassword(email);
+            return _userHandler.RecoverPassword(email);
         }
 
         public Task<bool> VerifyPassword(int userId, string password)
         {
-            return userHandler.VerifyPassword(userId, password);
+            return _userHandler.VerifyPassword(userId, password);
         }
 
         public Task<bool> ChangePassword(int currentUserId, string newPassword)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -146,12 +176,12 @@ namespace BusinessLogic
                 );
             }
 
-            return userHandler.ChangePassword(currentUserId, newPassword);
+            return _userHandler.ChangePassword(currentUserId, newPassword);
         }
 
         public Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto profileData)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -159,22 +189,22 @@ namespace BusinessLogic
                 );
             }
 
-            return userHandler.UpdateProfile(currentUserId, profileData);
+            return _userHandler.UpdateProfile(currentUserId, profileData);
         }
 
         public Task<FriendDto> FindUserByNickname(string nickname)
         {
-            return userHandler.FindUserByNickname(nickname);
+            return _userHandler.FindUserByNickname(nickname);
         }
 
         public Task<UserDto> GetUserProfile(int userId)
         {
-            return userHandler.GetUserProfile(userId);
+            return _userHandler.GetUserProfile(userId);
         }
 
         public Task<bool> RequestEmailChange(int userId, string newEmail)
         {
-            if (currentUser == null || currentUser.id_user != userId)
+            if (_currentUser == null || _currentUser.id_user != userId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -182,12 +212,12 @@ namespace BusinessLogic
                 );
             }
 
-            return userHandler.RequestEmailChange(userId, newEmail);
+            return _userHandler.RequestEmailChange(userId, newEmail);
         }
 
         public Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
         {
-            if (currentUser == null || currentUser.id_user != userId)
+            if (_currentUser == null || _currentUser.id_user != userId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -195,13 +225,14 @@ namespace BusinessLogic
                 );
             }
 
-            return userHandler.ConfirmEmailChange(userId, newEmail, verificationCode);
+            return _userHandler.ConfirmEmailChange(userId, newEmail, verificationCode);
         }
 
         // --- IFriendService ---
+
         public Task SendRequestFriendship(int currentUserId, int targetUserId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -209,12 +240,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.SendRequestFriendship(currentUserId, targetUserId);
+            return _friendHandler.SendRequestFriendship(currentUserId, targetUserId);
         }
 
         public Task AcceptFriendRequest(int currentUserId, int requesterId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -222,12 +253,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.AcceptFriendRequest(currentUserId, requesterId);
+            return _friendHandler.AcceptFriendRequest(currentUserId, requesterId);
         }
 
         public Task RejectFriendRequest(int currentUserId, int requesterId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -235,12 +266,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.RejectFriendRequest(currentUserId, requesterId);
+            return _friendHandler.RejectFriendRequest(currentUserId, requesterId);
         }
 
         public Task CancelFriendRequest(int currentUserId, int requesterId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -248,12 +279,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.CancelFriendRequest(currentUserId, requesterId);
+            return _friendHandler.CancelFriendRequest(currentUserId, requesterId);
         }
 
         public Task RemoveFriend(int currentUserId, int friendUserId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -261,12 +292,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.RemoveFriend(currentUserId, friendUserId);
+            return _friendHandler.RemoveFriend(currentUserId, friendUserId);
         }
 
         public Task<List<FriendDto>> GetFriends(int currentUserId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -274,12 +305,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.GetFriends(currentUserId);
+            return _friendHandler.GetFriends(currentUserId);
         }
 
         public Task<List<FriendDto>> GetPendingRequests(int currentUserId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -287,12 +318,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.GetPendingRequests(currentUserId);
+            return _friendHandler.GetPendingRequests(currentUserId);
         }
 
         public Task<List<FriendDto>> GetSentRequests(int currentUserId)
         {
-            if (currentUser == null || currentUser.id_user != currentUserId)
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Sesión de usuario no válida para esta operación." },
@@ -300,12 +331,12 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.GetSentRequests(currentUserId);
+            return _friendHandler.GetSentRequests(currentUserId);
         }
 
         public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
         {
-            if (currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -313,13 +344,14 @@ namespace BusinessLogic
                 );
             }
 
-            return friendHandler.InviteFriendToLobby(lobbyCode, targetFriendId);
+            return _friendHandler.InviteFriendToLobby(lobbyCode, targetFriendId);
         }
 
         // --- ILobbyService ---
+
         public Task<LobbyStateDto> CreateLobby()
         {
-            if (currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -327,12 +359,12 @@ namespace BusinessLogic
                 );
             }
 
-            return lobbyHandler.CreateLobby(this.currentUser);
+            return _lobbyHandler.CreateLobby(_currentUser);
         }
 
         public Task<LobbyStateDto> JoinLobby(UserDto currentUserDto, string lobbyCode)
         {
-            if (this.currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -340,18 +372,18 @@ namespace BusinessLogic
                 );
             }
 
-            return lobbyHandler.JoinLobby(this.currentUser, lobbyCode);
+            return _lobbyHandler.JoinLobby(_currentUser, lobbyCode);
         }
 
         public void LeaveLobby()
         {
-            if (currentUser == null) return;
-            lobbyHandler.LeaveLobby(this.currentUser);
+            if (_currentUser == null) return;
+            _lobbyHandler.LeaveLobby(_currentUser);
         }
 
         public Task KickPlayer(int targetPlayerId)
         {
-            if (currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -359,13 +391,14 @@ namespace BusinessLogic
                 );
             }
 
-            return lobbyHandler.KickPlayer(this.currentUser, targetPlayerId);
+            return _lobbyHandler.KickPlayer(_currentUser, targetPlayerId);
         }
 
         // --- IGameService ---
+
         public Task StartGame(GameSettingsDto settings)
         {
-            if (currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -373,12 +406,12 @@ namespace BusinessLogic
                 );
             }
 
-            return gameHandler.StartGame(this.currentUser, settings);
+            return _gameHandler.StartGame(_currentUser, settings);
         }
 
         public Task UpdateGameSettings(GameSettingsDto settings)
         {
-            if (currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -386,25 +419,24 @@ namespace BusinessLogic
                 );
             }
 
-            return gameHandler.UpdateGameSettings(this.currentUser, settings);
+            return _gameHandler.UpdateGameSettings(_currentUser, settings);
         }
 
         public Task GetScoreboard()
         {
-            return gameHandler.GetScoreboard();
+            return _gameHandler.GetScoreboard();
         }
 
         public async Task DeclareWin(int userId)
         {
-            // Usamos tu manejador seguro de errores
-            // Asegúrate de tener un método similar en GameHandler o créalo
-            //await gameHandler.DeclareWin(userId);
+            await Task.CompletedTask;
         }
 
         // --- IChatService ---
+
         public void SendMessage(string message)
         {
-            if (currentUser == null)
+            if (_currentUser == null)
             {
                 throw new FaultException<ServiceFault>(
                     new ServiceFault { Message = "Usuario no conectado." },
@@ -412,18 +444,19 @@ namespace BusinessLogic
                 );
             }
 
-            chatHandler.SendMessage(this.currentUser, message);
+            _chatHandler.SendMessage(_currentUser, message);
         }
 
         // --- IVerificationService ---
+
         public Task<bool> SendVerificationCode(string email)
         {
-            return verificationHandler.SendVerificationCode(email);
+            return _verificationHandler.SendVerificationCode(email);
         }
 
         public Task<bool> VerifyCode(string email, string code)
         {
-            return verificationHandler.VerifyCode(email, code);
+            return _verificationHandler.VerifyCode(email, code);
         }
     }
 }
