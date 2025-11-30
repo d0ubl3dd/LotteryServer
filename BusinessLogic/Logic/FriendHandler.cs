@@ -24,25 +24,23 @@ namespace BusinessLogic.Logic
             _friendshipDao = friendshipDao ?? throw new ArgumentNullException(nameof(friendshipDao));
         }
 
+        // =====================================================================================
+        // FRIENDSHIP ACTIONS
+        // =====================================================================================
+
         public Task SendRequestFriendship(int currentUserId, int targetUserId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                // VALIDACIÓN DE INVITADO (Guard Clause)
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no pueden enviar solicitudes de amistad.");
 
                 _logger.Info($"[SendRequestFriendship] {currentUserId} → {targetUserId}");
 
                 if (currentUserId == targetUserId)
-                {
                     throw new InvalidFriendshipRequestException("No puedes agregarte a ti mismo.");
-                }
 
                 if (await _friendshipDao.FriendshipExistsAsync(currentUserId, targetUserId))
-                {
                     throw new FriendshipDuplicateException("Ya existe una amistad o solicitud.");
-                }
 
                 await _friendshipDao.RequestFriendshipAsync(currentUserId, targetUserId);
 
@@ -53,10 +51,7 @@ namespace BusinessLogic.Logic
         public Task AcceptFriendRequest(int currentUserId, int requesterId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no pueden aceptar solicitudes.");
 
                 _logger.Info($"[AcceptFriendRequest] {currentUserId} acepta de {requesterId}");
 
@@ -72,10 +67,7 @@ namespace BusinessLogic.Logic
         public Task RejectFriendRequest(int currentUserId, int requesterId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no pueden rechazar solicitudes.");
 
                 _logger.Info($"[RejectFriendRequest] {currentUserId} rechaza a {requesterId}");
 
@@ -84,17 +76,14 @@ namespace BusinessLogic.Logic
 
                 await _friendshipDao.RemoveFriendshipAsync(request);
 
-                _logger.Info("[RejectFriendRequest] Solicitud rechazada.");
+                _logger.Info("[RejectFriendRequest] Solicitud rechazado.");
             }, "RejectFriendRequest");
 
 
         public Task CancelFriendRequest(int currentUserId, int targetUserId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no pueden cancelar solicitudes.");
 
                 _logger.Info($"[CancelFriendRequest] {currentUserId} cancela solicitud a {targetUserId}");
 
@@ -110,10 +99,7 @@ namespace BusinessLogic.Logic
         public Task RemoveFriend(int currentUserId, int friendUserId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no pueden eliminar amigos.");
 
                 _logger.Info($"[RemoveFriend] {currentUserId} elimina amistad con {friendUserId}");
 
@@ -125,13 +111,17 @@ namespace BusinessLogic.Logic
                 _logger.Info("[RemoveFriend] Amistad eliminada.");
             }, "RemoveFriend");
 
+
+        // =====================================================================================
+        // GET DATA
+        // =====================================================================================
+
         public Task<List<FriendDto>> GetFriends(int currentUserId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                // Si es invitado, simplemente retornamos lista vacía o lanzamos error.
+                // Lanzar error es más seguro para que el cliente sepa que no debe llamar esto.
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no tienen lista de amigos.");
 
                 _logger.Info($"[GetFriends] Solicitando amigos de {currentUserId}");
 
@@ -149,10 +139,7 @@ namespace BusinessLogic.Logic
         public Task<List<FriendDto>> GetPendingRequests(int currentUserId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no tienen solicitudes.");
 
                 _logger.Info($"[GetPendingRequests] {currentUserId}");
 
@@ -169,10 +156,7 @@ namespace BusinessLogic.Logic
         public Task<List<FriendDto>> GetSentRequests(int currentUserId)
             => ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUserId < 0)
-                {
-                    throw new InvalidOperationException("Los invitados no pueden agregar amigos.");
-                }
+                if (currentUserId < 0) throw new GuestActionException("Los invitados no tienen solicitudes enviadas.");
 
                 _logger.Info($"[GetSentRequests] {currentUserId}");
 
@@ -186,6 +170,11 @@ namespace BusinessLogic.Logic
                 }).ToList();
             }, "GetSentRequests");
 
+
+        // =====================================================================================
+        // INVITES
+        // =====================================================================================
+
         public Task InviteFriendToLobby(string lobbyCode, int targetFriendId)
             => ExecuteFaultSafeAsync(async () =>
             {
@@ -193,6 +182,12 @@ namespace BusinessLogic.Logic
 
                 int? currentUserId = _sessionManager.GetUserIdFromContext()
                     ?? throw new UserNotConnectedException("Usuario no autenticado.");
+
+                // VALIDACIÓN DE INVITADO
+                if (currentUserId.Value < 0)
+                {
+                    throw new GuestActionException("Los invitados no pueden invitar amigos.");
+                }
 
                 var inviter = _sessionManager.GetClient(currentUserId.Value);
 
@@ -216,6 +211,12 @@ namespace BusinessLogic.Logic
 
                 _logger.Info("[InviteFriendToLobby] Invitación enviada.");
             }, "InviteFriendToLobby");
+
+
+
+        // =====================================================================================
+        // ERROR HANDLING
+        // =====================================================================================
 
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
@@ -241,6 +242,7 @@ namespace BusinessLogic.Logic
             }
         }
 
+
         private FaultException<ServiceFault> BuildFaultException(Exception ex, string operationName)
         {
             if (ex is FaultException<ServiceFault> fault)
@@ -251,6 +253,12 @@ namespace BusinessLogic.Logic
 
             switch (ex)
             {
+                case GuestActionException _:
+                    errorCode = "FRIEND_GUEST_RESTRICTED";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Acceso denegado a invitado.");
+                    break;
+
                 case FriendshipNotFoundException _:
                     errorCode = "FRIEND_NOT_FOUND";
                     clientMessage = ex.Message;
@@ -303,5 +311,12 @@ namespace BusinessLogic.Logic
                 new FaultReason(clientMessage)
             );
         }
+    }
+
+    // --- Excepción Personalizada ---
+    [Serializable]
+    public class GuestActionException : Exception
+    {
+        public GuestActionException(string message) : base(message) { }
     }
 }

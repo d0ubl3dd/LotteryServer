@@ -152,6 +152,12 @@ namespace BusinessLogic.Logic
 
             switch (ex)
             {
+                case GuestActionException _:
+                    errorCode = "FRIEND_GUEST_RESTRICTED";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Acceso denegado a invitado.");
+                    break;
+
                 case PlayerBannedException _:
                     errorCode = "LOBBY_PLAYER_BANNED";
                     clientMessage = ex.Message;
