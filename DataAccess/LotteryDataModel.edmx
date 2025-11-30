@@ -1,0 +1,491 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+      <Schema Namespace="lottery_databaseModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="Avatar">
+          <Key>
+            <PropertyRef Name="id_avatar" />
+          </Key>
+          <Property Name="id_avatar" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="path" Type="nvarchar" MaxLength="300" Nullable="false" />
+          <Property Name="avatar_name" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Banned">
+          <Key>
+            <PropertyRef Name="id_banned" />
+          </Key>
+          <Property Name="id_banned" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="id_user" Type="int" Nullable="false" />
+          <Property Name="reason" Type="nvarchar" MaxLength="255" Nullable="false" />
+          <Property Name="moderator" Type="nvarchar" MaxLength="50" Nullable="false" />
+          <Property Name="banned_at" Type="datetime" Nullable="false" />
+          <Property Name="unbanned_at" Type="datetime" />
+        </EntityType>
+        <EntityType Name="Friendship">
+          <Key>
+            <PropertyRef Name="id_friendship" />
+          </Key>
+          <Property Name="id_friendship" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="id_user_sender" Type="int" Nullable="false" />
+          <Property Name="id_user_receiver" Type="int" Nullable="false" />
+          <Property Name="status" Type="nvarchar" MaxLength="20" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Game">
+          <Key>
+            <PropertyRef Name="id_game" />
+          </Key>
+          <Property Name="id_game" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="name" Type="nvarchar" MaxLength="100" Nullable="false" />
+        </EntityType>
+        <EntityType Name="SocialMedia">
+          <Key>
+            <PropertyRef Name="id_social_media" />
+          </Key>
+          <Property Name="id_social_media" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="id_user" Type="int" Nullable="false" />
+          <Property Name="facebook" Type="nvarchar" MaxLength="50" />
+          <Property Name="instagram" Type="nvarchar" MaxLength="50" />
+          <Property Name="tiktok" Type="nvarchar" MaxLength="50" />
+          <Property Name="twitter" Type="nvarchar" MaxLength="50" />
+        </EntityType>
+        <EntityType Name="User">
+          <Key>
+            <PropertyRef Name="id_user" />
+          </Key>
+          <Property Name="id_user" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="id_avatar" Type="int" Nullable="false" />
+          <Property Name="nickname" Type="nvarchar" MaxLength="50" Nullable="false" />
+          <Property Name="email" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="registration_date" Type="datetime" Nullable="false" />
+          <Property Name="first_name" Type="nvarchar" MaxLength="50" Nullable="false" />
+          <Property Name="paternal_last_name" Type="nvarchar" MaxLength="50" Nullable="false" />
+          <Property Name="maternal_last_name" Type="nvarchar" MaxLength="50" />
+          <Property Name="score" Type="int" />
+          <Property Name="passwordHash" Type="varbinary(max)" />
+          <Property Name="passwordSalt" Type="varbinary(max)" />
+          <Property Name="isLocked" Type="bit" />
+          <Property Name="status" Type="nvarchar" MaxLength="20" Nullable="false" />
+          <Property Name="failedLoginAttempts" Type="int" Nullable="false" />
+          <Property Name="lastLoginDate" Type="datetime" />
+        </EntityType>
+        <EntityType Name="User_Game">
+          <Key>
+            <PropertyRef Name="id_user" />
+            <PropertyRef Name="id_game" />
+          </Key>
+          <Property Name="id_user" Type="int" Nullable="false" />
+          <Property Name="id_game" Type="int" Nullable="false" />
+        </EntityType>
+        <Association Name="FK_Banned_User">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Banned" Type="Self.Banned" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Banned">
+              <PropertyRef Name="id_user" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Friendship_Receiver">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Friendship" Type="Self.Friendship" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Friendship">
+              <PropertyRef Name="id_user_receiver" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Friendship_Sender">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Friendship" Type="Self.Friendship" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Friendship">
+              <PropertyRef Name="id_user_sender" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_SocialMedia_User">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="SocialMedia" Type="Self.SocialMedia" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="SocialMedia">
+              <PropertyRef Name="id_user" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_User_Avatar">
+          <End Role="Avatar" Type="Self.Avatar" Multiplicity="1" />
+          <End Role="User" Type="Self.User" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Avatar">
+              <PropertyRef Name="id_avatar" />
+            </Principal>
+            <Dependent Role="User">
+              <PropertyRef Name="id_avatar" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_User_Game_Game">
+          <End Role="Game" Type="Self.Game" Multiplicity="1" />
+          <End Role="User_Game" Type="Self.User_Game" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Game">
+              <PropertyRef Name="id_game" />
+            </Principal>
+            <Dependent Role="User_Game">
+              <PropertyRef Name="id_game" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_User_Game_User">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="User_Game" Type="Self.User_Game" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="User_Game">
+              <PropertyRef Name="id_user" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityContainer Name="lottery_databaseModelStoreContainer">
+          <EntitySet Name="Avatar" EntityType="Self.Avatar" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Banned" EntityType="Self.Banned" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Friendship" EntityType="Self.Friendship" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Game" EntityType="Self.Game" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="SocialMedia" EntityType="Self.SocialMedia" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="User" EntityType="Self.User" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="User_Game" EntityType="Self.User_Game" Schema="dbo" store:Type="Tables" />
+          <AssociationSet Name="FK_Banned_User" Association="Self.FK_Banned_User">
+            <End Role="User" EntitySet="User" />
+            <End Role="Banned" EntitySet="Banned" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Friendship_Receiver" Association="Self.FK_Friendship_Receiver">
+            <End Role="User" EntitySet="User" />
+            <End Role="Friendship" EntitySet="Friendship" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Friendship_Sender" Association="Self.FK_Friendship_Sender">
+            <End Role="User" EntitySet="User" />
+            <End Role="Friendship" EntitySet="Friendship" />
+          </AssociationSet>
+          <AssociationSet Name="FK_SocialMedia_User" Association="Self.FK_SocialMedia_User">
+            <End Role="User" EntitySet="User" />
+            <End Role="SocialMedia" EntitySet="SocialMedia" />
+          </AssociationSet>
+          <AssociationSet Name="FK_User_Avatar" Association="Self.FK_User_Avatar">
+            <End Role="Avatar" EntitySet="Avatar" />
+            <End Role="User" EntitySet="User" />
+          </AssociationSet>
+          <AssociationSet Name="FK_User_Game_Game" Association="Self.FK_User_Game_Game">
+            <End Role="Game" EntitySet="Game" />
+            <End Role="User_Game" EntitySet="User_Game" />
+          </AssociationSet>
+          <AssociationSet Name="FK_User_Game_User" Association="Self.FK_User_Game_User">
+            <End Role="User" EntitySet="User" />
+            <End Role="User_Game" EntitySet="User_Game" />
+          </AssociationSet>
+        </EntityContainer>
+      </Schema>
+    </edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="lottery_databaseModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+        <EntityType Name="Avatar">
+          <Key>
+            <PropertyRef Name="id_avatar" />
+          </Key>
+          <Property Name="id_avatar" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="path" Type="String" MaxLength="300" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="avatar_name" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="User" Relationship="Self.FK_User_Avatar" FromRole="Avatar" ToRole="User" />
+        </EntityType>
+        <EntityType Name="Banned">
+          <Key>
+            <PropertyRef Name="id_banned" />
+          </Key>
+          <Property Name="id_banned" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="id_user" Type="Int32" Nullable="false" />
+          <Property Name="reason" Type="String" MaxLength="255" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="moderator" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="banned_at" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="unbanned_at" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="User" Relationship="Self.FK_Banned_User" FromRole="Banned" ToRole="User" />
+        </EntityType>
+        <EntityType Name="Friendship">
+          <Key>
+            <PropertyRef Name="id_friendship" />
+          </Key>
+          <Property Name="id_friendship" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="id_user_sender" Type="Int32" Nullable="false" />
+          <Property Name="id_user_receiver" Type="Int32" Nullable="false" />
+          <Property Name="status" Type="String" MaxLength="20" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="User" Relationship="Self.FK_Friendship_Receiver" FromRole="Friendship" ToRole="User" />
+          <NavigationProperty Name="User1" Relationship="Self.FK_Friendship_Sender" FromRole="Friendship" ToRole="User" />
+        </EntityType>
+        <EntityType Name="Game">
+          <Key>
+            <PropertyRef Name="id_game" />
+          </Key>
+          <Property Name="id_game" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="name" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <NavigationProperty Name="User" Relationship="Self.User_Game" FromRole="Game" ToRole="User" />
+        </EntityType>
+        <EntityType Name="SocialMedia">
+          <Key>
+            <PropertyRef Name="id_social_media" />
+          </Key>
+          <Property Name="id_social_media" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="id_user" Type="Int32" Nullable="false" />
+          <Property Name="facebook" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="instagram" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="tiktok" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="twitter" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <NavigationProperty Name="User" Relationship="Self.FK_SocialMedia_User" FromRole="SocialMedia" ToRole="User" />
+        </EntityType>
+        <EntityType Name="User">
+          <Key>
+            <PropertyRef Name="id_user" />
+          </Key>
+          <Property Name="id_user" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="id_avatar" Type="Int32" Nullable="false" />
+          <Property Name="nickname" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="email" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="registration_date" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="first_name" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="paternal_last_name" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="maternal_last_name" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="score" Type="Int32" />
+          <Property Name="passwordHash" Type="Binary" MaxLength="Max" FixedLength="false" />
+          <Property Name="passwordSalt" Type="Binary" MaxLength="Max" FixedLength="false" />
+          <Property Name="isLocked" Type="Boolean" />
+          <Property Name="status" Type="String" MaxLength="20" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="failedLoginAttempts" Type="Int32" Nullable="false" />
+          <Property Name="lastLoginDate" Type="DateTime" Precision="3" />
+          <NavigationProperty Name="Avatar" Relationship="Self.FK_User_Avatar" FromRole="User" ToRole="Avatar" />
+          <NavigationProperty Name="Banned" Relationship="Self.FK_Banned_User" FromRole="User" ToRole="Banned" />
+          <NavigationProperty Name="Friendship" Relationship="Self.FK_Friendship_Receiver" FromRole="User" ToRole="Friendship" />
+          <NavigationProperty Name="Friendship1" Relationship="Self.FK_Friendship_Sender" FromRole="User" ToRole="Friendship" />
+          <NavigationProperty Name="SocialMedia" Relationship="Self.FK_SocialMedia_User" FromRole="User" ToRole="SocialMedia" />
+          <NavigationProperty Name="Game" Relationship="Self.User_Game" FromRole="User" ToRole="Game" />
+        </EntityType>
+        <Association Name="FK_User_Avatar">
+          <End Role="Avatar" Type="Self.Avatar" Multiplicity="1" />
+          <End Role="User" Type="Self.User" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Avatar">
+              <PropertyRef Name="id_avatar" />
+            </Principal>
+            <Dependent Role="User">
+              <PropertyRef Name="id_avatar" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Banned_User">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Banned" Type="Self.Banned" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Banned">
+              <PropertyRef Name="id_user" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Friendship_Receiver">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Friendship" Type="Self.Friendship" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Friendship">
+              <PropertyRef Name="id_user_receiver" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_Friendship_Sender">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="Friendship" Type="Self.Friendship" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="Friendship">
+              <PropertyRef Name="id_user_sender" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_SocialMedia_User">
+          <End Role="User" Type="Self.User" Multiplicity="1" />
+          <End Role="SocialMedia" Type="Self.SocialMedia" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="User">
+              <PropertyRef Name="id_user" />
+            </Principal>
+            <Dependent Role="SocialMedia">
+              <PropertyRef Name="id_user" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="User_Game">
+          <End Role="Game" Type="Self.Game" Multiplicity="*" />
+          <End Role="User" Type="Self.User" Multiplicity="*" />
+        </Association>
+        <EntityContainer Name="lottery_databaseEntities" annotation:LazyLoadingEnabled="true">
+          <EntitySet Name="Avatar" EntityType="Self.Avatar" />
+          <EntitySet Name="Banned" EntityType="Self.Banned" />
+          <EntitySet Name="Friendship" EntityType="Self.Friendship" />
+          <EntitySet Name="Game" EntityType="Self.Game" />
+          <EntitySet Name="SocialMedia" EntityType="Self.SocialMedia" />
+          <EntitySet Name="User" EntityType="Self.User" />
+          <AssociationSet Name="FK_User_Avatar" Association="Self.FK_User_Avatar">
+            <End Role="Avatar" EntitySet="Avatar" />
+            <End Role="User" EntitySet="User" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Banned_User" Association="Self.FK_Banned_User">
+            <End Role="User" EntitySet="User" />
+            <End Role="Banned" EntitySet="Banned" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Friendship_Receiver" Association="Self.FK_Friendship_Receiver">
+            <End Role="User" EntitySet="User" />
+            <End Role="Friendship" EntitySet="Friendship" />
+          </AssociationSet>
+          <AssociationSet Name="FK_Friendship_Sender" Association="Self.FK_Friendship_Sender">
+            <End Role="User" EntitySet="User" />
+            <End Role="Friendship" EntitySet="Friendship" />
+          </AssociationSet>
+          <AssociationSet Name="FK_SocialMedia_User" Association="Self.FK_SocialMedia_User">
+            <End Role="User" EntitySet="User" />
+            <End Role="SocialMedia" EntitySet="SocialMedia" />
+          </AssociationSet>
+          <AssociationSet Name="User_Game" Association="Self.User_Game">
+            <End Role="Game" EntitySet="Game" />
+            <End Role="User" EntitySet="User" />
+          </AssociationSet>
+        </EntityContainer>
+      </Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
+        <EntityContainerMapping StorageEntityContainer="lottery_databaseModelStoreContainer" CdmEntityContainer="lottery_databaseEntities">
+          <EntitySetMapping Name="Avatar">
+            <EntityTypeMapping TypeName="lottery_databaseModel.Avatar">
+              <MappingFragment StoreEntitySet="Avatar">
+                <ScalarProperty Name="id_avatar" ColumnName="id_avatar" />
+                <ScalarProperty Name="path" ColumnName="path" />
+                <ScalarProperty Name="avatar_name" ColumnName="avatar_name" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Banned">
+            <EntityTypeMapping TypeName="lottery_databaseModel.Banned">
+              <MappingFragment StoreEntitySet="Banned">
+                <ScalarProperty Name="id_banned" ColumnName="id_banned" />
+                <ScalarProperty Name="id_user" ColumnName="id_user" />
+                <ScalarProperty Name="reason" ColumnName="reason" />
+                <ScalarProperty Name="moderator" ColumnName="moderator" />
+                <ScalarProperty Name="banned_at" ColumnName="banned_at" />
+                <ScalarProperty Name="unbanned_at" ColumnName="unbanned_at" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Friendship">
+            <EntityTypeMapping TypeName="lottery_databaseModel.Friendship">
+              <MappingFragment StoreEntitySet="Friendship">
+                <ScalarProperty Name="id_friendship" ColumnName="id_friendship" />
+                <ScalarProperty Name="id_user_sender" ColumnName="id_user_sender" />
+                <ScalarProperty Name="id_user_receiver" ColumnName="id_user_receiver" />
+                <ScalarProperty Name="status" ColumnName="status" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Game">
+            <EntityTypeMapping TypeName="lottery_databaseModel.Game">
+              <MappingFragment StoreEntitySet="Game">
+                <ScalarProperty Name="id_game" ColumnName="id_game" />
+                <ScalarProperty Name="name" ColumnName="name" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="SocialMedia">
+            <EntityTypeMapping TypeName="lottery_databaseModel.SocialMedia">
+              <MappingFragment StoreEntitySet="SocialMedia">
+                <ScalarProperty Name="id_social_media" ColumnName="id_social_media" />
+                <ScalarProperty Name="id_user" ColumnName="id_user" />
+                <ScalarProperty Name="facebook" ColumnName="facebook" />
+                <ScalarProperty Name="instagram" ColumnName="instagram" />
+                <ScalarProperty Name="tiktok" ColumnName="tiktok" />
+                <ScalarProperty Name="twitter" ColumnName="twitter" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="User">
+            <EntityTypeMapping TypeName="lottery_databaseModel.User">
+              <MappingFragment StoreEntitySet="User">
+                <ScalarProperty Name="id_user" ColumnName="id_user" />
+                <ScalarProperty Name="id_avatar" ColumnName="id_avatar" />
+                <ScalarProperty Name="nickname" ColumnName="nickname" />
+                <ScalarProperty Name="email" ColumnName="email" />
+                <ScalarProperty Name="registration_date" ColumnName="registration_date" />
+                <ScalarProperty Name="first_name" ColumnName="first_name" />
+                <ScalarProperty Name="paternal_last_name" ColumnName="paternal_last_name" />
+                <ScalarProperty Name="maternal_last_name" ColumnName="maternal_last_name" />
+                <ScalarProperty Name="score" ColumnName="score" />
+                <ScalarProperty Name="passwordHash" ColumnName="passwordHash" />
+                <ScalarProperty Name="passwordSalt" ColumnName="passwordSalt" />
+                <ScalarProperty Name="isLocked" ColumnName="isLocked" />
+                <ScalarProperty Name="status" ColumnName="status" />
+                <ScalarProperty Name="failedLoginAttempts" ColumnName="failedLoginAttempts" />
+                <ScalarProperty Name="lastLoginDate" ColumnName="lastLoginDate" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <AssociationSetMapping Name="User_Game" TypeName="lottery_databaseModel.User_Game" StoreEntitySet="User_Game">
+            <EndProperty Name="Game">
+              <ScalarProperty Name="id_game" ColumnName="id_game" />
+            </EndProperty>
+            <EndProperty Name="User">
+              <ScalarProperty Name="id_user" ColumnName="id_user" />
+            </EndProperty>
+          </AssociationSetMapping>
+        </EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </Connection>
+    <Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+        <DesignerProperty Name="EnablePluralization" Value="false" />
+        <DesignerProperty Name="IncludeForeignKeysInModel" Value="true" />
+        <DesignerProperty Name="UseLegacyProvider" Value="false" />
+        <DesignerProperty Name="CodeGenerationStrategy" Value="Ninguno" />
+      </DesignerInfoPropertySet>
+    </Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <Diagrams></Diagrams>
+  </Designer>
+</edmx:Edmx>
