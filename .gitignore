@@ -92,3 +92,14 @@ node_modules/
 
 # Optional: track only .user files in .vs folders
 !**/.vs/*.user
+
+# Ignorar modelos generados de Entity Framework
+DataAccess/LotteryDataModel.*
+DataAccess/*.tt
+DataAccess/*.Designer.cs
+DataAccess/*.edmx*
+DataAccess/*.diagram
+
+# Archivos temporales de VS y proyecto
+*.dtbcache.json
+*.csproj.user
