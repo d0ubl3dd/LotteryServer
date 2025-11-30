@@ -1,8 +1,10 @@
-﻿using BusinessLogic.Logic;
+﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Logic;
 using Contracts.Callbacks;
 using Contracts.DTOs;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,11 +24,8 @@ namespace BusinessLogic.Models
         private Task _gameLoopTask;
         private CancellationTokenSource _gameCts;
 
-        private readonly HashSet<string> _forbiddenWords = new HashSet<string>
-        {
-            "puto", "puta", "pendejo", "mierda", "verga", "chingar",
-            "idiota", "imbecil"
-        };
+        private readonly HashSet<string> _forbiddenWords;
+
         private readonly Dictionary<int, Dictionary<string, int>> _messageHistory
         = new Dictionary<int, Dictionary<string, int>>();
 
@@ -35,6 +34,15 @@ namespace BusinessLogic.Models
             LobbyCode = code;
             Host = host;
             AddPlayer(host);
+
+            string basePath = AppDomain.CurrentDomain.BaseDirectory;
+            string fullPath = Path.Combine(basePath, "Resources", "forbidden_words.txt");
+            _forbiddenWords = LoadForbiddenWords(fullPath);
+        }
+
+        public bool IsBanned(int userId)
+        {
+            return _bannedPlayers.Contains(userId);
         }
 
         public bool AddPlayer(PlayerClient player)
@@ -64,6 +72,81 @@ namespace BusinessLogic.Models
             }
         }
 
+        private HashSet<string> LoadForbiddenWords(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return new HashSet<string>();
+            }
+
+            var lines = File.ReadAllLines(path)
+                .Select(w => w.Trim().ToLower())
+                .Where(w => !string.IsNullOrWhiteSpace(w));
+
+            return new HashSet<string>(lines);
+        }
+
+        // ============================================================
+        //                   CHAT DEL LOBBY MODIFICADO
+        // ============================================================
+        public bool BroadcastChatMessage(string nickname, string message)
+        {
+            var sender = Players.FirstOrDefault(p => p.Nickname == nickname);
+            if (sender == null) return false;
+
+            int userId = sender.UserId;
+
+            if (!_messageHistory.ContainsKey(userId))
+                _messageHistory[userId] = new Dictionary<string, int>();
+
+            var history = _messageHistory[userId];
+
+            // ----------------------------------------------------------
+            //  1. DETECCIÓN DE PALABRAS PROHIBIDAS
+            // ----------------------------------------------------------
+            foreach (var word in _forbiddenWords)
+            {
+                if (message.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // HOST dice grosería
+                    if (sender.UserId == Host.UserId)
+                    {
+                        Host.CallbackChannel.ReceiveChatMessage(
+                            "Sistema",
+                            "No puedes decir groserías. Modera tu lenguaje."
+                        );
+                        return false;
+                    }
+
+                    // JUGADOR NORMAL → expulsar
+                    LobbyManager.Instance.KickPlayer(Host, userId);
+                    return false;
+                }
+            }
+
+            // ----------------------------------------------------------
+            //  2. ANTI-SPAM
+            // ----------------------------------------------------------
+            if (!history.ContainsKey(message))
+                history[message] = 0;
+
+            history[message]++;
+
+            if (history[message] > 10)
+            {
+                LobbyManager.Instance.KickPlayer(Host, userId);
+                return true;
+            }
+
+            // ----------------------------------------------------------
+            //  3. ENVÍO NORMAL SI TODO BIEN
+            // ----------------------------------------------------------
+            BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
+            return true;
+        }
+
+        // ============================================================
+
         public void BroadcastPlayerJoined(PlayerClient newPlayer)
         {
             var dto = newPlayer.ToUserDto(newPlayer.UserId == Host.UserId);
@@ -79,45 +162,6 @@ namespace BusinessLogic.Models
         {
             BroadcastToAll(client => client.PlayerKicked(playerId));
         }
-
-        public void BroadcastChatMessage(string nickname, string message)
-        {
-            var sender = Players.FirstOrDefault(p => p.Nickname == nickname);
-            if (sender == null) return;
-
-            int userId = sender.UserId;
-
-            // Crear historial de spam para el usuario si no existe
-            if (!_messageHistory.ContainsKey(userId))
-                _messageHistory[userId] = new Dictionary<string, int>();
-
-            var history = _messageHistory[userId];
-
-            foreach (var word in _forbiddenWords)
-            {
-                if (message.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    LobbyManager.Instance.KickPlayer(Host, userId);
-                    return;
-                }
-            }
-
-            // ==== (2) DETECTAR SPAM ====
-            if (!history.ContainsKey(message))
-                history[message] = 0;
-
-            history[message]++;
-
-            if (history[message] > 10) // más de 10 mensajes iguales
-            {
-                LobbyManager.Instance.KickPlayer(Host, userId);
-                return;
-            }
-
-            // ==== (3) SI TODO OK → ENVIAR MENSAJE ====
-            BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
-        }
-
 
         public void BroadcastLobbyClosed()
         {
@@ -219,7 +263,6 @@ namespace BusinessLogic.Models
             _bannedPlayers.Add(userId);
         }
 
-        // --- Helpers ---
         public List<UserDto> GetPlayerDTOs()
         {
             return Players.Select(p => p.ToUserDto(p.UserId == Host.UserId)).ToList();
@@ -237,7 +280,6 @@ namespace BusinessLogic.Models
                 }
                 catch (Exception)
                 {
-                    
                 }
             }
         }

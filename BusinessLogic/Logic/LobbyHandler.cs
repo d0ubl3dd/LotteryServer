@@ -152,6 +152,12 @@ namespace BusinessLogic.Logic
 
             switch (ex)
             {
+                case PlayerBannedException _:
+                    errorCode = "LOBBY_PLAYER_BANNED";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Acceso denegado por baneo: {clientMessage}");
+                    break;
+
                 case LobbyActionNotAllowedException _:
                     errorCode = "LOBBY_ACTION_DENIED";
                     clientMessage = ex.Message;

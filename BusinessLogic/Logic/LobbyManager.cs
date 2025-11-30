@@ -52,6 +52,11 @@ namespace BusinessLogic.Logic
                 throw new LobbyNotFoundException($"El lobby {lobbyCode} no existe.");
             }
 
+            if (lobby.IsBanned(player.UserId))
+            {
+                throw new PlayerBannedException("No puedes unirte a este lobby porque has sido expulsado.");
+            }
+
             if (lobby.Players.Any(p => p.UserId == player.UserId))
             {
                 throw new UserAlreadyInLobbyException("Ya te encuentras unido a este lobby.");
@@ -89,7 +94,21 @@ namespace BusinessLogic.Logic
             if (player.UserId == lobby.Host.UserId)
             {
                 lobby.BroadcastLobbyClosed();
+
+                foreach (var allPlayers in lobby.Players.ToList())
+                {
+                    allPlayers.CurrentLobby = null;
+                    try
+                    {
+                        allPlayers.CallbackChannel.LobbyClosed();
+                    }
+                    catch { }
+                }
+
+                lobby.Players.Clear();
+
                 _lobbies.TryRemove(lobby.LobbyCode, out _);
+
                 _logger.Info($"[LobbyManager] Host {player.UserId} cerró el lobby {lobby.LobbyCode}");
             }
             else

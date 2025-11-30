@@ -22,9 +22,7 @@ namespace BusinessLogic.Logic
             ExecuteFaultSafe(() =>
             {
                 if (currentUser == null)
-                {
                     throw new ArgumentNullException(nameof(currentUser), "El usuario actual no puede ser nulo.");
-                }
 
                 if (string.IsNullOrWhiteSpace(message))
                 {
@@ -37,14 +35,10 @@ namespace BusinessLogic.Logic
                 var client = _sessionManager.GetClient(currentUser.id_user);
 
                 if (client == null)
-                {
                     throw new UserNotOnlineException("No se encontró sesión activa para este usuario.");
-                }
 
                 if (client.CurrentLobby == null)
-                {
                     throw new UserNotInLobbyException("No estás dentro de un lobby, no puedes enviar mensajes.");
-                }
 
                 _logger.Info($"[SendMessage] Enviando mensaje en lobby '{client.CurrentLobby.LobbyCode}' desde {client.Nickname}.");
 
@@ -61,14 +55,14 @@ namespace BusinessLogic.Logic
             }
             catch (Exception ex)
             {
-                HandleException(ex, operationName);
+                throw HandleException(ex, operationName);
             }
         }
 
-        private void HandleException(Exception ex, string operationName)
+        private FaultException<ServiceFault> HandleException(Exception ex, string operationName)
         {
-            if (ex is FaultException<ServiceFault>)
-                throw ex;
+            if (ex is FaultException<ServiceFault> fault)
+                return fault;
 
             string errorCode;
             string clientMessage;
@@ -93,14 +87,20 @@ namespace BusinessLogic.Logic
                     _logger.Error($"[{operationName}] Argumento nulo detectado: {ex.Message}");
                     break;
 
+                case ForbiddenWordException _:
+                    errorCode = "CHAT_FORBIDDEN_WORD";
+                    clientMessage = ex.Message;
+                    _logger.Warn($"[{operationName}] Palabra prohibida detectada en mensaje.");
+                    break;
+
                 default:
                     errorCode = "CHAT_INTERNAL_ERROR";
                     clientMessage = "Error al enviar el mensaje.";
-                    _logger.Fatal($"[{operationName}] Error inesperado broadcasting mensaje: {ex}", ex);
+                    _logger.Fatal($"[{operationName}] Error inesperado: {ex}", ex);
                     break;
             }
 
-            throw new FaultException<ServiceFault>(
+            return new FaultException<ServiceFault>(
                 new ServiceFault
                 {
                     ErrorCode = errorCode,

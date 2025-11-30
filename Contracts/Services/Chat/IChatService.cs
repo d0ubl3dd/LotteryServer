@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Contracts.Callbacks;
+using Contracts.Faults;
 using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Contracts.Services.Chat
 {
-    [ServiceContract]
+    [ServiceContract(CallbackContract = typeof(IChatCallback))]
     public interface IChatService
     {
-        [OperationContract(IsOneWay = true)]
+        [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
         void SendMessage(string message);
     }
 }

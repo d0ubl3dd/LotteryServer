@@ -59,9 +59,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Exceptions\AccountBannedException.cs" />
     <Compile Include="Exceptions\AuthException.cs" />
+    <Compile Include="Exceptions\BannedLobbyPlayerException.cs" />
     <Compile Include="Exceptions\ChatException.cs" />
+    <Compile Include="Exceptions\ForbiddenWordException.cs" />
     <Compile Include="Exceptions\FriendshipException.cs" />
     <Compile Include="Exceptions\GameException.cs" />
     <Compile Include="Exceptions\LobbyException.cs" />
@@ -107,6 +108,11 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
+  <ItemGroup>
+    <Content Include="Resources\forbidden_words.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

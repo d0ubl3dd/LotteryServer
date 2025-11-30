@@ -4,16 +4,13 @@ using System.ServiceModel;
 namespace Contracts.Callbacks
 {
     [ServiceContract]
-    public interface ILotteryCallback
+    public interface ILotteryCallback : IChatCallback
     {
         [OperationContract(IsOneWay = true)]
         void NotifyCard(int cardId);
 
         [OperationContract(IsOneWay = true)]
         void NotifyWinner(string nickname);
-
-        [OperationContract(IsOneWay = true)]
-        void ReceiveChatMessage(string nickname, string message);
 
         [OperationContract(IsOneWay = true)]
         void PlayerJoined(UserDto newPlayer);
