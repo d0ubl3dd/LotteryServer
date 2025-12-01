@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Contracts.DTOs;
+using System;
 using System.Runtime.Serialization;
 
 [DataContract]
@@ -28,4 +29,6 @@ public class UserDto
     public int? Score { get; set; }
     [DataMember]
     public bool IsHost { get; set; }
+    [DataMember]
+    public SocialMediaDto SocialMedia { get; set; }
 }

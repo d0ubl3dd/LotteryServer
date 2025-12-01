@@ -52,6 +52,7 @@
     <Compile Include="DTOs\GameSettingsDto.cs" />
     <Compile Include="DTOs\LobbyStateDto.cs" />
     <Compile Include="DTOs\ScoreboardDto.cs" />
+    <Compile Include="DTOs\SocialMediaDto.cs" />
     <Compile Include="DTOs\UserDto.cs" />
     <Compile Include="Faults\ServiceFault.cs" />
     <Compile Include="ILotteryService.cs" />
@@ -61,6 +62,7 @@
     <Compile Include="Services\Friends\IFriendService.cs" />
     <Compile Include="Services\Game\IGameService.cs" />
     <Compile Include="Services\Lobby\ILobbyService.cs" />
+    <Compile Include="Services\SocialMedia\ISocialMediaService.cs" />
     <Compile Include="Services\Users\IVerificationService.cs" />
     <Compile Include="Services\Users\IAuthenticationService.cs" />
     <Compile Include="Services\Users\IUserService.cs" />

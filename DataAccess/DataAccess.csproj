@@ -61,7 +61,9 @@
     </Compile>
     <Compile Include="DAOs\FriendshipDao.cs" />
     <Compile Include="DAOs\IFriendshipDao.cs" />
+    <Compile Include="DAOs\ISocialMediaDao.cs" />
     <Compile Include="DAOs\IUserDao.cs" />
+    <Compile Include="DAOs\SocialMediaDao.cs" />
     <Compile Include="DAOs\UserDao.cs" />
     <Compile Include="Friendship.cs">
       <DependentUpon>LotteryDataModel.tt</DependentUpon>

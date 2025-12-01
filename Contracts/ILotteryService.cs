@@ -3,6 +3,7 @@ using Contracts.Services.Chat;
 using Contracts.Services.Friends;
 using Contracts.Services.Game;
 using Contracts.Services.Lobby;
+using Contracts.Services.SocialMedia;
 using Contracts.Services.Users;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ using System.Threading.Tasks;
 namespace Contracts
 {
     [ServiceContract(CallbackContract = typeof(ILotteryCallback))]
-    public interface ILotteryService : IChatService, IFriendService, IGameService, ILobbyService, IAuthenticationService, IUserService, IVerificationService
+    public interface ILotteryService : IChatService, IFriendService, IGameService, ILobbyService, IAuthenticationService, IUserService, IVerificationService, ISocialMediaService
     {
     }
 }

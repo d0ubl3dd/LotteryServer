@@ -30,6 +30,7 @@ namespace BusinessLogic
         private readonly ChatHandler _chatHandler;
         private readonly VerificationHandler _verificationHandler;
         private readonly GuestHandler _guestHandler;
+        private readonly SocialMediaHandler _socialMediaHandler;
 
         public LotteryService()
         {
@@ -48,6 +49,7 @@ namespace BusinessLogic
             _friendHandler = new FriendHandler(sessionManagerInstance, friendshipDao);
             _userHandler = new UserHandler(userDao, _verificationHandler);
             _guestHandler = new GuestHandler();
+            _socialMediaHandler = new SocialMediaHandler(new SocialMediaDao(), new UserDao());
 
             _logger.Info("LotteryService instanciado.");
         }
@@ -457,6 +459,18 @@ namespace BusinessLogic
         public Task<bool> VerifyCode(string email, string code)
         {
             return _verificationHandler.VerifyCode(email, code);
+        }
+
+        // --- ISocialMediaService ---
+
+        public async Task<SocialMediaDto> GetSocialMediaAsync(int userId)
+        {
+            return await _socialMediaHandler.GetSocialMedia(userId);
+        }
+
+        public async Task<bool> SaveOrUpdateSocialMediaAsync(SocialMediaDto media)
+        {
+            return await _socialMediaHandler.UpdateSocialMedia(media);
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Logic; // Para PasswordHasher
+using BusinessLogic.Logic;
 using BusinessLogic.Validation;
 using Contracts.DTOs;
 using Contracts.Faults;
@@ -29,8 +29,7 @@ namespace BusinessLogic.Handlers
             return await ExecuteFaultSafeAsync(async () =>
             {
                 _logger.Info($"[RequestVerification] Procesando solicitud para {userData.Email}.");
-
-                // 1. Convertimos DTO a Entidad temporal para el validador
+                
                 var tempUser = new User
                 {
                     nickname = userData.Nickname,
@@ -39,11 +38,9 @@ namespace BusinessLogic.Handlers
                     paternal_last_name = userData.PaternalLastName
                 };
 
-                // 2. Consultamos existencia en BD
                 bool nickExists = await _userRepository.NicknameExistsAsync(userData.Nickname);
                 bool emailExists = await _userRepository.EmailExistsAsync(userData.Email);
-
-                // 3. ¡USAMOS EL VALIDADOR CENTRALIZADO!
+                
                 var validationResult = RegistrationValidator.Validate(tempUser, userData.Password, nickExists, emailExists);
 
                 if (validationResult != RegistrationValidationResult.Success)
@@ -51,7 +48,6 @@ namespace BusinessLogic.Handlers
                     ThrowRegistrationException(validationResult);
                 }
 
-                // 4. Si pasa la validación, enviamos el código
                 bool codeSent = await _verificationHandler.SendVerificationCode(userData.Email);
 
                 if (!codeSent)
@@ -60,7 +56,7 @@ namespace BusinessLogic.Handlers
                 }
 
                 _logger.Info($"[RequestVerification] Código enviado a {userData.Email}");
-                return 1; // Retorna éxito
+                return 1;
 
             }, "RequestUserVerification");
         }
@@ -70,9 +66,6 @@ namespace BusinessLogic.Handlers
             return await ExecuteFaultSafeAsync(async () =>
             {
                 _logger.Info($"[RegisterUser] Registrando: {userData.Nickname}");
-
-                // Opcional: Podrías volver a validar aquí por seguridad, 
-                // pero si el flujo obliga a verificar código antes, asumimos que los datos ya fueron revisados.
 
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -318,9 +311,6 @@ namespace BusinessLogic.Handlers
                     throw new InvalidOperationException("Error de validación desconocido.");
             }
         }
-
-        // --- Wrapper Seguro ---
-
         private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
             try
