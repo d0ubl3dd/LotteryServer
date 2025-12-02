@@ -16,17 +16,9 @@ namespace BusinessLogic
 
         public bool HandleError(Exception error)
         {
-            if (error is FaultException<ServiceFault>)
+            if (!(error is FaultException<ServiceFault>))
             {
-                _logger.Info($"Fault controlado: {error.Message}");
-                return true;
-            }
-
-            _logger.Error("Error no controlado en el servicio WCF", error);
-
-            if (error is OutOfMemoryException || error is StackOverflowException)
-            {
-                _logger.Fatal("Error FATAL en el servicio", error);
+                _logger.Error("Error CRÍTICO no controlado en infraestructura WCF", error);
             }
 
             return true;
@@ -36,24 +28,25 @@ namespace BusinessLogic
         {
             if (error is FaultException<ServiceFault> serviceFaultException)
             {
-                MessageFault messageFault = serviceFaultException.CreateMessageFault();
+                var messageFault = serviceFaultException.CreateMessageFault();
                 fault = Message.CreateMessage(version, messageFault, serviceFaultException.Action);
-                return;
             }
-
-            var serviceFault = new ServiceFault
+            else
             {
-                Message = error.Message,
-                ErrorCode = "SERVER_ERROR"
-            };
+                var serviceFault = new ServiceFault
+                {
+                    Message = "Ocurrió un error inesperado en el servidor.",
+                    ErrorCode = "SERVER_ERROR"
+                };
 
-            var faultException = new FaultException<ServiceFault>(
-                serviceFault,
-                new FaultReason("Error Interno del Servidor")
-            );
+                var faultException = new FaultException<ServiceFault>(
+                    serviceFault,
+                    new FaultReason("Error Interno del Servidor")
+                );
 
-            MessageFault mf = faultException.CreateMessageFault();
-            fault = Message.CreateMessage(version, mf, faultException.Action);
+                var messageFault = faultException.CreateMessageFault();
+                fault = Message.CreateMessage(version, messageFault, faultException.Action);
+            }
         }
     }
 
@@ -69,11 +62,13 @@ namespace BusinessLogic
             }
         }
 
-        public void AddBindingParameters(ServiceDescription sd, ServiceHostBase sh,
-            Collection<ServiceEndpoint> ep, BindingParameterCollection bp)
-        { }
+        public void AddBindingParameters(ServiceDescription sd, ServiceHostBase sh, Collection<ServiceEndpoint> ep, BindingParameterCollection bp)
+        {
+        }
 
-        public void Validate(ServiceDescription sd, ServiceHostBase sh) { }
+        public void Validate(ServiceDescription sd, ServiceHostBase sh)
+        {
+        }
     }
 
     public class GlobalErrorBehaviorExtension : BehaviorExtensionElement

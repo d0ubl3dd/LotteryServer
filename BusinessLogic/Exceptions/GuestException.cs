@@ -16,4 +16,9 @@ namespace BusinessLogic.Exceptions
     {
         public InvalidNicknameFormatException(string message) : base(message) { }
     }
+
+    public class GuestActionException : Exception
+    {
+        public GuestActionException(string message) : base(message) { }
+    }
 }

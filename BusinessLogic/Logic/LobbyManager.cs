@@ -17,11 +17,18 @@ namespace BusinessLogic.Logic
 
         private readonly ConcurrentDictionary<string, Lobby> _lobbies = new ConcurrentDictionary<string, Lobby>();
 
-        private LobbyManager() { }
+        private LobbyManager()
+        {
+        }
 
         public LobbyStateDto CreateLobby(PlayerClient host)
         {
-            if (host == null) throw new ArgumentNullException(nameof(host));
+            LobbyStateDto result;
+
+            if (host == null)
+            {
+                throw new ArgumentNullException(nameof(host));
+            }
 
             var lobbyCode = GenerateLobbyCode();
             var lobby = new Lobby(lobbyCode, host);
@@ -33,15 +40,19 @@ namespace BusinessLogic.Logic
 
             _logger.Info($"[LobbyManager] Lobby creado: {lobbyCode} por host {host.UserId}");
 
-            return new LobbyStateDto
+            result = new LobbyStateDto
             {
                 LobbyCode = lobbyCode,
                 Players = lobby.GetPlayerDTOs()
             };
+
+            return result;
         }
 
         public LobbyStateDto JoinLobby(PlayerClient player, string lobbyCode)
         {
+            LobbyStateDto result;
+
             if (string.IsNullOrEmpty(lobbyCode))
             {
                 throw new ArgumentException("El código del lobby no puede ser vacío.");
@@ -76,45 +87,50 @@ namespace BusinessLogic.Logic
             lobby.BroadcastPlayerJoined(player);
             _logger.Info($"[LobbyManager] Jugador {player.UserId} se unió al lobby {lobbyCode}");
 
-            return new LobbyStateDto
+            result = new LobbyStateDto
             {
                 LobbyCode = lobbyCode,
                 Players = lobby.GetPlayerDTOs()
             };
+
+            return result;
         }
 
         public void LeaveLobby(PlayerClient player)
         {
-            if (player?.CurrentLobby == null) return;
-
-            var lobby = player.CurrentLobby;
-
-            lobby.RemovePlayer(player);
-
-            if (player.UserId == lobby.Host.UserId)
+            if (player?.CurrentLobby != null)
             {
-                lobby.BroadcastLobbyClosed();
+                var lobby = player.CurrentLobby;
 
-                foreach (var allPlayers in lobby.Players.ToList())
+                lobby.RemovePlayer(player);
+
+                if (player.UserId == lobby.Host.UserId)
                 {
-                    allPlayers.CurrentLobby = null;
-                    try
+                    lobby.BroadcastLobbyClosed();
+
+                    foreach (var allPlayers in lobby.Players.ToList())
                     {
-                        allPlayers.CallbackChannel.LobbyClosed();
+                        allPlayers.CurrentLobby = null;
+                        try
+                        {
+                            allPlayers.CallbackChannel.LobbyClosed();
+                        }
+                        catch
+                        {
+                        }
                     }
-                    catch { }
+
+                    lobby.Players.Clear();
+
+                    _lobbies.TryRemove(lobby.LobbyCode, out _);
+
+                    _logger.Info($"[LobbyManager] Host {player.UserId} cerró el lobby {lobby.LobbyCode}");
                 }
-
-                lobby.Players.Clear();
-
-                _lobbies.TryRemove(lobby.LobbyCode, out _);
-
-                _logger.Info($"[LobbyManager] Host {player.UserId} cerró el lobby {lobby.LobbyCode}");
-            }
-            else
-            {
-                lobby.BroadcastPlayerLeft(player.UserId);
-                _logger.Info($"[LobbyManager] Jugador {player.UserId} salió del lobby {lobby.LobbyCode}");
+                else
+                {
+                    lobby.BroadcastPlayerLeft(player.UserId);
+                    _logger.Info($"[LobbyManager] Jugador {player.UserId} salió del lobby {lobby.LobbyCode}");
+                }
             }
         }
 

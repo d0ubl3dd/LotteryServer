@@ -1,40 +1,50 @@
 ﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Logic;
+using BusinessLogic.Logic.Base;
 using Contracts.DTOs;
-using Contracts.Faults;
 using DataAccess;
 using DataAccess.DAOs;
-using log4net;
 using System;
-using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
 {
-    public class SocialMediaHandler
+    public class SocialMediaHandler : BaseHandler
     {
-        private static readonly ILog _logger = LogManager.GetLogger(typeof(SocialMediaHandler));
-        
         private readonly ISocialMediaDao _socialMediaRepository;
         private readonly IUserDao _userRepository;
 
-        public SocialMediaHandler(ISocialMediaDao socialDao, IUserDao userDao)
+        public SocialMediaHandler(ISocialMediaDao socialDao, IUserDao userDao) : base(typeof(SocialMediaHandler))
         {
-            _socialMediaRepository = socialDao ?? throw new ArgumentNullException(nameof(socialDao));
-            _userRepository = userDao ?? throw new ArgumentNullException(nameof(userDao));
+            if (socialDao == null)
+            {
+                throw new ArgumentNullException(nameof(socialDao));
+            }
+            if (userDao == null)
+            {
+                throw new ArgumentNullException(nameof(userDao));
+            }
+
+            _socialMediaRepository = socialDao;
+            _userRepository = userDao;
         }
 
         public async Task<SocialMediaDto> GetSocialMedia(int userId)
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                SocialMediaDto result;
+
                 var user = await _userRepository.GetUserByIdAsync(userId);
                 if (user == null)
+                {
                     throw new UserNotFoundException($"El usuario {userId} no existe.");
-                
+                }
+
                 var social = await _socialMediaRepository.GetSocialMediaByUserIdAsync(userId);
                 if (social == null)
                 {
-                    return new SocialMediaDto
+                    result = new SocialMediaDto
                     {
                         IdUser = userId,
                         Facebook = null,
@@ -43,15 +53,19 @@ namespace BusinessLogic.Handlers
                         Twitter = null
                     };
                 }
-
-                return new SocialMediaDto
+                else
                 {
-                    IdUser = social.id_user,
-                    Facebook = social.facebook,
-                    Instagram = social.instagram,
-                    TikTok = social.tiktok,
-                    Twitter = social.twitter
-                };
+                    result = new SocialMediaDto
+                    {
+                        IdUser = social.id_user,
+                        Facebook = social.facebook,
+                        Instagram = social.instagram,
+                        TikTok = social.tiktok,
+                        Twitter = social.twitter
+                    };
+                }
+
+                return result;
 
             }, "GetSocialMedia");
         }
@@ -60,12 +74,16 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                bool success = false;
+
                 _logger.Info($"[UpdateSocialMedia] User {media.IdUser}");
 
                 var user = await _userRepository.GetUserByIdAsync(media.IdUser);
                 if (user == null)
+                {
                     throw new UserNotFoundException($"No existe el usuario con ID {media.IdUser}");
-                
+                }
+
                 if (!string.IsNullOrWhiteSpace(media.Twitter) &&
                     await _socialMediaRepository.ExistsTwitterUsernameExcludingUserAsync(media.IdUser, media.Twitter))
                 {
@@ -87,7 +105,7 @@ namespace BusinessLogic.Handlers
                 var existing = await _socialMediaRepository.GetSocialMediaByUserIdAsync(media.IdUser);
 
                 if (existing == null)
-                {                
+                {
                     await _socialMediaRepository.AddSocialMediaAsync(new SocialMedia
                     {
                         id_user = media.IdUser,
@@ -103,66 +121,16 @@ namespace BusinessLogic.Handlers
                     existing.instagram = media.Instagram;
                     existing.tiktok = media.TikTok;
                     existing.twitter = media.Twitter;
-                    
+
                     await _socialMediaRepository.UpdateSocialMediaAsync(existing);
                 }
 
                 await _socialMediaRepository.SaveChangesAsync();
-                return true;
+                success = true;
+
+                return success;
 
             }, "UpdateSocialMedia");
-        }
-
-        private async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string method)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, method);
-                return default;
-            }
-        }
-
-        private void HandleException(Exception ex, string method)
-        {
-            if (ex is FaultException<ServiceFault>)
-                throw ex;
-
-            string error = "SOCIAL_ERROR";
-            string msg = "Error en redes sociales.";
-
-            switch (ex)
-            {
-                case UserNotFoundException _:
-                    error = "USER_NOT_FOUND";
-                    msg = ex.Message;
-                    _logger.Warn($"[{method}] {msg}");
-                    break;
-
-                case UserAlreadyExistsException _:
-                    error = "USER_DUPLICATE";
-                    msg = ex.Message;
-                    _logger.Warn($"[{method}] Conflicto de unicidad: {msg}");
-                    break;
-
-                case ArgumentException _:
-                    error = "INVALID_DATA";
-                    msg = ex.Message;
-                    _logger.Warn($"[{method}] {msg}");
-                    break;
-
-                default:
-                    _logger.Error($"[{method}] Error inesperado → {ex}", ex);
-                    break;
-            }
-
-            throw new FaultException<ServiceFault>(
-                new ServiceFault { ErrorCode = error, Message = msg },
-                new FaultReason(msg)
-            );
         }
     }
 }

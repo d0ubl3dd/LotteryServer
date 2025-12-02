@@ -1,29 +1,33 @@
 ﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Logic;
+using BusinessLogic.Logic.Base;
 using BusinessLogic.Validation;
-using Contracts.Faults;
 using DataAccess;
 using DataAccess.DAOs;
-using log4net;
 using System;
-using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
 {
-    public class AuthenticationHandler
+    public class AuthenticationHandler : BaseHandler
     {
-        private static readonly ILog _logger = LogManager.GetLogger(typeof(AuthenticationHandler));
         private readonly IUserDao _userDAO;
 
-        public AuthenticationHandler(IUserDao userDAO)
+        public AuthenticationHandler(IUserDao userDAO) : base(typeof(AuthenticationHandler))
         {
-            _userDAO = userDAO ?? throw new ArgumentNullException(nameof(userDAO));
+            if (userDAO == null)
+            {
+                throw new ArgumentNullException(nameof(userDAO));
+            }
+            _userDAO = userDAO;
         }
 
         public async Task<User> LoginUser(string userName, string password)
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                User userResult = null;
+
                 _logger.Info($"[LoginUser] Intento de login para: {userName}");
 
                 User foundUser = await _userDAO.GetUserByNicknameAsync(userName);
@@ -33,14 +37,15 @@ namespace BusinessLogic.Handlers
                 if (validationResult == LoginValidationResult.Success)
                 {
                     await HandleSuccessfulLogin(foundUser);
-                    return foundUser;
+                    userResult = foundUser;
                 }
                 else
                 {
                     await HandleFailedLogin(foundUser, validationResult);
                     ThrowLoginException(validationResult);
-                    return null;
                 }
+
+                return userResult;
 
             }, "LoginUser");
         }
@@ -115,101 +120,28 @@ namespace BusinessLogic.Handlers
 
         private void ThrowLoginException(LoginValidationResult result)
         {
+            Exception exceptionToThrow;
+
             switch (result)
             {
                 case LoginValidationResult.UserNotFound:
-                    throw new UserNotFoundException("El usuario no existe.");
+                    exceptionToThrow = new UserNotFoundException("El usuario no existe.");
+                    break;
 
                 case LoginValidationResult.IncorrectPassword:
-                    throw new IncorrectPasswordException("Contraseña incorrecta.");
+                    exceptionToThrow = new IncorrectPasswordException("Contraseña incorrecta.");
+                    break;
 
                 case LoginValidationResult.AccountLocked:
-                    throw new AccountLockedException("Tu cuenta está bloqueada por demasiados intentos.");
-
-                default:
-                    throw new InvalidOperationException("Error de validación desconocido.");
-            }
-        }
-
-        // --- MANEJO DE ERRORES ---
-
-        private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
-        {
-            try
-            {
-                await action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, operationName);
-            }
-        }
-
-        private async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string operationName)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, operationName);
-                return default;
-            }
-        }
-
-        private void HandleException(Exception ex, string operationName)
-        {
-            if (ex is FaultException<ServiceFault>)
-                throw ex;
-
-            string errorCode;
-            string clientMessage;
-
-            switch (ex)
-            {
-                case UserNotFoundException _:
-                    errorCode = "AUTH_USER_NOT_FOUND";
-                    clientMessage = "Credenciales inválidas.";
-                    _logger.Warn($"[{operationName}] Usuario no encontrado.");
-                    break;
-
-                case IncorrectPasswordException _:
-                    errorCode = "AUTH_INVALID_CREDENTIALS";
-                    clientMessage = "Credenciales inválidas.";
-                    _logger.Warn($"[{operationName}] Contraseña incorrecta.");
-                    break;
-
-                case AccountLockedException _:
-                    errorCode = "AUTH_ACCOUNT_LOCKED";
-                    clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Cuenta bloqueada.");
-                    break;
-
-                case ArgumentNullException _:
-                    errorCode = "AUTH_BAD_REQUEST";
-                    clientMessage = "Datos de solicitud incompletos.";
-                    _logger.Error($"[{operationName}] Argumento nulo: {ex.Message}");
-                    break;
-
-                case System.Data.Entity.Core.EntityException _:
-                case System.Data.SqlClient.SqlException _:
-                    errorCode = "AUTH_DB_ERROR";
-                    clientMessage = "Error de conexión con la base de datos.";
-                    _logger.Fatal($"[{operationName}] Error de BD: {ex}", ex);
+                    exceptionToThrow = new AccountLockedException("Tu cuenta está bloqueada por demasiados intentos.");
                     break;
 
                 default:
-                    errorCode = "AUTH_INTERNAL_500";
-                    clientMessage = "Ocurrió un error inesperado en el servidor.";
-                    _logger.Fatal($"[{operationName}] Error no controlado: {ex}", ex);
+                    exceptionToThrow = new InvalidOperationException("Error de validación desconocido.");
                     break;
             }
 
-            throw new FaultException<ServiceFault>(
-                new ServiceFault { ErrorCode = errorCode, Message = clientMessage },
-                new FaultReason(clientMessage)
-            );
+            throw exceptionToThrow;
         }
     }
 }

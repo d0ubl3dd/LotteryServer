@@ -436,17 +436,10 @@ namespace BusinessLogic
 
         // --- IChatService ---
 
-        public void SendMessage(string message)
+        public async Task SendMessage(string message)
         {
-            if (_currentUser == null)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = "Usuario no conectado." },
-                    new FaultReason("Sesión inválida")
-                );
-            }
 
-            _chatHandler.SendMessage(_currentUser, message);
+            await _chatHandler.SendMessage(_currentUser, message);
         }
 
         // --- IVerificationService ---

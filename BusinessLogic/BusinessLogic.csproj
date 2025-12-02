@@ -73,6 +73,7 @@
     <Compile Include="ListExtensions.cs" />
     <Compile Include="Logging\LoggerService.cs" />
     <Compile Include="Logic\AuthenticationHandler.cs" />
+    <Compile Include="Logic\Base\BaseHandler.cs" />
     <Compile Include="Logic\ChatHandler.cs" />
     <Compile Include="Logic\FriendHandler.cs" />
     <Compile Include="Logic\GameHandler.cs" />
@@ -89,6 +90,8 @@
     <Compile Include="Models\Lobby.cs" />
     <Compile Include="Models\PlayerClient.cs" />
     <Compile Include="Services\EmailService.cs" />
+    <Compile Include="Utilities\ErrorStrategy.cs" />
+    <Compile Include="Utilities\ExceptionMapper.cs" />
     <Compile Include="Validation\LoginValidationResult.cs" />
     <Compile Include="LotteryService.cs" />
     <Compile Include="PasswordHasher.cs" />

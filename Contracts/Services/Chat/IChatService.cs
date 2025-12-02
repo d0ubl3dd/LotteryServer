@@ -1,6 +1,7 @@
 ﻿using Contracts.Callbacks;
 using Contracts.Faults;
 using System.ServiceModel;
+using System.Threading.Tasks;
 
 namespace Contracts.Services.Chat
 {
@@ -9,6 +10,6 @@ namespace Contracts.Services.Chat
     {
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        void SendMessage(string message);
+        Task SendMessage(string message);
     }
 }

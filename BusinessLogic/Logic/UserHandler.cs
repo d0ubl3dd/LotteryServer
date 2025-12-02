@@ -1,35 +1,60 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Logic;
+using BusinessLogic.Logic.Base;
 using BusinessLogic.Validation;
 using Contracts.DTOs;
-using Contracts.Faults;
 using DataAccess;
 using DataAccess.DAOs;
-using log4net;
 using System;
-using System.ServiceModel;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
 {
-    public partial class UserHandler
+    public partial class UserHandler : BaseHandler
     {
-        private static readonly ILog _logger = LogManager.GetLogger(typeof(UserHandler));
         private readonly IUserDao _userRepository;
         private readonly VerificationHandler _verificationHandler;
 
-        public UserHandler(IUserDao userDao, VerificationHandler verificationHandler)
+        private static readonly Dictionary<RegistrationValidationResult, Func<Exception>> _validationExceptions =
+            new Dictionary<RegistrationValidationResult, Func<Exception>>
+            {
+                { RegistrationValidationResult.EmptyNickname, () => new ArgumentException("Todos los campos son obligatorios.") },
+                { RegistrationValidationResult.EmptyEmail, () => new ArgumentException("Todos los campos son obligatorios.") },
+                { RegistrationValidationResult.EmptyPassword, () => new ArgumentException("Todos los campos son obligatorios.") },
+                { RegistrationValidationResult.EmptyName, () => new ArgumentException("Todos los campos son obligatorios.") },
+                { RegistrationValidationResult.InvalidNicknameLength, () => new ArgumentException("El nickname debe tener al menos 4 caracteres.") },
+                { RegistrationValidationResult.InvalidEmailFormat, () => new ArgumentException("El formato del correo electrónico no es válido.") },
+                { RegistrationValidationResult.PasswordTooShort, () => new ArgumentException("La contraseña debe tener al menos 8 caracteres.") },
+                { RegistrationValidationResult.PasswordNoUpperCase, () => new ArgumentException("La contraseña debe contener al menos una letra mayúscula.") },
+                { RegistrationValidationResult.PasswordNoSpecialCharacter, () => new ArgumentException("La contraseña debe contener al menos un carácter especial.") },
+                { RegistrationValidationResult.NicknameAlreadyExists, () => new UserAlreadyExistsException("El nombre de usuario ya está en uso.") },
+                { RegistrationValidationResult.EmailAlreadyExists, () => new UserAlreadyExistsException("El correo electrónico ya está registrado.") }
+            };
+
+        public UserHandler(IUserDao userDao, VerificationHandler verificationHandler) : base(typeof(UserHandler))
         {
-            _userRepository = userDao ?? throw new ArgumentNullException(nameof(userDao));
-            _verificationHandler = verificationHandler ?? throw new ArgumentNullException(nameof(verificationHandler));
+            if (userDao == null)
+            {
+                throw new ArgumentNullException(nameof(userDao));
+            }
+            if (verificationHandler == null)
+            {
+                throw new ArgumentNullException(nameof(verificationHandler));
+            }
+
+            _userRepository = userDao;
+            _verificationHandler = verificationHandler;
         }
 
         public async Task<int> RequestUserVerification(UserDto userData)
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                int result;
+
                 _logger.Info($"[RequestVerification] Procesando solicitud para {userData.Email}.");
-                
+
                 var tempUser = new User
                 {
                     nickname = userData.Nickname,
@@ -40,7 +65,7 @@ namespace BusinessLogic.Handlers
 
                 bool nickExists = await _userRepository.NicknameExistsAsync(userData.Nickname);
                 bool emailExists = await _userRepository.EmailExistsAsync(userData.Email);
-                
+
                 var validationResult = RegistrationValidator.Validate(tempUser, userData.Password, nickExists, emailExists);
 
                 if (validationResult != RegistrationValidationResult.Success)
@@ -56,7 +81,9 @@ namespace BusinessLogic.Handlers
                 }
 
                 _logger.Info($"[RequestVerification] Código enviado a {userData.Email}");
-                return 1;
+                result = 1;
+
+                return result;
 
             }, "RequestUserVerification");
         }
@@ -65,6 +92,8 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                int newUserId;
+
                 _logger.Info($"[RegisterUser] Registrando: {userData.Nickname}");
 
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
@@ -89,7 +118,9 @@ namespace BusinessLogic.Handlers
                 await _userRepository.SaveChangesAsync();
 
                 _logger.Info($"[RegisterUser] Registro exitoso. ID: {newUser.id_user}");
-                return newUser.id_user;
+                newUserId = newUser.id_user;
+
+                return newUserId;
 
             }, "RegisterUser");
         }
@@ -98,8 +129,10 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                bool isValid;
                 var user = await GetUserOrThrow(userId);
-                return PasswordHasher.VerifyPasswordHash(password, user.passwordHash, user.passwordSalt);
+                isValid = PasswordHasher.VerifyPasswordHash(password, user.passwordHash, user.passwordSalt);
+                return isValid;
 
             }, "VerifyPassword");
         }
@@ -108,6 +141,8 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                bool success = false;
+
                 _logger.Info($"[ChangePassword] Solicitud para ID {userId}");
 
                 var user = await GetUserOrThrow(userId);
@@ -119,7 +154,9 @@ namespace BusinessLogic.Handlers
                 await _userRepository.SaveChangesAsync();
 
                 _logger.Info($"[ChangePassword] Éxito para ID {userId}");
-                return true;
+                success = true;
+
+                return success;
 
             }, "ChangePassword");
         }
@@ -149,6 +186,7 @@ namespace BusinessLogic.Handlers
                 await _userRepository.SaveChangesAsync();
 
                 _logger.Info($"[UpdateProfile] Perfil actualizado para ID {currentUserId}");
+
                 return (true, "Perfil actualizado correctamente.");
 
             }, "UpdateProfile");
@@ -158,6 +196,8 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                bool success = false;
+
                 _logger.Info($"[RequestEmailChange] Usuario {userId} solicita cambio a {newEmail}");
 
                 await GetUserOrThrow(userId);
@@ -173,7 +213,8 @@ namespace BusinessLogic.Handlers
                     throw new VerificationException("Error al enviar el código de confirmación al nuevo correo.");
                 }
 
-                return true;
+                success = true;
+                return success;
 
             }, "RequestEmailChange");
         }
@@ -182,6 +223,8 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                bool success = false;
+
                 _logger.Info($"[ConfirmEmailChange] Usuario {userId}");
 
                 var userInDb = await GetUserOrThrow(userId);
@@ -196,24 +239,28 @@ namespace BusinessLogic.Handlers
                 await _userRepository.SaveChangesAsync();
 
                 _logger.Info($"[ConfirmEmailChange] Correo actualizado para ID {userId}");
-                return true;
+                success = true;
+
+                return success;
 
             }, "ConfirmEmailChange");
         }
 
-        public Task<int> RegisterGuest()
+        public async Task<int> RegisterGuest()
         {
-            return ExecuteFaultSafeAsync(async () =>
+            return await ExecuteFaultSafeAsync(async () =>
             {
+                int result;
                 _logger.Info("[RegisterGuest] Registrando invitado.");
-                return await Task.FromResult(-1);
+                result = await Task.FromResult(-1);
+                return result;
 
             }, "RegisterGuest");
         }
 
-        public Task RecoverPassword(string email)
+        public async Task RecoverPassword(string email)
         {
-            return ExecuteFaultSafeAsync(async () =>
+            await ExecuteFaultSafeAsync(async () =>
             {
                 _logger.Info($"[RecoverPassword] Solicitud para {email}.");
                 await Task.CompletedTask;
@@ -225,8 +272,12 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                FriendDto friendDto;
+
                 if (string.IsNullOrWhiteSpace(nickname))
+                {
                     throw new ArgumentException("El nickname a buscar no puede estar vacío.");
+                }
 
                 var user = await _userRepository.GetUserByNicknameAsync(nickname);
 
@@ -235,12 +286,14 @@ namespace BusinessLogic.Handlers
                     throw new UserNotFoundException($"No se encontró usuario con nickname: {nickname}");
                 }
 
-                return new FriendDto
+                friendDto = new FriendDto
                 {
                     UserId = user.id_user,
                     Nickname = user.nickname,
                     Status = user.status
                 };
+
+                return friendDto;
 
             }, "FindUserByNickname");
         }
@@ -249,9 +302,10 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                UserDto profile;
                 var user = await GetUserOrThrow(userId);
 
-                return new UserDto
+                profile = new UserDto
                 {
                     UserId = user.id_user,
                     Nickname = user.nickname,
@@ -263,12 +317,15 @@ namespace BusinessLogic.Handlers
                     AvatarUrl = user.Avatar?.path
                 };
 
+                return profile;
+
             }, "GetUserProfile");
         }
 
         private async Task<User> GetUserOrThrow(int userId)
         {
-            var user = await _userRepository.GetUserByIdAsync(userId);
+            User user;
+            user = await _userRepository.GetUserByIdAsync(userId);
             if (user == null)
             {
                 throw new UserNotFoundException($"El usuario con ID {userId} no existe.");
@@ -278,113 +335,12 @@ namespace BusinessLogic.Handlers
 
         private void ThrowRegistrationException(RegistrationValidationResult result)
         {
-            switch (result)
+            if (_validationExceptions.TryGetValue(result, out var exceptionFunc))
             {
-                case RegistrationValidationResult.EmptyNickname:
-                case RegistrationValidationResult.EmptyEmail:
-                case RegistrationValidationResult.EmptyPassword:
-                case RegistrationValidationResult.EmptyName:
-                    throw new ArgumentException("Todos los campos son obligatorios.");
-
-                case RegistrationValidationResult.InvalidNicknameLength:
-                    throw new ArgumentException($"El nickname debe tener al menos 4 caracteres.");
-
-                case RegistrationValidationResult.InvalidEmailFormat:
-                    throw new ArgumentException("El formato del correo electrónico no es válido.");
-
-                case RegistrationValidationResult.PasswordTooShort:
-                    throw new ArgumentException("La contraseña debe tener al menos 8 caracteres.");
-
-                case RegistrationValidationResult.PasswordNoUpperCase:
-                    throw new ArgumentException("La contraseña debe contener al menos una letra mayúscula.");
-
-                case RegistrationValidationResult.PasswordNoSpecialCharacter:
-                    throw new ArgumentException("La contraseña debe contener al menos un carácter especial.");
-
-                case RegistrationValidationResult.NicknameAlreadyExists:
-                    throw new UserAlreadyExistsException("El nombre de usuario ya está en uso.");
-
-                case RegistrationValidationResult.EmailAlreadyExists:
-                    throw new UserAlreadyExistsException("El correo electrónico ya está registrado.");
-
-                default:
-                    throw new InvalidOperationException("Error de validación desconocido.");
-            }
-        }
-        private async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
-        {
-            try
-            {
-                await action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, operationName);
-            }
-        }
-
-        private async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string operationName)
-        {
-            try
-            {
-                return await action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, operationName);
-                return default;
-            }
-        }
-
-        private void HandleException(Exception ex, string operationName)
-        {
-            if (ex is FaultException<ServiceFault>)
-                throw ex;
-
-            string errorCode;
-            string clientMessage;
-
-            switch (ex)
-            {
-                case UserNotFoundException _:
-                    errorCode = "USER_NOT_FOUND";
-                    clientMessage = "Usuario no encontrado.";
-                    _logger.Warn($"[{operationName}] {ex.Message}");
-                    break;
-
-                case UserAlreadyExistsException _:
-                    errorCode = "USER_DUPLICATE";
-                    clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Conflicto: {ex.Message}");
-                    break;
-
-                case VerificationException _:
-                    errorCode = "USER_VERIFICATION_ERROR";
-                    clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Verificación fallida: {ex.Message}");
-                    break;
-
-                case ArgumentException _:
-                    errorCode = "USER_BAD_REQUEST";
-                    clientMessage = "Datos inválidos.";
-                    _logger.Error($"[{operationName}] Args: {ex.Message}");
-                    break;
-
-                default:
-                    errorCode = "USER_INTERNAL_ERROR";
-                    clientMessage = "Error interno del servidor.";
-                    _logger.Fatal($"[{operationName}] Error crítico: {ex}", ex);
-                    break;
+                throw exceptionFunc();
             }
 
-            throw new FaultException<ServiceFault>(
-                new ServiceFault
-                {
-                    ErrorCode = errorCode,
-                    Message = clientMessage
-                },
-                new FaultReason(clientMessage)
-            );
+            throw new InvalidOperationException("Error de validación desconocido.");
         }
     }
 }

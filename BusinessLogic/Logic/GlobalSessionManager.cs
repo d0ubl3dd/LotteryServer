@@ -1,10 +1,10 @@
 ﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Logic;
+using BusinessLogic.Logic.Base;
 using BusinessLogic.Models;
 using Contracts.Callbacks;
-using Contracts.Faults;
 using DataAccess;
 using DataAccess.DAOs;
-using log4net;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,20 +13,18 @@ using System.ServiceModel;
 
 namespace BusinessLogic.Logic
 {
-    public class GlobalSessionManager : ISessionManager
+    public class GlobalSessionManager : BaseHandler, ISessionManager
     {
         private static readonly Lazy<GlobalSessionManager> _instance =
             new Lazy<GlobalSessionManager>(() => new GlobalSessionManager());
         public static GlobalSessionManager Instance => _instance.Value;
-
-        private static readonly ILog _logger = LogManager.GetLogger(typeof(GlobalSessionManager));
 
         private readonly ConcurrentDictionary<int, PlayerClient> _onlineUsers =
             new ConcurrentDictionary<int, PlayerClient>();
 
         private readonly IUserDao _userDao;
 
-        private GlobalSessionManager()
+        private GlobalSessionManager() : base(typeof(GlobalSessionManager))
         {
             _userDao = new UserDao();
             _logger.Info("GlobalSessionManager inicializado.");
@@ -36,8 +34,14 @@ namespace BusinessLogic.Logic
         {
             ExecuteFaultSafe(() =>
             {
-                if (user == null) throw new ArgumentNullException(nameof(user));
-                if (callback == null) throw new ArgumentNullException(nameof(callback));
+                if (user == null)
+                {
+                    throw new ArgumentNullException(nameof(user));
+                }
+                if (callback == null)
+                {
+                    throw new ArgumentNullException(nameof(callback));
+                }
 
                 var client = new PlayerClient(user, callback);
                 _onlineUsers[user.id_user] = client;
@@ -56,13 +60,17 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
+                PlayerClient clientResult;
+
                 if (!_onlineUsers.TryGetValue(userId, out var client))
                 {
                     throw new ClientNotFoundException($"El cliente con ID {userId} no está conectado.");
                 }
 
                 _logger.Info($"[GetClient] Cliente recuperado: {userId}");
-                return client;
+                clientResult = client;
+
+                return clientResult;
 
             }, "GetClient");
         }
@@ -71,14 +79,19 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
+                PlayerClient clientResult = null;
+
                 if (!_onlineUsers.TryRemove(userId, out var client))
                 {
                     _logger.Warn($"[UnregisterClient] Usuario {userId} ya estaba desconectado. No se toma acción.");
-                    return null;
+                }
+                else
+                {
+                    _logger.Info($"[UnregisterClient] Usuario desconectado y marcado como Offline: {userId}");
+                    clientResult = client;
                 }
 
-                _logger.Info($"[UnregisterClient] Usuario desconectado y marcado como Offline: {userId}");
-                return client;
+                return clientResult;
 
             }, "UnregisterClient");
         }
@@ -90,11 +103,12 @@ namespace BusinessLogic.Logic
                 if (!_onlineUsers.ContainsKey(userId))
                 {
                     _logger.Warn($"[AutoDisconnect] Usuario {userId} ya estaba desconectado. Ignorando evento duplicado.");
-                    return;
                 }
-
-                _logger.Warn($"[AutoDisconnect] Detectada desconexión para userId={userId}. Procediendo a limpiar sesión.");
-                UnregisterClient(userId);
+                else
+                {
+                    _logger.Warn($"[AutoDisconnect] Detectada desconexión para userId={userId}. Procediendo a limpiar sesión.");
+                    UnregisterClient(userId);
+                }
             }
             catch (Exception ex)
             {
@@ -106,6 +120,8 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
+                int? resultId;
+
                 var context = OperationContext.Current;
                 if (context == null)
                 {
@@ -126,7 +142,9 @@ namespace BusinessLogic.Logic
                 }
 
                 _logger.Info($"[GetUserIdFromContext] Usuario identificado: {entry.Key}");
-                return (int?)entry.Key;
+                resultId = (int?)entry.Key;
+
+                return resultId;
 
             }, "GetUserIdFromContext");
         }
@@ -134,76 +152,6 @@ namespace BusinessLogic.Logic
         public IEnumerable<PlayerClient> GetAllOnlineUsers()
         {
             return _onlineUsers.Values;
-        }
-
-        private void ExecuteFaultSafe(Action action, string operationName)
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, operationName);
-            }
-        }
-
-        private T ExecuteFaultSafe<T>(Func<T> action, string operationName)
-        {
-            try
-            {
-                return action();
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex, operationName);
-                return default;
-            }
-        }
-
-        private void HandleException(Exception ex, string operationName)
-        {
-            if (ex is FaultException<ServiceFault>)
-                throw ex;
-
-            string errorCode;
-            string clientMessage;
-
-            switch (ex)
-            {
-                case ClientNotFoundException _:
-                    errorCode = "SESSION_CLIENT_NOT_FOUND";
-                    clientMessage = ex.Message;
-                    _logger.Warn($"[{operationName}] Cliente no encontrado.");
-                    break;
-
-                case SessionContextException _:
-                    errorCode = "SESSION_CONTEXT_ERROR";
-                    clientMessage = "Error de comunicación o sesión perdida.";
-                    _logger.Error($"[{operationName}] Error de contexto WCF: {ex.Message}");
-                    break;
-
-                case ArgumentNullException _:
-                    errorCode = "SESSION_BAD_REQUEST";
-                    clientMessage = "Datos de sesión inválidos.";
-                    _logger.Error($"[{operationName}] Argumento nulo: {ex.Message}");
-                    break;
-
-                default:
-                    errorCode = "SESSION_INTERNAL_ERROR";
-                    clientMessage = "Error interno en el gestor de sesiones.";
-                    _logger.Fatal($"[{operationName}] Error crítico inesperado: {ex}", ex);
-                    break;
-            }
-
-            throw new FaultException<ServiceFault>(
-                new ServiceFault
-                {
-                    ErrorCode = errorCode,
-                    Message = clientMessage
-                },
-                new FaultReason(clientMessage)
-            );
         }
     }
 }

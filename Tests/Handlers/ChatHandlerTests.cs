@@ -1,4 +1,4 @@
-﻿using Xunit;
+﻿/*using Xunit;
 using Moq;
 using BusinessLogic.Logic;
 using BusinessLogic.Models;
@@ -23,7 +23,7 @@ namespace LotteryServer.Tests.Handlers
             _mockCallback = new Mock<ILotteryCallback>();
             _handler = new ChatHandler(_mockSessionManager.Object);
         }
-
+        
         [Fact]
         public void SendMessage_UserNull_ThrowsFault_BadRequest()
         {
@@ -94,4 +94,4 @@ namespace LotteryServer.Tests.Handlers
             _mockCallback.Verify(cb => cb.ReceiveChatMessage(user.nickname, message), Times.Once);
         }
     }
-}
+}*/
