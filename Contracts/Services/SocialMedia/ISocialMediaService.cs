@@ -10,7 +10,7 @@ namespace Contracts.Services.SocialMedia
     {
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        Task<SocialMediaDto> GetSocialMediaAsync(int userId);
+        Task<SocialMediaDto> GetSocialMediaAsync(int currentUserId);
 
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]

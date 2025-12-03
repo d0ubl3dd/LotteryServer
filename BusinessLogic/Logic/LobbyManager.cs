@@ -38,7 +38,7 @@ namespace BusinessLogic.Logic
                 throw new LobbyException("Error interno al registrar el lobby en memoria.");
             }
 
-            _logger.Info($"[LobbyManager] Lobby creado: {lobbyCode} por host {host.UserId}");
+            _logger.InfoFormat("[LobbyManager] Lobby creado: {0} por host {1}", lobbyCode, host.UserId);
 
             result = new LobbyStateDto
             {
@@ -60,7 +60,7 @@ namespace BusinessLogic.Logic
 
             if (!_lobbies.TryGetValue(lobbyCode, out var lobby))
             {
-                throw new LobbyNotFoundException($"El lobby {lobbyCode} no existe.");
+                throw new LobbyNotFoundException(string.Format("El lobby {0} no existe.", lobbyCode));
             }
 
             if (lobby.IsBanned(player.UserId))
@@ -85,7 +85,7 @@ namespace BusinessLogic.Logic
             }
 
             lobby.BroadcastPlayerJoined(player);
-            _logger.Info($"[LobbyManager] Jugador {player.UserId} se unió al lobby {lobbyCode}");
+            _logger.InfoFormat("[LobbyManager] Jugador {0} se unió al lobby {1}", player.UserId, lobbyCode);
 
             result = new LobbyStateDto
             {
@@ -115,8 +115,9 @@ namespace BusinessLogic.Logic
                         {
                             allPlayers.CallbackChannel.LobbyClosed();
                         }
-                        catch
+                        catch (Exception exception)
                         {
+                            _logger.Error(string.Format("[LobbyManager] Error al notificar cierre de lobby al jugador {0}", allPlayers.UserId), exception);
                         }
                     }
 
@@ -124,17 +125,17 @@ namespace BusinessLogic.Logic
 
                     _lobbies.TryRemove(lobby.LobbyCode, out _);
 
-                    _logger.Info($"[LobbyManager] Host {player.UserId} cerró el lobby {lobby.LobbyCode}");
+                    _logger.InfoFormat("[LobbyManager] Host {0} cerró el lobby {1}", player.UserId, lobby.LobbyCode);
                 }
                 else
                 {
                     lobby.BroadcastPlayerLeft(player.UserId);
-                    _logger.Info($"[LobbyManager] Jugador {player.UserId} salió del lobby {lobby.LobbyCode}");
+                    _logger.InfoFormat("[LobbyManager] Jugador {0} salió del lobby {1}", player.UserId, lobby.LobbyCode);
                 }
             }
         }
 
-        public void KickPlayer(PlayerClient host, int targetPlayerId)
+        public static void KickPlayer(PlayerClient host, int targetPlayerId)
         {
             var lobby = host.CurrentLobby;
 
@@ -165,12 +166,12 @@ namespace BusinessLogic.Logic
             {
                 playerToKick.CallbackChannel.YouWereKicked();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.Warn($"[LobbyManager] No se pudo enviar notificación de kick al usuario {targetPlayerId}: {ex.Message}");
+                _logger.Warn(string.Format("[LobbyManager] No se pudo enviar notificación de kick al usuario {0}", targetPlayerId), exception);
             }
 
-            _logger.Info($"[LobbyManager] Jugador {targetPlayerId} expulsado y baneado del lobby {lobby.LobbyCode}");
+            _logger.InfoFormat("[LobbyManager] Jugador {0} expulsado y baneado del lobby {1}", targetPlayerId, lobby.LobbyCode);
         }
 
         public Lobby FindLobbyByHostId(int hostUserId)

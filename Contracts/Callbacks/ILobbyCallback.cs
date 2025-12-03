@@ -3,6 +3,7 @@ using System.ServiceModel;
 
 namespace Contracts.Callbacks
 {
+    [ServiceContract]
     public interface ILobbyCallback
     {
         [OperationContract(IsOneWay = true)]

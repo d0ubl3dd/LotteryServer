@@ -18,16 +18,16 @@ namespace BusinessLogic.Handlers
 
         public async Task SendMessage(User currentUser, string message)
         {
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser), "El usuario actual no puede ser nulo.");
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUser == null)
-                {
-                    throw new ArgumentNullException(nameof(currentUser), "El usuario actual no puede ser nulo.");
-                }
-
                 if (!string.IsNullOrWhiteSpace(message))
                 {
-                    _logger.Info($"[SendMessage] Usuario {currentUser.nickname} intenta enviar mensaje.");
+                    _logger.InfoFormat("[SendMessage] Usuario {0} intenta enviar mensaje.", currentUser.nickname);
 
                     var client = _sessionManager.GetClient(currentUser.id_user);
 
@@ -41,13 +41,15 @@ namespace BusinessLogic.Handlers
                         throw new UserNotInLobbyException("No estás dentro de un lobby, no puedes enviar mensajes.");
                     }
 
-                    _logger.Info($"[SendMessage] Enviando mensaje en lobby '{client.CurrentLobby.LobbyCode}' desde {client.Nickname}.");
+                    _logger.InfoFormat("[SendMessage] Enviando mensaje en lobby '{0}' desde {1}.",
+                        client.CurrentLobby.LobbyCode,
+                        client.Nickname);
 
                     client.CurrentLobby.BroadcastChatMessage(client.Nickname, message);
                 }
                 else
                 {
-                    _logger.Info($"[SendMessage] Mensaje vacío ignorado para usuario {currentUser.nickname}.");
+                    _logger.InfoFormat("[SendMessage] Mensaje vacío ignorado para usuario {0}.", currentUser.nickname);
                 }
 
                 await Task.CompletedTask;

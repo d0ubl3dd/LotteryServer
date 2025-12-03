@@ -16,15 +16,15 @@ namespace BusinessLogic.Models
         public string LobbyCode { get; }
         public PlayerClient Host { get; }
         public List<PlayerClient> Players { get; } = new List<PlayerClient>();
-        private HashSet<int> _bannedPlayers = new HashSet<int>();
+        private readonly HashSet<int> _bannedPlayers = new HashSet<int>();
         public const int MAX_PLAYERS = 4;
 
         public bool IsGameInProgress { get; private set; }
         private Deck _gameDeck;
-        private Task _gameLoopTask;
         private CancellationTokenSource _gameCts;
 
         private readonly HashSet<string> _forbiddenWords;
+        private static readonly log4net.ILog _logger = log4net.LogManager.GetLogger(typeof(Lobby));
 
         private readonly Dictionary<int, Dictionary<string, int>> _messageHistory
         = new Dictionary<int, Dictionary<string, int>>();
@@ -56,6 +56,7 @@ namespace BusinessLogic.Models
             {
                 return false;
             }
+            
             Players.Add(player);
             player.CurrentLobby = this;
             return true;
@@ -72,7 +73,7 @@ namespace BusinessLogic.Models
             }
         }
 
-        private HashSet<string> LoadForbiddenWords(string path)
+        private static HashSet<string> LoadForbiddenWords(string path)
         {
             if (!File.Exists(path))
             {
@@ -86,9 +87,6 @@ namespace BusinessLogic.Models
             return new HashSet<string>(lines);
         }
 
-        // ============================================================
-        //                   CHAT DEL LOBBY MODIFICADO
-        // ============================================================
         public bool BroadcastChatMessage(string nickname, string message)
         {
             var sender = Players.FirstOrDefault(p => p.Nickname == nickname);
@@ -101,51 +99,40 @@ namespace BusinessLogic.Models
 
             var history = _messageHistory[userId];
 
-            // ----------------------------------------------------------
-            //  1. DETECCIÓN DE PALABRAS PROHIBIDAS
-            // ----------------------------------------------------------
-            foreach (var word in _forbiddenWords)
-            {
-                if (message.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    // HOST dice grosería
-                    if (sender.UserId == Host.UserId)
-                    {
-                        Host.CallbackChannel.ReceiveChatMessage(
-                            "Sistema",
-                            "No puedes decir groserías. Modera tu lenguaje."
-                        );
-                        return false;
-                    }
+            var forbiddenWord = _forbiddenWords.FirstOrDefault(word => 
+                message.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
 
-                    // JUGADOR NORMAL → expulsar
-                    LobbyManager.Instance.KickPlayer(Host, userId);
+            if (forbiddenWord != null)
+            {
+                if (sender.UserId == Host.UserId)
+                {
+                    Host.CallbackChannel.ReceiveChatMessage(
+                        "Sistema",
+                        "No puedes decir groserías. Modera tu lenguaje."
+                    );
                     return false;
                 }
+
+                LobbyManager.KickPlayer(Host, userId);
+                return false;
             }
 
-            // ----------------------------------------------------------
-            //  2. ANTI-SPAM
-            // ----------------------------------------------------------
             if (!history.ContainsKey(message))
+            {
                 history[message] = 0;
+            }
 
             history[message]++;
 
             if (history[message] > 10)
             {
-                LobbyManager.Instance.KickPlayer(Host, userId);
+                LobbyManager.KickPlayer(Host, userId);
                 return true;
             }
 
-            // ----------------------------------------------------------
-            //  3. ENVÍO NORMAL SI TODO BIEN
-            // ----------------------------------------------------------
             BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
             return true;
         }
-
-        // ============================================================
 
         public void BroadcastPlayerJoined(PlayerClient newPlayer)
         {
@@ -205,7 +192,7 @@ namespace BusinessLogic.Models
 
             BroadcastGameStarted(settings);
 
-            _gameLoopTask = Task.Run(() => RunGameLoop(settings, _gameCts.Token));
+            Task.Run(() => RunGameLoop(settings, _gameCts.Token));
         }
 
         public void StopLobbyGame()
@@ -232,7 +219,10 @@ namespace BusinessLogic.Models
                     await Task.Delay(cardDrawDelayMs, token);
 
                     Card card = _gameDeck.DrawCard();
-                    if (card == null) break;
+                    if (card == null)
+                    {
+                        break;
+                    }
 
                     var cardDto = new CardDto { Id = card.Id };
 
@@ -241,11 +231,11 @@ namespace BusinessLogic.Models
             }
             catch (TaskCanceledException)
             {
-                Console.WriteLine($"Juego del lobby {LobbyCode} cancelado.");
+                _logger.InfoFormat("Juego del lobby {0} cancelado.", LobbyCode);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                Console.WriteLine($"Error en el bucle del juego {LobbyCode}: {ex.Message}");
+                _logger.Error(string.Format("Error en el bucle del juego {0}: {1}", LobbyCode, exception.Message), exception);
             }
             finally
             {
@@ -278,8 +268,10 @@ namespace BusinessLogic.Models
                 {
                     action(player.CallbackChannel);
                 }
-                catch (Exception)
+                catch (Exception exception)
                 {
+                    _logger.Warn(string.Format("No se pudo enviar el mensaje al jugador {0}. Error: {1}", 
+                        player.UserId, exception.Message), exception);
                 }
             }
         }

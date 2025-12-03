@@ -7,6 +7,9 @@ namespace DataAccess.DAOs
 {
     public class FriendshipDao : IFriendshipDao
     {
+        private const string StatusPending = "Pending";
+        private const string StatusAccepted = "Accepted";
+
         public async Task<bool> FriendshipExistsAsync(int userId1, int userId2)
         {
             using (var context = new lottery_databaseEntities())
@@ -25,7 +28,7 @@ namespace DataAccess.DAOs
                 {
                     id_user_sender = senderId,
                     id_user_receiver = receiverId,
-                    status = "Pending"
+                    status = StatusPending
                 });
                 await context.SaveChangesAsync();
             }
@@ -38,7 +41,7 @@ namespace DataAccess.DAOs
                 return await context.Friendship.FirstOrDefaultAsync(f =>
                     f.id_user_sender == senderId &&
                     f.id_user_receiver == receiverId &&
-                    f.status == "Pending");
+                    f.status == StatusPending);
             }
         }
 
@@ -49,7 +52,7 @@ namespace DataAccess.DAOs
                 return await context.Friendship.FirstOrDefaultAsync(f =>
                     ((f.id_user_sender == userId1 && f.id_user_receiver == userId2) ||
                      (f.id_user_sender == userId2 && f.id_user_receiver == userId1)) &&
-                    f.status == "Accepted");
+                    f.status == StatusAccepted);
             }
         }
 
@@ -58,7 +61,7 @@ namespace DataAccess.DAOs
             using (var context = new lottery_databaseEntities())
             {
                 context.Friendship.Attach(friendship);
-                friendship.status = "Accepted";
+                friendship.status = StatusAccepted;
                 context.Entry(friendship).Property(x => x.status).IsModified = true;
                 await context.SaveChangesAsync();
             }
@@ -83,7 +86,7 @@ namespace DataAccess.DAOs
             {
                 var friendIds = await context.Friendship
                     .Where(f => (f.id_user_sender == userId || f.id_user_receiver == userId)
-                                && f.status == "Accepted")
+                                && f.status == StatusAccepted)
                     .Select(f => f.id_user_sender == userId ? f.id_user_receiver : f.id_user_sender)
                     .ToListAsync();
 
@@ -98,7 +101,7 @@ namespace DataAccess.DAOs
             using (var context = new lottery_databaseEntities())
             {
                 return await context.Friendship
-                    .Where(f => f.id_user_receiver == userId && f.status == "Pending")
+                    .Where(f => f.id_user_receiver == userId && f.status == StatusPending)
                     .Join(context.User,
                         f => f.id_user_sender,
                         u => u.id_user,
@@ -112,7 +115,7 @@ namespace DataAccess.DAOs
             using (var context = new lottery_databaseEntities())
             {
                 return await context.Friendship
-                    .Where(f => f.id_user_sender == userId && f.status == "Pending")
+                    .Where(f => f.id_user_sender == userId && f.status == StatusPending)
                     .Join(context.User,
                         f => f.id_user_receiver,
                         u => u.id_user,

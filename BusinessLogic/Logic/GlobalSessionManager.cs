@@ -22,31 +22,28 @@ namespace BusinessLogic.Logic
         private readonly ConcurrentDictionary<int, PlayerClient> _onlineUsers =
             new ConcurrentDictionary<int, PlayerClient>();
 
-        private readonly IUserDao _userDao;
-
         private GlobalSessionManager() : base(typeof(GlobalSessionManager))
         {
-            _userDao = new UserDao();
             _logger.Info("GlobalSessionManager inicializado.");
         }
 
         public void RegisterClient(User user, ILotteryCallback callback)
         {
+            if (user == null)
+            {
+                throw new ArgumentNullException(nameof(user));
+            }
+            if (callback == null)
+            {
+                throw new ArgumentNullException(nameof(callback));
+            }
+
             ExecuteFaultSafe(() =>
             {
-                if (user == null)
-                {
-                    throw new ArgumentNullException(nameof(user));
-                }
-                if (callback == null)
-                {
-                    throw new ArgumentNullException(nameof(callback));
-                }
-
                 var client = new PlayerClient(user, callback);
                 _onlineUsers[user.id_user] = client;
 
-                _logger.Info($"[RegisterClient] Usuario registrado: {user.id_user} - {user.nickname}");
+                _logger.InfoFormat("[RegisterClient] Usuario registrado: {0} - {1}", user.id_user, user.nickname);
 
                 if (callback is ICommunicationObject channel)
                 {
@@ -64,10 +61,10 @@ namespace BusinessLogic.Logic
 
                 if (!_onlineUsers.TryGetValue(userId, out var client))
                 {
-                    throw new ClientNotFoundException($"El cliente con ID {userId} no está conectado.");
+                    throw new ClientNotFoundException(string.Format("El cliente con ID {0} no está conectado.", userId));
                 }
 
-                _logger.Info($"[GetClient] Cliente recuperado: {userId}");
+                _logger.InfoFormat("[GetClient] Cliente recuperado: {0}", userId);
                 clientResult = client;
 
                 return clientResult;
@@ -83,11 +80,11 @@ namespace BusinessLogic.Logic
 
                 if (!_onlineUsers.TryRemove(userId, out var client))
                 {
-                    _logger.Warn($"[UnregisterClient] Usuario {userId} ya estaba desconectado. No se toma acción.");
+                    _logger.WarnFormat("[UnregisterClient] Usuario {0} ya estaba desconectado. No se toma acción.", userId);
                 }
                 else
                 {
-                    _logger.Info($"[UnregisterClient] Usuario desconectado y marcado como Offline: {userId}");
+                    _logger.InfoFormat("[UnregisterClient] Usuario desconectado y marcado como Offline: {0}", userId);
                     clientResult = client;
                 }
 
@@ -102,17 +99,17 @@ namespace BusinessLogic.Logic
             {
                 if (!_onlineUsers.ContainsKey(userId))
                 {
-                    _logger.Warn($"[AutoDisconnect] Usuario {userId} ya estaba desconectado. Ignorando evento duplicado.");
+                    _logger.WarnFormat("[AutoDisconnect] Usuario {0} ya estaba desconectado. Ignorando evento duplicado.", userId);
                 }
                 else
                 {
-                    _logger.Warn($"[AutoDisconnect] Detectada desconexión para userId={userId}. Procediendo a limpiar sesión.");
+                    _logger.WarnFormat("[AutoDisconnect] Detectada desconexión para userId={0}. Procediendo a limpiar sesión.", userId);
                     UnregisterClient(userId);
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.Warn($"[AutoDisconnect] Error al desconectar automáticamente userId={userId}: {ex.Message}");
+                _logger.WarnFormat("[AutoDisconnect] Error al desconectar automáticamente userId={0}. Detalle: {1}", userId, exception);
             }
         }
 
@@ -141,7 +138,7 @@ namespace BusinessLogic.Logic
                     throw new SessionContextException("El callback del contexto no corresponde a ningún usuario registrado.");
                 }
 
-                _logger.Info($"[GetUserIdFromContext] Usuario identificado: {entry.Key}");
+                _logger.InfoFormat("[GetUserIdFromContext] Usuario identificado: {0}", entry.Key);
                 resultId = (int?)entry.Key;
 
                 return resultId;

@@ -1,26 +1,29 @@
-﻿public enum RegistrationValidationResult
+﻿namespace BusinessLogic.Validation
 {
-    Success,
-    EmptyNickname,
-    EmptyEmail,
-    EmptyPassword,
-    EmptyName,
+    public enum RegistrationValidationResult
+    {
+        Success,
+        EmptyNickname,
+        EmptyEmail,
+        EmptyPassword,
+        EmptyName,
 
-    InvalidNicknameLength,
-    InvalidNicknameFormat,
+        InvalidNicknameLength,
+        InvalidNicknameFormat,
 
-    InvalidEmailFormat,
+        InvalidEmailFormat,
 
-    NameTooLong,
-    InvalidNameFormat,
+        NameTooLong,
+        InvalidNameFormat,
 
-    PasswordTooShort,
-    PasswordNoUpperCase,
-    PasswordNoLowerCase,
-    PasswordNoNumber,
-    PasswordNoSpecialCharacter,
-    PasswordInvalidCharacters,
+        PasswordTooShort,
+        PasswordNoUpperCase,
+        PasswordNoLowerCase,
+        PasswordNoNumber,
+        PasswordNoSpecialCharacter,
+        PasswordInvalidCharacters,
 
-    NicknameAlreadyExists,
-    EmailAlreadyExists
+        NicknameAlreadyExists,
+        EmailAlreadyExists
+    }
 }

@@ -1,5 +1,4 @@
 ﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
 using BusinessLogic.Validation;
 using DataAccess;
@@ -28,7 +27,7 @@ namespace BusinessLogic.Handlers
             {
                 User userResult = null;
 
-                _logger.Info($"[LoginUser] Intento de login para: {userName}");
+                _logger.InfoFormat("[LoginUser] Intento de login para: {0}", userName);
 
                 User foundUser = await _userDAO.GetUserByNicknameAsync(userName);
 
@@ -52,14 +51,14 @@ namespace BusinessLogic.Handlers
 
         public async Task LogoutUser(User userToLogout)
         {
+            if (userToLogout == null)
+            {
+                throw new ArgumentNullException(nameof(userToLogout), "No se puede cerrar sesión de un usuario nulo.");
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (userToLogout == null)
-                {
-                    throw new ArgumentNullException(nameof(userToLogout), "No se puede cerrar sesión de un usuario nulo.");
-                }
-
-                _logger.Info($"[LogoutUser] Cerrando sesión para {userToLogout.nickname}.");
+                _logger.InfoFormat("[LogoutUser] Cerrando sesión para {0}.", userToLogout.nickname);
 
                 if (userToLogout.id_user > 0)
                 {
@@ -75,10 +74,10 @@ namespace BusinessLogic.Handlers
                 }
                 else
                 {
-                    _logger.Info($"[LogoutUser] Usuario invitado {userToLogout.nickname} desconectado (limpieza en memoria).");
+                    _logger.InfoFormat("[LogoutUser] Usuario invitado {0} desconectado (limpieza en memoria).", userToLogout.nickname);
                 }
 
-                _logger.Info($"[LogoutUser] Sesión cerrada correctamente.");
+                _logger.Info("[LogoutUser] Sesión cerrada correctamente.");
 
             }, "LogoutUser");
         }
@@ -92,13 +91,16 @@ namespace BusinessLogic.Handlers
                 userToUpdate.failedLoginAttempts = 0;
                 userToUpdate.lastLoginDate = DateTime.UtcNow;
                 await _userDAO.SaveChangesAsync();
-                _logger.Info($"[LoginUser] Login exitoso y estado actualizado para: {foundUser.nickname}");
+
+                _logger.InfoFormat("[LoginUser] Login exitoso y estado actualizado para: {0}", foundUser.nickname);
             }
         }
 
         private async Task HandleFailedLogin(User foundUser, LoginValidationResult reason)
         {
-            _logger.Info($"[LoginUser] Login fallido para {foundUser?.nickname ?? "Desconocido"}. Motivo: {reason}");
+            _logger.InfoFormat("[LoginUser] Login fallido para {0}. Motivo: {1}",
+                foundUser?.nickname ?? "Desconocido",
+                reason);
 
             if (foundUser != null)
             {
@@ -110,7 +112,7 @@ namespace BusinessLogic.Handlers
                     if (userToUpdate.failedLoginAttempts >= 5)
                     {
                         userToUpdate.isLocked = true;
-                        _logger.Warn($"[LoginUser] La cuenta de {userToUpdate.nickname} ha sido BLOQUEADA.");
+                        _logger.WarnFormat("[LoginUser] La cuenta de {0} ha sido BLOQUEADA.", userToUpdate.nickname);
                     }
 
                     await _userDAO.SaveChangesAsync();
@@ -118,7 +120,7 @@ namespace BusinessLogic.Handlers
             }
         }
 
-        private void ThrowLoginException(LoginValidationResult result)
+        private static void ThrowLoginException(LoginValidationResult result)
         {
             Exception exceptionToThrow;
 

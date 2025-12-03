@@ -5,12 +5,7 @@ using Contracts.Services.Game;
 using Contracts.Services.Lobby;
 using Contracts.Services.SocialMedia;
 using Contracts.Services.Users;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.ServiceModel;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Contracts
 {

@@ -38,7 +38,7 @@ namespace BusinessLogic.Handlers
                 var user = await _userRepository.GetUserByIdAsync(userId);
                 if (user == null)
                 {
-                    throw new UserNotFoundException($"El usuario {userId} no existe.");
+                    throw new UserNotFoundException(string.Format("El usuario {0} no existe.", userId));
                 }
 
                 var social = await _socialMediaRepository.GetSocialMediaByUserIdAsync(userId);
@@ -72,34 +72,43 @@ namespace BusinessLogic.Handlers
 
         public async Task<bool> UpdateSocialMedia(SocialMediaDto media)
         {
+            if (media == null)
+            {
+                throw new ArgumentNullException(nameof(media));
+            }
+
             return await ExecuteFaultSafeAsync(async () =>
             {
                 bool success = false;
 
-                _logger.Info($"[UpdateSocialMedia] User {media.IdUser}");
+                _logger.InfoFormat("[UpdateSocialMedia] User {0}", media.IdUser);
 
                 var user = await _userRepository.GetUserByIdAsync(media.IdUser);
                 if (user == null)
                 {
-                    throw new UserNotFoundException($"No existe el usuario con ID {media.IdUser}");
+                    throw new UserNotFoundException(string.
+                        Format("No existe el usuario con ID {0}", media.IdUser));
                 }
 
                 if (!string.IsNullOrWhiteSpace(media.Twitter) &&
                     await _socialMediaRepository.ExistsTwitterUsernameExcludingUserAsync(media.IdUser, media.Twitter))
                 {
-                    throw new UserAlreadyExistsException($"El nombre de usuario de Twitter/X '{media.Twitter}' ya está en uso por otra cuenta.");
+                    throw new UserAlreadyExistsException(string.
+                        Format("El nombre de usuario de Twitter/X '{0}' ya está en uso por otra cuenta.", media.Twitter));
                 }
 
                 if (!string.IsNullOrWhiteSpace(media.Instagram) &&
                     await _socialMediaRepository.ExistsInstagramUsernameExcludingUserAsync(media.IdUser, media.Instagram))
                 {
-                    throw new UserAlreadyExistsException($"El nombre de usuario de Instagram '{media.Instagram}' ya está en uso por otra cuenta.");
+                    throw new UserAlreadyExistsException(string.
+                        Format("El nombre de usuario de Instagram '{0}' ya está en uso por otra cuenta.", media.Instagram));
                 }
 
                 if (!string.IsNullOrWhiteSpace(media.TikTok) &&
                     await _socialMediaRepository.ExistsTikTokUsernameExcludingUserAsync(media.IdUser, media.TikTok))
                 {
-                    throw new UserAlreadyExistsException($"El nombre de usuario de TikTok '{media.TikTok}' ya está en uso por otra cuenta.");
+                    throw new UserAlreadyExistsException(string.
+                        Format("El nombre de usuario de TikTok '{0}' ya está en uso por otra cuenta.", media.TikTok));
                 }
 
                 var existing = await _socialMediaRepository.GetSocialMediaByUserIdAsync(media.IdUser);

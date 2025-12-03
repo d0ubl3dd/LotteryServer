@@ -56,17 +56,22 @@ namespace BusinessLogic
         {
             var handler = new GlobalErrorHandler();
 
-            foreach (ChannelDispatcher dispatcher in serviceHostBase.ChannelDispatchers)
+            foreach (ChannelDispatcherBase dispatcherBase in serviceHostBase.ChannelDispatchers)
             {
-                dispatcher.ErrorHandlers.Add(handler);
+                var dispatcher = dispatcherBase as ChannelDispatcher;
+
+                if (dispatcher != null)
+                {
+                    dispatcher.ErrorHandlers.Add(handler);
+                }
             }
         }
 
-        public void AddBindingParameters(ServiceDescription sd, ServiceHostBase sh, Collection<ServiceEndpoint> ep, BindingParameterCollection bp)
+        public void AddBindingParameters(ServiceDescription serviceDescription, ServiceHostBase serviceHostBase, Collection<ServiceEndpoint> endpoints, BindingParameterCollection bindingParameters)
         {
         }
 
-        public void Validate(ServiceDescription sd, ServiceHostBase sh)
+        public void Validate(ServiceDescription serviceDescription, ServiceHostBase serviceHostBase)
         {
         }
     }

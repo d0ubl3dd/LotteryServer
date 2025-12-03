@@ -13,16 +13,18 @@ namespace BusinessLogic.Handlers
 {
     public partial class UserHandler : BaseHandler
     {
+        private const string MANDATORY_FIELDS_MESSAGE = "Todos los campos son obligatorios.";
+
         private readonly IUserDao _userRepository;
         private readonly VerificationHandler _verificationHandler;
 
         private static readonly Dictionary<RegistrationValidationResult, Func<Exception>> _validationExceptions =
             new Dictionary<RegistrationValidationResult, Func<Exception>>
             {
-                { RegistrationValidationResult.EmptyNickname, () => new ArgumentException("Todos los campos son obligatorios.") },
-                { RegistrationValidationResult.EmptyEmail, () => new ArgumentException("Todos los campos son obligatorios.") },
-                { RegistrationValidationResult.EmptyPassword, () => new ArgumentException("Todos los campos son obligatorios.") },
-                { RegistrationValidationResult.EmptyName, () => new ArgumentException("Todos los campos son obligatorios.") },
+                { RegistrationValidationResult.EmptyNickname, () => new ArgumentException(MANDATORY_FIELDS_MESSAGE) },
+                { RegistrationValidationResult.EmptyEmail, () => new ArgumentException(MANDATORY_FIELDS_MESSAGE) },
+                { RegistrationValidationResult.EmptyPassword, () => new ArgumentException(MANDATORY_FIELDS_MESSAGE) },
+                { RegistrationValidationResult.EmptyName, () => new ArgumentException(MANDATORY_FIELDS_MESSAGE) },
                 { RegistrationValidationResult.InvalidNicknameLength, () => new ArgumentException("El nickname debe tener al menos 4 caracteres.") },
                 { RegistrationValidationResult.InvalidEmailFormat, () => new ArgumentException("El formato del correo electrónico no es válido.") },
                 { RegistrationValidationResult.PasswordTooShort, () => new ArgumentException("La contraseña debe tener al menos 8 caracteres.") },
@@ -53,7 +55,7 @@ namespace BusinessLogic.Handlers
             {
                 int result;
 
-                _logger.Info($"[RequestVerification] Procesando solicitud para {userData.Email}.");
+                _logger.InfoFormat("[RequestVerification] Procesando solicitud para {0}.", userData.Email);
 
                 var tempUser = new User
                 {
@@ -80,7 +82,7 @@ namespace BusinessLogic.Handlers
                     throw new VerificationException("No se pudo enviar el correo de verificación. Inténtalo más tarde.");
                 }
 
-                _logger.Info($"[RequestVerification] Código enviado a {userData.Email}");
+                _logger.InfoFormat("[RequestVerification] Código enviado a {0}", userData.Email);
                 result = 1;
 
                 return result;
@@ -94,7 +96,7 @@ namespace BusinessLogic.Handlers
             {
                 int newUserId;
 
-                _logger.Info($"[RegisterUser] Registrando: {userData.Nickname}");
+                _logger.InfoFormat("[RegisterUser] Registrando: {0}", userData.Nickname);
 
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -117,7 +119,7 @@ namespace BusinessLogic.Handlers
                 _userRepository.AddUser(newUser);
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"[RegisterUser] Registro exitoso. ID: {newUser.id_user}");
+                _logger.InfoFormat("[RegisterUser] Registro exitoso. ID: {0}", newUser.id_user);
                 newUserId = newUser.id_user;
 
                 return newUserId;
@@ -143,7 +145,7 @@ namespace BusinessLogic.Handlers
             {
                 bool success = false;
 
-                _logger.Info($"[ChangePassword] Solicitud para ID {userId}");
+                _logger.InfoFormat("[ChangePassword] Solicitud para ID {0}", userId);
 
                 var user = await GetUserOrThrow(userId);
 
@@ -153,7 +155,7 @@ namespace BusinessLogic.Handlers
 
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"[ChangePassword] Éxito para ID {userId}");
+                _logger.InfoFormat("[ChangePassword] Éxito para ID {0}", userId);
                 success = true;
 
                 return success;
@@ -165,16 +167,14 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[UpdateProfile] ID {currentUserId}");
+                _logger.InfoFormat("[UpdateProfile] ID {0}", currentUserId);
 
                 var userInDb = await GetUserOrThrow(currentUserId);
 
-                if (!string.Equals(userInDb.nickname, userData.Nickname, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(userInDb.nickname, userData.Nickname, StringComparison.OrdinalIgnoreCase) &&
+                    await _userRepository.NicknameExistsAsync(userData.Nickname))
                 {
-                    if (await _userRepository.NicknameExistsAsync(userData.Nickname))
-                    {
-                        throw new UserAlreadyExistsException($"El nickname '{userData.Nickname}' ya está ocupado.");
-                    }
+                    throw new UserAlreadyExistsException(string.Format("El nickname '{0}' ya está ocupado.", userData.Nickname));
                 }
 
                 userInDb.first_name = userData.FirstName;
@@ -185,7 +185,7 @@ namespace BusinessLogic.Handlers
 
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"[UpdateProfile] Perfil actualizado para ID {currentUserId}");
+                _logger.InfoFormat("[UpdateProfile] Perfil actualizado para ID {0}", currentUserId);
 
                 return (true, "Perfil actualizado correctamente.");
 
@@ -198,7 +198,7 @@ namespace BusinessLogic.Handlers
             {
                 bool success = false;
 
-                _logger.Info($"[RequestEmailChange] Usuario {userId} solicita cambio a {newEmail}");
+                _logger.InfoFormat("[RequestEmailChange] Usuario {0} solicita cambio a {1}", userId, newEmail);
 
                 await GetUserOrThrow(userId);
 
@@ -225,7 +225,7 @@ namespace BusinessLogic.Handlers
             {
                 bool success = false;
 
-                _logger.Info($"[ConfirmEmailChange] Usuario {userId}");
+                _logger.InfoFormat("[ConfirmEmailChange] Usuario {0}", userId);
 
                 var userInDb = await GetUserOrThrow(userId);
 
@@ -238,7 +238,7 @@ namespace BusinessLogic.Handlers
                 userInDb.email = newEmail;
                 await _userRepository.SaveChangesAsync();
 
-                _logger.Info($"[ConfirmEmailChange] Correo actualizado para ID {userId}");
+                _logger.InfoFormat("[ConfirmEmailChange] Correo actualizado para ID {0}", userId);
                 success = true;
 
                 return success;
@@ -262,7 +262,7 @@ namespace BusinessLogic.Handlers
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info($"[RecoverPassword] Solicitud para {email}.");
+                _logger.InfoFormat("[RecoverPassword] Solicitud para {0}.", email);
                 await Task.CompletedTask;
 
             }, "RecoverPassword");
@@ -283,7 +283,7 @@ namespace BusinessLogic.Handlers
 
                 if (user == null || !string.Equals(user.nickname, nickname, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new UserNotFoundException($"No se encontró usuario con nickname: {nickname}");
+                    throw new UserNotFoundException(string.Format("No se encontró usuario con nickname: {0}", nickname));
                 }
 
                 friendDto = new FriendDto
@@ -328,12 +328,12 @@ namespace BusinessLogic.Handlers
             user = await _userRepository.GetUserByIdAsync(userId);
             if (user == null)
             {
-                throw new UserNotFoundException($"El usuario con ID {userId} no existe.");
+                throw new UserNotFoundException(string.Format("El usuario con ID {0} no existe.", userId));
             }
             return user;
         }
 
-        private void ThrowRegistrationException(RegistrationValidationResult result)
+        private static void ThrowRegistrationException(RegistrationValidationResult result)
         {
             if (_validationExceptions.TryGetValue(result, out var exceptionFunc))
             {

@@ -2,6 +2,7 @@
 
 namespace Contracts.Callbacks
 {
+    [ServiceContract]
     public interface IChatCallback
     {
         [OperationContract(IsOneWay = true)]

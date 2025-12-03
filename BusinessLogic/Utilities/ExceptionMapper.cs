@@ -13,7 +13,7 @@ namespace BusinessLogic.Utilities
     public static class ExceptionMapper
     {
         private static readonly Dictionary<Type, ErrorStrategy> _strategies = new Dictionary<Type, ErrorStrategy>();
-        private static readonly ILog _globalLogger = LogManager.GetLogger("GlobalExceptionHandler");
+        private static readonly ILog _logger = LogManager.GetLogger("GlobalExceptionHandler");
 
         static ExceptionMapper()
         {
@@ -64,9 +64,9 @@ namespace BusinessLogic.Utilities
         {
             Action<string> logAction;
 
-            if (isFatal) logAction = _globalLogger.Fatal;
-            else if (logAsError) logAction = _globalLogger.Error;
-            else logAction = _globalLogger.Warn;
+            if (isFatal) logAction = _logger.Fatal;
+            else if (logAsError) logAction = _logger.Error;
+            else logAction = _logger.Warn;
 
             if (!_strategies.ContainsKey(typeof(T)))
             {
@@ -93,7 +93,7 @@ namespace BusinessLogic.Utilities
 
             return (
                 new ServiceFault { ErrorCode = "INTERNAL_SERVER_ERROR", Message = "Ocurrió un error inesperado en el servidor." },
-                _globalLogger.Fatal
+                _logger.Fatal
             );
         }
     }

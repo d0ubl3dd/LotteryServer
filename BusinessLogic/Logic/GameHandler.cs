@@ -20,18 +20,18 @@ namespace BusinessLogic.Handlers
 
         public async Task StartGame(User hostUser, GameSettingsDto settings)
         {
+            if (hostUser == null)
+            {
+                throw new ArgumentNullException(nameof(hostUser));
+            }
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (hostUser == null)
-                {
-                    throw new ArgumentNullException(nameof(hostUser));
-                }
-                if (settings == null)
-                {
-                    throw new ArgumentNullException(nameof(settings));
-                }
-
-                _logger.Info($"[StartGame] Host {hostUser.nickname} intenta iniciar partida.");
+                _logger.InfoFormat("[StartGame] Host {0} intenta iniciar partida.", hostUser.nickname);
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
 
@@ -47,21 +47,23 @@ namespace BusinessLogic.Handlers
 
                 lobby.StartLobbyGame(settings);
 
-                _logger.Info($"[StartGame] Juego iniciado exitosamente por {hostUser.nickname}.");
+                _logger.InfoFormat("[StartGame] Juego iniciado exitosamente por {0}.", hostUser.nickname);
+
+                await Task.CompletedTask;
 
             }, "StartGame");
         }
 
         public async Task UpdateGameSettings(User hostUser, GameSettingsDto settings)
         {
+            if (hostUser == null)
+            {
+                throw new ArgumentNullException(nameof(hostUser));
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (hostUser == null)
-                {
-                    throw new ArgumentNullException(nameof(hostUser));
-                }
-
-                _logger.Info($"[UpdateGameSettings] Host {hostUser.nickname} intenta actualizar configuración.");
+                _logger.InfoFormat("[UpdateGameSettings] Host {0} intenta actualizar configuración.", hostUser.nickname);
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
 
@@ -75,7 +77,9 @@ namespace BusinessLogic.Handlers
                     throw new GameAlreadyRunningException("No se puede cambiar la configuración durante una partida.");
                 }
 
-                _logger.Info($"[UpdateGameSettings] Configuración actualizada.");
+                _logger.Info("[UpdateGameSettings] Configuración actualizada.");
+
+                await Task.CompletedTask;
 
             }, "UpdateGameSettings");
         }

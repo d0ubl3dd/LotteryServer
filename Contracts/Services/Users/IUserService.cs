@@ -11,7 +11,7 @@ namespace Contracts.Services.Users
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
         Task<int> RequestUserVerification(UserDto userData);
-        
+
         [OperationContract]
         Task<int> RegisterUser(UserDto userData);
 
@@ -19,11 +19,11 @@ namespace Contracts.Services.Users
         Task<int> RegisterGuest();
 
         [OperationContract]
-        Task<bool> VerifyPassword(int userId, string password);
+        Task<bool> VerifyPassword(int currentUserId, string password);
 
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        Task<bool> ChangePassword(int userId, string newPassword);
+        Task<bool> ChangePassword(int currentUserId, string newPassword);
 
         [OperationContract]
         Task RecoverPassword(string email);
@@ -36,12 +36,12 @@ namespace Contracts.Services.Users
         Task<FriendDto> FindUserByNickname(string nickname);
 
         [OperationContract]
-        Task<UserDto> GetUserProfile(int userId);
+        Task<UserDto> GetUserProfile(int currentUserId);
 
         [OperationContract]
-        Task<bool> RequestEmailChange(int userId, string newEmail);
+        Task<bool> RequestEmailChange(int currentUserId, string newEmail);
 
         [OperationContract]
-        Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode);
+        Task<bool> ConfirmEmailChange(int currentUserId, string newEmail, string verificationCode);
     }
 }

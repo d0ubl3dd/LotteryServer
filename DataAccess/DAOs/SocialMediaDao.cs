@@ -12,22 +12,22 @@ namespace DataAccess.DAOs
         {
             _context = new lottery_databaseEntities();
         }
-        
+
         public async Task<SocialMedia> GetSocialMediaByUserIdAsync(int userId)
         {
             return await _context.SocialMedia
                 .FirstOrDefaultAsync(sm => sm.id_user == userId);
         }
 
-        public async Task AddSocialMediaAsync(SocialMedia entity)
+        public async Task AddSocialMediaAsync(SocialMedia socialMedia)
         {
-            _context.SocialMedia.Add(entity);
+            _context.SocialMedia.Add(socialMedia);
             await Task.CompletedTask;
         }
 
-        public async Task UpdateSocialMediaAsync(SocialMedia entity)
+        public async Task UpdateSocialMediaAsync(SocialMedia socialMedia)
         {
-            _context.Entry(entity).State = EntityState.Modified;
+            _context.Entry(socialMedia).State = EntityState.Modified;
             await Task.CompletedTask;
         }
 

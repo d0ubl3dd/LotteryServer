@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Contracts.DTOs
 {
@@ -11,11 +7,11 @@ namespace Contracts.DTOs
     public class ScoreboardDto
     {
         [DataMember]
-        public List<PlayerScoreDTO> TopScores { get; set; }
+        public List<PlayerScoreDto> TopScores { get; set; }
     }
 
     [DataContract]
-    public class PlayerScoreDTO
+    public class PlayerScoreDto
     {
         [DataMember]
         public string Username { get; set; }

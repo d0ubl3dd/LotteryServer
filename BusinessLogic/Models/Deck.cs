@@ -5,7 +5,7 @@ namespace BusinessLogic.Models
 {
     public class Deck
     {
-        private Stack<Card> _cards;
+        private readonly Stack<Card> _cards;
 
         public Deck()
         {

@@ -1,10 +1,6 @@
 ﻿using Contracts.Callbacks;
 using Contracts.DTOs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.ServiceModel;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Contracts.Services.Game
@@ -22,6 +18,6 @@ namespace Contracts.Services.Game
         Task GetScoreboard();
 
         [OperationContract]
-        Task DeclareWin(int userId);
+        Task DeclareWin(int currentUserId);
     }
 }

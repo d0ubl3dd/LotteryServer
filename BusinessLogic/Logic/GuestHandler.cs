@@ -23,7 +23,7 @@ namespace BusinessLogic.Handlers
             {
                 User guestUser = null;
 
-                _logger.Info($"[LoginGuest] Procesando solicitud para: {nickname}");
+                _logger.InfoFormat("[LoginGuest] Procesando solicitud para: {0}", nickname);
 
                 var validationResult = RegistrationValidator.ValidateGuestNickname(nickname);
 
@@ -53,15 +53,17 @@ namespace BusinessLogic.Handlers
                         failedLoginAttempts = 0
                     };
 
-                    _logger.Info($"[LoginGuest] Invitado creado exitosamente: ID {guestId}");
+                    _logger.InfoFormat("[LoginGuest] Invitado creado exitosamente: ID {0}", guestId);
                 }
+
+                await Task.CompletedTask;
 
                 return guestUser;
 
             }, "LoginGuest");
         }
 
-        private void ThrowGuestValidationException(RegistrationValidationResult result)
+        private static void ThrowGuestValidationException(RegistrationValidationResult result)
         {
             Exception exceptionToThrow;
 

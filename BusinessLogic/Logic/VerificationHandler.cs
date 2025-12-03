@@ -15,7 +15,7 @@ namespace BusinessLogic.Handlers
         private readonly IEmailService _emailService;
         private readonly Random _random = new Random();
 
-        private class VerificationEntry
+        private sealed class VerificationEntry
         {
             public string Code { get; set; }
             public DateTime Expiration { get; set; }
@@ -35,14 +35,14 @@ namespace BusinessLogic.Handlers
 
         public async Task<bool> SendVerificationCode(string email)
         {
+            if (string.IsNullOrEmpty(email))
+            {
+                throw new ArgumentNullException(nameof(email));
+            }
+
             return await ExecuteFaultSafeAsync(async () =>
             {
                 bool success;
-
-                if (string.IsNullOrEmpty(email))
-                {
-                    throw new ArgumentNullException(nameof(email));
-                }
 
                 string code = _random.Next(100000, 999999).ToString();
                 DateTime expiration = DateTime.UtcNow.AddMinutes(5);
@@ -50,18 +50,18 @@ namespace BusinessLogic.Handlers
                 _codes[email] = new VerificationEntry { Code = code, Expiration = expiration };
 
                 string subject = "Código de verificación - Lottery Game";
-                string body = $"Tu código de verificación es: {code}\n\nEste código expirará en 5 minutos.";
+                string body = string.Format("Tu código de verificación es: {0}\n\nEste código expirará en 5 minutos.", code);
 
                 try
                 {
                     await _emailService.SendEmailAsync(email, subject, body);
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    throw new EmailDeliveryException($"Falló el envío de correo a {email}", ex);
+                    throw new EmailDeliveryException(string.Format("Falló el envío de correo a {0}", email), exception);
                 }
 
-                _logger.Info($"[SendVerificationCode] Código enviado a {email}.");
+                _logger.InfoFormat("[SendVerificationCode] Código enviado a {0}.", email);
                 success = true;
 
                 return success;
@@ -71,38 +71,40 @@ namespace BusinessLogic.Handlers
 
         public async Task<bool> VerifyCode(string email, string code)
         {
+            if (string.IsNullOrEmpty(email))
+            {
+                throw new ArgumentNullException(nameof(email));
+            }
+
+            if (string.IsNullOrEmpty(code))
+            {
+                throw new ArgumentNullException(nameof(code));
+            }
+
             return await ExecuteFaultSafeAsync(async () =>
             {
                 bool isValid = false;
-
-                if (string.IsNullOrEmpty(email))
-                {
-                    throw new ArgumentNullException(nameof(email));
-                }
-
-                if (string.IsNullOrEmpty(code))
-                {
-                    throw new ArgumentNullException(nameof(code));
-                }
 
                 if (_codes.TryGetValue(email, out var entry))
                 {
                     if (DateTime.UtcNow <= entry.Expiration && entry.Code == code)
                     {
                         _codes.TryRemove(email, out _);
-                        _logger.Info($"[VerifyCode] Verificación exitosa para {email}.");
+                        _logger.InfoFormat("[VerifyCode] Verificación exitosa para {0}.", email);
                         isValid = true;
                     }
                     else
                     {
-                        _logger.Warn($"[VerifyCode] Código incorrecto o expirado para {email}.");
+                        _logger.WarnFormat("[VerifyCode] Código incorrecto o expirado para {0}.", email);
                         _codes.TryRemove(email, out _);
                     }
                 }
                 else
                 {
-                    _logger.Warn($"[VerifyCode] No se encontró solicitud de código para {email}.");
+                    _logger.WarnFormat("[VerifyCode] No se encontró solicitud de código para {0}.", email);
                 }
+
+                await Task.CompletedTask;
 
                 return isValid;
 

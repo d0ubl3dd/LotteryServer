@@ -6,7 +6,7 @@ using System.ServiceModel;
 
 namespace Host
 {
-    class Program
+    static class Program
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(Program));
 
@@ -30,17 +30,17 @@ namespace Host
                     if (host.Description.Endpoints.Count > 0)
                     {
                         Console.WriteLine($"Escuchando en: {host.Description.Endpoints[0].Address}");
-                        _logger.Info($"Servidor escuchando en: {host.Description.Endpoints[0].Address}");
+                        _logger.InfoFormat("Servidor escuchando en: {0}", host.Description.Endpoints[0].Address);
                     }
 
                     Console.ReadLine();
                     host.Close();
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.Fatal("El servidor no pudo iniciar.", ex);
-                Console.WriteLine($"Error fatal: {ex.Message}");
+                _logger.Fatal("El servidor no pudo iniciar.", exception);
+                Console.WriteLine($"Error fatal: {exception.Message}");
                 Console.ReadLine();
             }
 
