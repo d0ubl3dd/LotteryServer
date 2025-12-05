@@ -11,24 +11,21 @@ namespace BusinessLogic.Logic
 {
     public class LobbyHandler : BaseHandler
     {
-        private readonly LobbyManager _lobbyManager;
+        private readonly ILobbyManager _lobbyManager;
+        private readonly ISessionManager _sessionManager;
 
-        public LobbyHandler(LobbyManager lobbyManager) : base(typeof(LobbyHandler))
+        public LobbyHandler(ILobbyManager lobbyManager, ISessionManager sessionManager)
+            : base(typeof(LobbyHandler))
         {
-            if (lobbyManager == null)
-            {
-                throw new ArgumentNullException(nameof(lobbyManager));
-            }
-            _lobbyManager = lobbyManager;
+            _lobbyManager = lobbyManager ?? throw new ArgumentNullException(nameof(lobbyManager));
+            _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
         }
 
         private PlayerClient GetClientOrThrow(User user)
         {
-            PlayerClient client;
-
             _logger.InfoFormat("[GetClient] Buscando sesión para {0} (ID {1}).", user.nickname, user.id_user);
 
-            client = GlobalSessionManager.Instance.GetClient(user.id_user);
+            var client = _sessionManager.GetClient(user.id_user);
 
             if (client == null)
             {
@@ -40,15 +37,10 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> CreateLobby(User currentUser)
         {
-            if (currentUser == null)
-            {
-                throw new ArgumentNullException(nameof(currentUser));
-            }
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
 
             return await ExecuteFaultSafeAsync(async () =>
             {
-                LobbyStateDto lobbyState;
-
                 _logger.InfoFormat("[CreateLobby] Intento de creación por {0}.", currentUser.nickname);
 
                 var hostClient = GetClientOrThrow(currentUser);
@@ -58,12 +50,11 @@ namespace BusinessLogic.Logic
                     throw new UserAlreadyInLobbyException("Ya te encuentras dentro de un lobby.");
                 }
 
-                lobbyState = _lobbyManager.CreateLobby(hostClient);
+                var lobbyState = _lobbyManager.CreateLobby(hostClient);
 
                 _logger.InfoFormat("[CreateLobby] Lobby creado: {0}", lobbyState.LobbyCode);
 
                 await Task.CompletedTask;
-
                 return lobbyState;
 
             }, "CreateLobby");
@@ -71,19 +62,11 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
         {
-            if (currentUser == null)
-            {
-                throw new ArgumentNullException(nameof(currentUser));
-            }
-            if (string.IsNullOrWhiteSpace(lobbyCode))
-            {
-                throw new ArgumentException("El código de lobby es inválido.");
-            }
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (string.IsNullOrWhiteSpace(lobbyCode)) throw new ArgumentException("El código de lobby es inválido.");
 
             return await ExecuteFaultSafeAsync(async () =>
             {
-                LobbyStateDto lobbyState;
-
                 _logger.InfoFormat("[JoinLobby] {0} intenta unirse a {1}.", currentUser.nickname, lobbyCode);
 
                 var playerClient = GetClientOrThrow(currentUser);
@@ -93,12 +76,11 @@ namespace BusinessLogic.Logic
                     throw new UserAlreadyInLobbyException("Debes salir de tu lobby actual antes de unirte a otro.");
                 }
 
-                lobbyState = _lobbyManager.JoinLobby(playerClient, lobbyCode);
+                var lobbyState = _lobbyManager.JoinLobby(playerClient, lobbyCode);
 
                 _logger.InfoFormat("[JoinLobby] Unión exitosa al lobby {0}.", lobbyCode);
 
                 await Task.CompletedTask;
-
                 return lobbyState;
 
             }, "JoinLobby");
@@ -106,10 +88,7 @@ namespace BusinessLogic.Logic
 
         public async Task LeaveLobby(User currentUser)
         {
-            if (currentUser == null)
-            {
-                throw new ArgumentNullException(nameof(currentUser));
-            }
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
 
             await ExecuteFaultSafeAsync(async () =>
             {
@@ -120,7 +99,6 @@ namespace BusinessLogic.Logic
                 _lobbyManager.LeaveLobby(client);
 
                 _logger.Info("[LeaveLobby] Salida exitosa.");
-
                 await Task.CompletedTask;
 
             }, "LeaveLobby");
@@ -128,10 +106,7 @@ namespace BusinessLogic.Logic
 
         public async Task KickPlayer(User currentUser, int targetPlayerId)
         {
-            if (currentUser == null)
-            {
-                throw new ArgumentNullException(nameof(currentUser));
-            }
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
 
             await ExecuteFaultSafeAsync(async () =>
             {
@@ -144,10 +119,9 @@ namespace BusinessLogic.Logic
                     throw new LobbyException("No estás en un lobby para expulsar a alguien.");
                 }
 
-                LobbyManager.KickPlayer(hostClient, targetPlayerId);
+                _lobbyManager.KickPlayer(hostClient, targetPlayerId);
 
                 _logger.InfoFormat("[KickPlayer] Jugador {0} expulsado.", targetPlayerId);
-
                 await Task.CompletedTask;
 
             }, "KickPlayer");

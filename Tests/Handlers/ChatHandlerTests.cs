@@ -1,97 +1,163 @@
-﻿/*using Xunit;
+﻿using Xunit;
 using Moq;
+using System;
+using System.Threading.Tasks;
+using System.ServiceModel;
+using BusinessLogic.Handlers;
 using BusinessLogic.Logic;
 using BusinessLogic.Models;
-using DataAccess;
-using Contracts.Callbacks;
-using System.ServiceModel;
-using Contracts.Faults;
-using System;
 using BusinessLogic.Exceptions;
+using Contracts.Faults;
+using Contracts.Callbacks;
+using DataAccess;
+using Tests.Builders;
 
-namespace LotteryServer.Tests.Handlers
+namespace Tests.Handlers
 {
     public class ChatHandlerTests
     {
         private readonly Mock<ISessionManager> _mockSessionManager;
+        private readonly Mock<ILobbyManager> _mockLobbyManager;
         private readonly ChatHandler _handler;
+
+        // Objetos auxiliares para configurar el entorno de pruebas
         private readonly Mock<ILotteryCallback> _mockCallback;
 
         public ChatHandlerTests()
         {
             _mockSessionManager = new Mock<ISessionManager>();
+            _mockLobbyManager = new Mock<ILobbyManager>();
             _mockCallback = new Mock<ILotteryCallback>();
-            _handler = new ChatHandler(_mockSessionManager.Object);
-        }
-        
-        [Fact]
-        public void SendMessage_UserNull_ThrowsFault_BadRequest()
-        {
-            var ex = Assert.Throws<FaultException<ServiceFault>>(() =>
-                _handler.SendMessage(null, "Hola"));
 
-            Assert.Equal("CHAT_BAD_REQUEST", ex.Detail.ErrorCode);
+            // SUT (System Under Test)
+            _handler = new ChatHandler(_mockSessionManager.Object, _mockLobbyManager.Object);
         }
 
+        // ==========================================
+        // PRUEBAS DE ENVÍO DE MENSAJES (CASOS FELICES)
+        // ==========================================
+
         [Fact]
-        public void SendMessage_EmptyMessage_DoesNotBroadcast()
+        public async Task SendMessage_WhenUserAndLobbyAreValid_ShouldBroadcastMessage()
         {
-            var user = new User { id_user = 1, nickname = "SilentBob" };
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Usuario válido, en sesión activa, unido a un Lobby. Mensaje: "Hola Mundo".
+             * ✔ Salida Esperada: Se llama al método BroadcastChatMessage del Lobby.
+             * ✔ Validación: Verify del Mock de Lobby.
+             * ✔ Descripción: Verifica el flujo principal de comunicación.
+             */
 
-            _handler.SendMessage(user, "");
-            _handler.SendMessage(user, "   ");
+            // Arrange
+            string message = "Hola Mundo";
+            var user = new UserBuilder().WithNickname("Chatter").Build();
 
+            // 1. Preparamos el cliente (PlayerClient)
+            var client = new PlayerClient(user, _mockCallback.Object);
+
+            // 2. Preparamos un MOCK del Lobby
+            // Nota: Al ser 'virtual' el método Broadcast, podemos mockearlo aunque Lobby sea una clase concreta.
+            // Pasamos argumentos dummy al constructor base de Lobby para satisfacerlo.
+            var mockLobby = new Mock<Lobby>("CODE1", client);
+            mockLobby.Setup(l => l.BroadcastChatMessage(It.IsAny<string>(), It.IsAny<string>()))
+                     .Returns(true); // Simulamos que el broadcast fue exitoso
+
+            // 3. Conectamos todo: El cliente está en ese Lobby simulado
+            client.CurrentLobby = mockLobby.Object;
+
+            // 4. El SessionManager devuelve este cliente
+            _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);
+
+            // Act
+            await _handler.SendMessage(user, message);
+
+            // Assert
+            // Verificamos que el Handler delegó la responsabilidad al Lobby correctamente
+            mockLobby.Verify(l => l.BroadcastChatMessage(user.nickname, message), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendMessage_WhenMessageIsEmpty_ShouldDoNothing()
+        {
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Mensaje vacío o solo espacios.
+             * ✔ Salida Esperada: El método retorna sin error y SIN llamar al Lobby.
+             * ✔ Descripción: Optimización para evitar tráfico de red innecesario.
+             */
+
+            // Arrange
+            var user = new UserBuilder().Build();
+
+            // Act
+            await _handler.SendMessage(user, "   "); // Espacios en blanco
+
+            // Assert
+            // No necesitamos configurar SessionManager porque el código debería retornar antes de llamarlo.
             _mockSessionManager.Verify(sm => sm.GetClient(It.IsAny<int>()), Times.Never);
         }
 
+        // ==========================================
+        // PRUEBAS DE ERROR (Manejo de Faults WCF)
+        // ==========================================
+
         [Fact]
-        public void SendMessage_UserNotOnline_ThrowsFault_UserOffline()
+        public async Task SendMessage_WhenUserIsNull_ShouldThrowFault_BadRequest()
         {
-            var user = new User { id_user = 99, nickname = "Ghost" };
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: currentUser = null.
+             * ✔ Salida Esperada: FaultException "GLOBAL_BAD_REQUEST" (Mapeado de ArgumentNullException).
+             * ✔ Falla detectada: Validación defensiva dentro del ExecuteFaultSafeAsync.
+             */
 
-            _mockSessionManager.Setup(sm => sm.GetClient(user.id_user))
-                               .Returns((PlayerClient)null);
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.SendMessage(null, "Hola"));
 
-            var ex = Assert.Throws<FaultException<ServiceFault>>(() =>
-                _handler.SendMessage(user, "Hola mundo"));
-
-            Assert.Equal("CHAT_USER_OFFLINE", ex.Detail.ErrorCode);
+            Assert.Equal("GLOBAL_BAD_REQUEST", ex.Detail.ErrorCode);
         }
 
         [Fact]
-        public void SendMessage_UserNotInLobby_ThrowsFault_UserNotInLobby()
+        public async Task SendMessage_WhenUserIsNotOnline_ShouldThrowFault_UserOffline()
         {
-            var user = new User { id_user = 1, nickname = "LobbyLess" };
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Usuario válido pero que NO está en el diccionario de SessionManager.
+             * ✔ Salida Esperada: FaultException "USER_OFFLINE" (Mapeado de UserNotOnlineException).
+             * ✔ Camino: SessionManager.GetClient devuelve null -> Handler lanza Excepción -> BaseHandler atrapa.
+             */
 
+            // Arrange
+            var user = new UserBuilder().WithId(99).Build();
+
+            // Simulamos que no se encuentra sesión
+            _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns((PlayerClient)null);
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.SendMessage(user, "Hola"));
+
+            Assert.Equal("USER_OFFLINE", ex.Detail.ErrorCode);
+        }
+
+        [Fact]
+        public async Task SendMessage_WhenUserIsNotInLobby_ShouldThrowFault_UserNotInLobby()
+        {
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Usuario online (Client válido), pero propiedad CurrentLobby es null.
+             * ✔ Salida Esperada: FaultException "CHAT_USER_NOT_IN_LOBBY".
+             * ✔ Descripción: Un usuario en el menú principal no puede enviar mensajes de chat de juego.
+             */
+
+            // Arrange
+            var user = new UserBuilder().Build();
             var client = new PlayerClient(user, _mockCallback.Object);
+            client.CurrentLobby = null; // ESTADO CRÍTICO: No está en lobby
 
-            _mockSessionManager.Setup(sm => sm.GetClient(user.id_user))
-                               .Returns(client);
+            _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);
 
-            var ex = Assert.Throws<FaultException<ServiceFault>>(() =>
-                _handler.SendMessage(user, "Hola??"));
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.SendMessage(user, "Hola"));
 
             Assert.Equal("CHAT_USER_NOT_IN_LOBBY", ex.Detail.ErrorCode);
         }
-
-        [Fact]
-        public void SendMessage_Success_BroadcastsToLobby()
-        {
-            var user = new User { id_user = 1, nickname = "ChatterBox", id_avatar = 5 };
-            string message = "¡Buena suerte a todos!";
-
-            var client = new PlayerClient(user, _mockCallback.Object);
-
-            var lobby = new Lobby("CODE123", client);
-
-            Assert.NotNull(client.CurrentLobby);
-
-            _mockSessionManager.Setup(sm => sm.GetClient(user.id_user))
-                               .Returns(client);
-
-            _handler.SendMessage(user, message);
-
-            _mockCallback.Verify(cb => cb.ReceiveChatMessage(user.nickname, message), Times.Once);
-        }
     }
-}*/
+}

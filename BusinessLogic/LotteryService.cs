@@ -21,6 +21,8 @@ namespace BusinessLogic
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LotteryService));
 
+        private static readonly ILobbyManager _sharedLobbyManager = new LobbyManager(GlobalSessionManager.Instance);
+
         private const string INVALID_SESSION_MSG = "Sesión de usuario no válida para esta operación.";
         private const string INVALID_SESSION_REASON = "Sesión inválida";
         private const string USER_NOT_CONNECTED_MSG = "Usuario no conectado.";
@@ -40,20 +42,22 @@ namespace BusinessLogic
         {
             IUserDao userDao = new UserDao();
             IFriendshipDao friendshipDao = new FriendshipDao();
+            ISocialMediaDao socialMediaDao = new SocialMediaDao();
             IEmailService emailService = new EmailService();
 
-            var lobbyManagerInstance = LobbyManager.Instance;
-            var sessionManagerInstance = GlobalSessionManager.Instance;
+            ISessionManager sessionManager = GlobalSessionManager.Instance;
+            ILobbyManager lobbyManager = _sharedLobbyManager;
 
             _verificationHandler = new VerificationHandler(emailService);
-            _lobbyHandler = new LobbyHandler(lobbyManagerInstance);
-            _gameHandler = new GameHandler(lobbyManagerInstance);
-            _chatHandler = new ChatHandler(sessionManagerInstance);
             _authHandler = new AuthenticationHandler(userDao);
-            _friendHandler = new FriendHandler(sessionManagerInstance, friendshipDao);
-            _userHandler = new UserHandler(userDao, _verificationHandler);
             _guestHandler = new GuestHandler();
-            _socialMediaHandler = new SocialMediaHandler(new SocialMediaDao(), new UserDao());
+            _userHandler = new UserHandler(userDao, _verificationHandler);
+            _socialMediaHandler = new SocialMediaHandler(socialMediaDao, userDao);
+
+            _chatHandler = new ChatHandler(sessionManager, lobbyManager);
+            _friendHandler = new FriendHandler(sessionManager, friendshipDao);
+            _gameHandler = new GameHandler(lobbyManager);
+            _lobbyHandler = new LobbyHandler(lobbyManager, sessionManager);
 
             _logger.Info("LotteryService instanciado.");
         }

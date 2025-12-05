@@ -19,7 +19,7 @@ namespace BusinessLogic.Models
         private readonly HashSet<int> _bannedPlayers = new HashSet<int>();
         public const int MAX_PLAYERS = 4;
 
-        public bool IsGameInProgress { get; private set; }
+        public virtual bool IsGameInProgress { get; private set; }
         private Deck _gameDeck;
         private CancellationTokenSource _gameCts;
 
@@ -87,7 +87,7 @@ namespace BusinessLogic.Models
             return new HashSet<string>(lines);
         }
 
-        public bool BroadcastChatMessage(string nickname, string message)
+        public virtual bool BroadcastChatMessage(string nickname, string message)
         {
             var sender = Players.FirstOrDefault(p => p.Nickname == nickname);
             if (sender == null) return false;
@@ -99,9 +99,10 @@ namespace BusinessLogic.Models
 
             var history = _messageHistory[userId];
 
-            var forbiddenWord = _forbiddenWords.FirstOrDefault(word => 
+            var forbiddenWord = _forbiddenWords.FirstOrDefault(word =>
                 message.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
 
+            // 1. Detección de Groserías
             if (forbiddenWord != null)
             {
                 if (sender.UserId == Host.UserId)
@@ -113,8 +114,7 @@ namespace BusinessLogic.Models
                     return false;
                 }
 
-                LobbyManager.KickPlayer(Host, userId);
-                return false;
+                throw new ForbiddenWordException("Uso de lenguaje prohibido detectado.");
             }
 
             if (!history.ContainsKey(message))
@@ -126,8 +126,7 @@ namespace BusinessLogic.Models
 
             if (history[message] > 10)
             {
-                LobbyManager.KickPlayer(Host, userId);
-                return true;
+                throw new ChatException("Spam detectado.");
             }
 
             BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
@@ -182,7 +181,7 @@ namespace BusinessLogic.Models
             }
         }
 
-        public void StartLobbyGame(GameSettingsDto settings)
+        public virtual void StartLobbyGame(GameSettingsDto settings)
         {
             if (IsGameInProgress) return;
 

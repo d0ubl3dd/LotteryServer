@@ -3,7 +3,6 @@ using System.ServiceModel;
 using System.Threading.Tasks;
 using log4net;
 using Contracts.Faults;
-using BusinessLogic.Utilities;
 
 namespace BusinessLogic.Logic.Base
 {
@@ -16,7 +15,7 @@ namespace BusinessLogic.Logic.Base
             _logger = LogManager.GetLogger(loggerType);
         }
 
-        protected static async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string operationName)
+        protected async Task<T> ExecuteFaultSafeAsync<T>(Func<Task<T>> action, string operationName)
         {
             try
             {
@@ -29,7 +28,7 @@ namespace BusinessLogic.Logic.Base
             }
         }
 
-        protected static async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
+        protected async Task ExecuteFaultSafeAsync(Func<Task> action, string operationName)
         {
             try
             {
@@ -41,7 +40,7 @@ namespace BusinessLogic.Logic.Base
             }
         }
 
-        protected static void ExecuteFaultSafe(Action action, string operationName)
+        protected void ExecuteFaultSafe(Action action, string operationName)
         {
             try
             {
@@ -53,7 +52,7 @@ namespace BusinessLogic.Logic.Base
             }
         }
 
-        protected static T ExecuteFaultSafe<T>(Func<T> action, string operationName)
+        protected T ExecuteFaultSafe<T>(Func<T> action, string operationName)
         {
             try
             {
@@ -66,18 +65,20 @@ namespace BusinessLogic.Logic.Base
             }
         }
 
-        private static void HandleException(Exception exception, string operationName)
+        private void HandleException(Exception exception, string operationName)
         {
             if (exception is FaultException<ServiceFault>)
             {
                 throw exception;
             }
 
-            var result = Utilities.ExceptionMapper.GetFaultAndLogAction(exception);
+            var result = BusinessLogic.Utilities.ExceptionMapper.GetFaultAndLogAction(exception);
+
             var fault = result.Fault;
             var logAction = result.Logger;
 
-            logAction(string.Format("[{0}] {1}: {2} | Detalle: {3}", operationName, fault.ErrorCode, fault.Message, exception.Message));
+            logAction(string.Format("[{0}] {1}: {2} | DebugDetail: {3}",
+                operationName, fault.ErrorCode, fault.Message, exception.Message));
 
             throw new FaultException<ServiceFault>(fault, new FaultReason(fault.Message));
         }

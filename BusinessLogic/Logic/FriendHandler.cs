@@ -13,9 +13,9 @@ namespace BusinessLogic.Logic
     public class FriendHandler : BaseHandler
     {
         private readonly IFriendshipDao _friendshipDao;
-        private readonly GlobalSessionManager _sessionManager;
+        private readonly ISessionManager _sessionManager;
 
-        public FriendHandler(GlobalSessionManager sessionManager, IFriendshipDao friendshipDao)
+        public FriendHandler(ISessionManager sessionManager, IFriendshipDao friendshipDao)
             : base(typeof(FriendHandler))
         {
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));

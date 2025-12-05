@@ -96,12 +96,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Builders\UserBuilder.cs" />
     <Compile Include="Class1.cs" />
     <Compile Include="Handlers\AuthenticationHandlerTests.cs" />
     <Compile Include="Handlers\ChatHandlerTests.cs" />
+    <Compile Include="Handlers\FriendHandlerTests.cs" />
+    <Compile Include="Handlers\GameHandlerTests.cs" />
     <Compile Include="Handlers\UserHanderTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TestHelper.cs" />
     <Compile Include="Validation\LoginValidatorTests.cs" />
   </ItemGroup>
   <ItemGroup>

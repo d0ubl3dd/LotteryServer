@@ -11,26 +11,26 @@ namespace BusinessLogic.Handlers
 {
     public class GameHandler : BaseHandler
     {
-        private readonly LobbyManager _lobbyManager;
+        private readonly ILobbyManager _lobbyManager;
 
-        public GameHandler(LobbyManager lobbyManager) : base(typeof(GameHandler))
+        public GameHandler(ILobbyManager lobbyManager) : base(typeof(GameHandler))
         {
             _lobbyManager = lobbyManager ?? throw new ArgumentNullException(nameof(lobbyManager));
         }
 
         public async Task StartGame(User hostUser, GameSettingsDto settings)
         {
-            if (hostUser == null)
-            {
-                throw new ArgumentNullException(nameof(hostUser));
-            }
-            if (settings == null)
-            {
-                throw new ArgumentNullException(nameof(settings));
-            }
-
             await ExecuteFaultSafeAsync(async () =>
             {
+                if (hostUser == null)
+                {
+                    throw new ArgumentNullException(nameof(hostUser));
+                }
+                if (settings == null)
+                {
+                    throw new ArgumentNullException(nameof(settings));
+                }
+
                 _logger.InfoFormat("[StartGame] Host {0} intenta iniciar partida.", hostUser.nickname);
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
@@ -56,13 +56,13 @@ namespace BusinessLogic.Handlers
 
         public async Task UpdateGameSettings(User hostUser, GameSettingsDto settings)
         {
-            if (hostUser == null)
-            {
-                throw new ArgumentNullException(nameof(hostUser));
-            }
-
             await ExecuteFaultSafeAsync(async () =>
             {
+                if (hostUser == null)
+                {
+                    throw new ArgumentNullException(nameof(hostUser));
+                }
+
                 _logger.InfoFormat("[UpdateGameSettings] Host {0} intenta actualizar configuración.", hostUser.nickname);
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
@@ -89,7 +89,6 @@ namespace BusinessLogic.Handlers
             await ExecuteFaultSafeAsync(async () =>
             {
                 _logger.Info("[GetScoreboard] Scoreboard solicitado.");
-
                 await Task.CompletedTask;
 
             }, "GetScoreboard");

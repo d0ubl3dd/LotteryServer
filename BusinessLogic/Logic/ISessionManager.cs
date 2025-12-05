@@ -9,5 +9,6 @@ namespace BusinessLogic.Logic
         PlayerClient GetClient(int userId);
         void RegisterClient(User user, ILotteryCallback callback);
         PlayerClient UnregisterClient(int userId);
+        int? GetUserIdFromContext();
     }
 }
