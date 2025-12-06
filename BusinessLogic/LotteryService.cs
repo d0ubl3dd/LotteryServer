@@ -38,6 +38,24 @@ namespace BusinessLogic
         private readonly GuestHandler _guestHandler;
         private readonly SocialMediaHandler _socialMediaHandler;
 
+        static LotteryService()
+        {
+            _logger.Info("Inicializando tipo LotteryService...");
+            try
+            {
+                using (var context = new lottery_databaseEntities())
+                {
+                    int rowsAffected = context.Database.ExecuteSqlCommand("UPDATE [User] SET status = 'Offline' WHERE status = 'Online'");
+
+                    _logger.InfoFormat("Mantenimiento de BD completado. Usuarios corregidos a Offline: {0}", rowsAffected);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Error crítico al intentar limpiar estados de usuarios en BD.", ex);
+            }
+        }
+
         public LotteryService()
         {
             IUserDao userDao = new UserDao();

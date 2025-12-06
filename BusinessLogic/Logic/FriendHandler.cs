@@ -147,12 +147,16 @@ namespace BusinessLogic.Logic
 
                 var users = await _friendshipDao.GetAcceptedFriendsAsync(currentUserId);
 
-                return users.Select(u => new FriendDto
+                var friendList = users.Select(u => new FriendDto
                 {
                     FriendId = u.id_user,
                     Nickname = u.nickname,
-                    Status = u.status
+
+                    Status = _sessionManager.IsUserOnline(u.id_user) ? "Online" : "Offline"
+
                 }).ToList();
+
+                return friendList;
 
             }, "GetFriends");
         }

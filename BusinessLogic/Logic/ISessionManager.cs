@@ -10,5 +10,6 @@ namespace BusinessLogic.Logic
         void RegisterClient(User user, ILotteryCallback callback);
         PlayerClient UnregisterClient(int userId);
         int? GetUserIdFromContext();
+        bool IsUserOnline(int userId);
     }
 }

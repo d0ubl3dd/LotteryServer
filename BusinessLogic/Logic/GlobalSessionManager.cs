@@ -151,5 +151,10 @@ namespace BusinessLogic.Logic
         {
             return _onlineUsers.Values;
         }
+
+        public bool IsUserOnline(int userId)
+        {
+            return _onlineUsers.ContainsKey(userId);
+        }
     }
 }
