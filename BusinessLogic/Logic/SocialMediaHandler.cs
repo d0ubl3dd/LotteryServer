@@ -72,22 +72,22 @@ namespace BusinessLogic.Handlers
 
         public async Task<bool> UpdateSocialMedia(SocialMediaDto media)
         {
-            if (media == null)
-            {
-                throw new ArgumentNullException(nameof(media));
-            }
-
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (media == null)
+                {
+                    throw new ArgumentNullException(nameof(media));
+                }
+
                 bool success = false;
 
                 _logger.InfoFormat("[UpdateSocialMedia] User {0}", media.IdUser);
 
                 var user = await _userRepository.GetUserByIdAsync(media.IdUser);
+
                 if (user == null)
                 {
-                    throw new UserNotFoundException(string.
-                        Format("No existe el usuario con ID {0}", media.IdUser));
+                    throw new UserNotFoundException(string.Format("No existe el usuario con ID {0}", media.IdUser));
                 }
 
                 if (!string.IsNullOrWhiteSpace(media.Twitter) &&

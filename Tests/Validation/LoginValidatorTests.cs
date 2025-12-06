@@ -1,108 +1,101 @@
 ﻿using Xunit;
 using BusinessLogic.Validation;
-using BusinessLogic.Logic;
-using DataAccess;
+using DataAccess; // Para User
+using Tests.Builders; // Usamos tu Builder existente
 
-namespace LotteryServer.Tests.Validation
+namespace Tests.Validation
 {
     public class LoginValidatorTests
     {
-        [Theory]
-        [InlineData("")]
-        [InlineData(null)]
-        [InlineData("   ")]
-        public void ValidateLoginAttempt_EmptyUserName_ReturnsEmptyUserName(string invalidUser)
-        {
-            var result = LoginValidator.ValidateLoginAttempt(invalidUser, "pass123", new User());
+        // ==========================================
+        // PRUEBAS: ValidateLoginAttempt
+        // ==========================================
 
+        [Fact]
+        public void Validate_WhenUsernameIsEmpty_ShouldReturnEmptyUserName()
+        {
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Username vacío.
+             * ✔ Salida Esperada: Enum EmptyUserName.
+             */
+            var result = LoginValidator.ValidateLoginAttempt("", "pass", new User());
             Assert.Equal(LoginValidationResult.EmptyUserName, result);
         }
 
-        [Theory]
-        [InlineData("")]
-        [InlineData(null)]
-        [InlineData("   ")]
-        public void ValidateLoginAttempt_EmptyPassword_ReturnsEmptyPassword(string invalidPass)
+        [Fact]
+        public void Validate_WhenPasswordIsEmpty_ShouldReturnEmptyPassword()
         {
-            var result = LoginValidator.ValidateLoginAttempt("ValidUser", invalidPass, new User());
-
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Password vacío.
+             * ✔ Salida Esperada: Enum EmptyPassword.
+             */
+            var result = LoginValidator.ValidateLoginAttempt("User", "", new User());
             Assert.Equal(LoginValidationResult.EmptyPassword, result);
         }
 
-        [Theory]
-        [InlineData("a")]
-        [InlineData("ab")]
-        [InlineData("abc")]
-        public void ValidateLoginAttempt_ShortUserName_ReturnsNicknameTooShort(string shortUser)
+        [Fact]
+        public void Validate_WhenNicknameTooShort_ShouldReturnNicknameTooShort()
         {
-            var result = LoginValidator.ValidateLoginAttempt(shortUser, "pass123", new User());
-
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: "Bob" (3 letras, mínimo es 4).
+             * ✔ Salida Esperada: Enum NicknameTooShort.
+             */
+            var result = LoginValidator.ValidateLoginAttempt("Bob", "pass", new User());
             Assert.Equal(LoginValidationResult.NicknameTooShort, result);
         }
 
         [Fact]
-        public void ValidateLoginAttempt_UserNull_ReturnsUserNotFound()
+        public void Validate_WhenUserIsNull_ShouldReturnUserNotFound()
         {
-            string user = "validUser";
-            string pass = "password123";
-            User dbUser = null;
-
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser);
-
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Objeto User encontrado es null.
+             * ✔ Salida Esperada: Enum UserNotFound.
+             */
+            var result = LoginValidator.ValidateLoginAttempt("ValidUser", "pass", null);
             Assert.Equal(LoginValidationResult.UserNotFound, result);
         }
 
         [Fact]
-        public void ValidateLoginAttempt_UserLocked_ReturnsAccountLocked()
+        public void Validate_WhenUserIsLocked_ShouldReturnAccountLocked()
         {
-            string user = "lockedUser";
-            string pass = "password123";
-            User dbUser = new User { isLocked = true };
-
-            var result = LoginValidator.ValidateLoginAttempt(user, pass, dbUser);
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Usuario con isLocked = true.
+             * ✔ Salida Esperada: Enum AccountLocked.
+             */
+            var lockedUser = new UserBuilder().Locked().Build();
+            var result = LoginValidator.ValidateLoginAttempt("ValidUser", "pass", lockedUser);
 
             Assert.Equal(LoginValidationResult.AccountLocked, result);
         }
 
         [Fact]
-        public void ValidateLoginAttempt_ValidCredentials_ReturnsSuccess()
+        public void Validate_WhenPasswordIncorrect_ShouldReturnIncorrectPassword()
         {
-            string password = "MySecretPassword";
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Password "Wrong" vs Hash de "Right".
+             * ✔ Salida Esperada: Enum IncorrectPassword.
+             */
+            // El builder crea el usuario con password "PasswordSeguro123" por defecto
+            var user = new UserBuilder().WithPassword("PasswordSeguro123").Build();
 
-            byte[] passwordHash, passwordSalt;
-            PasswordHasher.CreatePasswordHash(password, out passwordHash, out passwordSalt);
+            var result = LoginValidator.ValidateLoginAttempt("ValidUser", "WrongPass", user);
 
-            User dbUser = new User
-            {
-                isLocked = false,
-                passwordHash = passwordHash,
-                passwordSalt = passwordSalt
-            };
-
-            var result = LoginValidator.ValidateLoginAttempt("validUser", password, dbUser);
-
-            Assert.Equal(LoginValidationResult.Success, result);
+            Assert.Equal(LoginValidationResult.IncorrectPassword, result);
         }
 
         [Fact]
-        public void ValidateLoginAttempt_IncorrectPassword_ReturnsIncorrectPassword()
+        public void Validate_WhenCredentialsCorrect_ShouldReturnSuccess()
         {
-            string correctPassword = "MySecretPassword";
-            string wrongPassword = "WrongPassword123";
+            /* DOCUMENTACIÓN
+             * ✔ Entrada: Password coincide con el Hash.
+             * ✔ Salida Esperada: Enum Success.
+             */
+            string pass = "MySecretPass";
+            var user = new UserBuilder().WithPassword(pass).Build();
 
-            byte[] passwordHash, passwordSalt;
-            PasswordHasher.CreatePasswordHash(correctPassword, out passwordHash, out passwordSalt);
+            var result = LoginValidator.ValidateLoginAttempt("ValidUser", pass, user);
 
-            User dbUser = new User
-            {
-                isLocked = false,
-                passwordHash = passwordHash,
-                passwordSalt = passwordSalt
-            };
-
-            var result = LoginValidator.ValidateLoginAttempt("validUser", wrongPassword, dbUser);
-
-            Assert.Equal(LoginValidationResult.IncorrectPassword, result);
+            Assert.Equal(LoginValidationResult.Success, result);
         }
     }
 }

@@ -37,10 +37,13 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> CreateLobby(User currentUser)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
-
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (currentUser == null)
+                {
+                    throw new ArgumentNullException(nameof(currentUser));
+                }
+
                 _logger.InfoFormat("[CreateLobby] Intento de creación por {0}.", currentUser.nickname);
 
                 var hostClient = GetClientOrThrow(currentUser);
@@ -62,11 +65,18 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
-            if (string.IsNullOrWhiteSpace(lobbyCode)) throw new ArgumentException("El código de lobby es inválido.");
-
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (currentUser == null)
+                {
+                    throw new ArgumentNullException(nameof(currentUser));
+                }
+
+                if (string.IsNullOrWhiteSpace(lobbyCode))
+                {
+                    throw new ArgumentException("El código de lobby es inválido.");
+                }
+
                 _logger.InfoFormat("[JoinLobby] {0} intenta unirse a {1}.", currentUser.nickname, lobbyCode);
 
                 var playerClient = GetClientOrThrow(currentUser);
@@ -88,10 +98,13 @@ namespace BusinessLogic.Logic
 
         public async Task LeaveLobby(User currentUser)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
-
             await ExecuteFaultSafeAsync(async () =>
             {
+                if (currentUser == null)
+                {
+                    throw new ArgumentNullException(nameof(currentUser));
+                }
+
                 _logger.InfoFormat("[LeaveLobby] {0} solicita salir.", currentUser.nickname);
 
                 var client = GetClientOrThrow(currentUser);
@@ -106,10 +119,13 @@ namespace BusinessLogic.Logic
 
         public async Task KickPlayer(User currentUser, int targetPlayerId)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
-
             await ExecuteFaultSafeAsync(async () =>
             {
+                if (currentUser == null)
+                {
+                    throw new ArgumentNullException(nameof(currentUser));
+                }
+
                 _logger.InfoFormat("[KickPlayer] {0} intenta expulsar al ID {1}.", currentUser.nickname, targetPlayerId);
 
                 var hostClient = GetClientOrThrow(currentUser);

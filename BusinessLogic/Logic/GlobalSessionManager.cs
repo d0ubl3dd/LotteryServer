@@ -29,17 +29,18 @@ namespace BusinessLogic.Logic
 
         public void RegisterClient(User user, ILotteryCallback callback)
         {
-            if (user == null)
-            {
-                throw new ArgumentNullException(nameof(user));
-            }
-            if (callback == null)
-            {
-                throw new ArgumentNullException(nameof(callback));
-            }
-
             ExecuteFaultSafe(() =>
             {
+                if (user == null)
+                {
+                    throw new ArgumentNullException(nameof(user));
+                }
+
+                if (callback == null)
+                {
+                    throw new ArgumentNullException(nameof(callback));
+                }
+
                 var client = new PlayerClient(user, callback);
                 _onlineUsers[user.id_user] = client;
 

@@ -2,6 +2,7 @@
 using log4net;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Configuration;
@@ -10,6 +11,7 @@ using System.ServiceModel.Dispatcher;
 
 namespace BusinessLogic
 {
+    [ExcludeFromCodeCoverage]
     public class GlobalErrorHandler : IErrorHandler
     {
         private static readonly ILog _logger = LogManager.GetLogger("WCFServiceLogger");

@@ -35,13 +35,13 @@ namespace BusinessLogic.Handlers
 
         public async Task<bool> SendVerificationCode(string email)
         {
-            if (string.IsNullOrEmpty(email))
-            {
-                throw new ArgumentNullException(nameof(email));
-            }
-
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (string.IsNullOrEmpty(email))
+                {
+                    throw new ArgumentNullException(nameof(email));
+                }
+
                 bool success;
 
                 string code = _random.Next(100000, 999999).ToString();
@@ -71,18 +71,18 @@ namespace BusinessLogic.Handlers
 
         public async Task<bool> VerifyCode(string email, string code)
         {
-            if (string.IsNullOrEmpty(email))
-            {
-                throw new ArgumentNullException(nameof(email));
-            }
-
-            if (string.IsNullOrEmpty(code))
-            {
-                throw new ArgumentNullException(nameof(code));
-            }
-
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (string.IsNullOrEmpty(email))
+                {
+                    throw new ArgumentNullException(nameof(email));
+                }
+
+                if (string.IsNullOrEmpty(code))
+                {
+                    throw new ArgumentNullException(nameof(code));
+                }
+
                 bool isValid = false;
 
                 if (_codes.TryGetValue(email, out var entry))

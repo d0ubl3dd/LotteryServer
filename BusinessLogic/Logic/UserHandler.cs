@@ -3,6 +3,7 @@ using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
 using BusinessLogic.Validation;
 using Contracts.DTOs;
+using Contracts.Services.Users;
 using DataAccess;
 using DataAccess.DAOs;
 using System;
@@ -16,7 +17,7 @@ namespace BusinessLogic.Handlers
         private const string MANDATORY_FIELDS_MESSAGE = "Todos los campos son obligatorios.";
 
         private readonly IUserDao _userRepository;
-        private readonly VerificationHandler _verificationHandler;
+        private readonly IVerificationService _verificationHandler;
 
         private static readonly Dictionary<RegistrationValidationResult, Func<Exception>> _validationExceptions =
             new Dictionary<RegistrationValidationResult, Func<Exception>>
@@ -34,7 +35,7 @@ namespace BusinessLogic.Handlers
                 { RegistrationValidationResult.EmailAlreadyExists, () => new UserAlreadyExistsException("El correo electrónico ya está registrado.") }
             };
 
-        public UserHandler(IUserDao userDao, VerificationHandler verificationHandler) : base(typeof(UserHandler))
+        public UserHandler(IUserDao userDao, IVerificationService verificationHandler) : base(typeof(UserHandler))
         {
             if (userDao == null)
             {
@@ -53,6 +54,11 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (userData == null)
+                {
+                    throw new ArgumentNullException(nameof(userData));
+                }
+
                 int result;
 
                 _logger.InfoFormat("[RequestVerification] Procesando solicitud para {0}.", userData.Email);
@@ -94,6 +100,11 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (userData == null)
+                {
+                    throw new ArgumentNullException(nameof(userData));
+                }
+
                 int newUserId;
 
                 _logger.InfoFormat("[RegisterUser] Registrando: {0}", userData.Nickname);
@@ -167,6 +178,11 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (userData == null)
+                {
+                    throw new ArgumentNullException(nameof(userData));
+                }
+
                 _logger.InfoFormat("[UpdateProfile] ID {0}", currentUserId);
 
                 var userInDb = await GetUserOrThrow(currentUserId);
@@ -196,6 +212,11 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
+                if (string.IsNullOrWhiteSpace(newEmail))
+                {
+                    throw new ArgumentException("El nuevo correo no puede estar vacío.");
+                }
+
                 bool success = false;
 
                 _logger.InfoFormat("[RequestEmailChange] Usuario {0} solicita cambio a {1}", userId, newEmail);
@@ -230,6 +251,7 @@ namespace BusinessLogic.Handlers
                 var userInDb = await GetUserOrThrow(userId);
 
                 bool isValid = await _verificationHandler.VerifyCode(newEmail, verificationCode);
+                
                 if (!isValid)
                 {
                     throw new VerificationException("El código de verificación es incorrecto o ha expirado.");
@@ -250,11 +272,8 @@ namespace BusinessLogic.Handlers
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                int result;
                 _logger.Info("[RegisterGuest] Registrando invitado.");
-                result = await Task.FromResult(-1);
-                return result;
-
+                return await Task.FromResult(-1);
             }, "RegisterGuest");
         }
 
