@@ -21,5 +21,9 @@ namespace Contracts.Services.Lobby
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
         Task KickPlayer(int targetPlayerId);
+
+        [OperationContract]
+        [FaultContract(typeof(Contracts.Faults.ServiceFault))]
+        Task ChooseBoard(UserDto user, int boardId);
     }
 }

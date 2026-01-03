@@ -425,6 +425,19 @@ namespace BusinessLogic
             return _lobbyHandler.KickPlayer(_currentUser, targetPlayerId);
         }
 
+        public Task ChooseBoard(UserDto user, int boardId)
+        {
+            if (_currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
+                    new FaultReason(INVALID_SESSION_REASON)
+                );
+            }
+
+            return _lobbyHandler.ChooseBoard(_currentUser, boardId);
+        }
+
         // --- IGameService ---
 
         public Task StartGame(GameSettingsDto settings)

@@ -41,7 +41,9 @@ namespace Tests.Logic
 
             // Arrange
             var hostUser = new UserBuilder().WithId(1).Build();
-            var hostClient = new PlayerClient(hostUser, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var hostClient = new PlayerClient(hostUser.id_user, hostUser.nickname, hostUser.id_avatar, _mockCallback.Object);
 
             // Act
             var result = _manager.CreateLobby(hostClient);
@@ -71,12 +73,14 @@ namespace Tests.Logic
 
             // Arrange
             // 1. Crear Lobby
-            var hostClient = new PlayerClient(new UserBuilder().WithId(1).Build(), _mockCallback.Object);
+            var hUser = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
+
             var lobbyDto = _manager.CreateLobby(hostClient);
 
             // 2. Jugador que se une
             var joinerUser = new UserBuilder().WithId(2).Build();
-            var joinerClient = new PlayerClient(joinerUser, _mockCallback.Object);
+            var joinerClient = new PlayerClient(joinerUser.id_user, joinerUser.nickname, joinerUser.id_avatar, _mockCallback.Object);
 
             // Act
             var result = _manager.JoinLobby(joinerClient, lobbyDto.LobbyCode);
@@ -96,7 +100,8 @@ namespace Tests.Logic
              * ✔ Salida Esperada: LobbyNotFoundException.
              */
 
-            var client = new PlayerClient(new UserBuilder().Build(), _mockCallback.Object);
+            var u = new UserBuilder().Build();
+            var client = new PlayerClient(u.id_user, u.nickname, u.id_avatar, _mockCallback.Object);
 
             Assert.Throws<LobbyNotFoundException>(() =>
                 _manager.JoinLobby(client, "INVALID_CODE"));
@@ -111,16 +116,20 @@ namespace Tests.Logic
              */
 
             // Arrange
-            var hostClient = new PlayerClient(new UserBuilder().WithId(1).Build(), _mockCallback.Object);
+            var hUser = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
+
             var lobbyDto = _manager.CreateLobby(hostClient);
             var lobby = _manager.FindLobbyByHostId(1);
 
             // Simulamos ban manual (o vía KickPlayer)
             lobby.BanPlayer(99);
 
-            var bannedClient = new PlayerClient(new UserBuilder().WithId(99).Build(), _mockCallback.Object);
+            var bUser = new UserBuilder().WithId(99).Build();
+            var bannedClient = new PlayerClient(bUser.id_user, bUser.nickname, bUser.id_avatar, _mockCallback.Object);
 
             // Act & Assert
+            // CORRECCIÓN AQUÍ: Usamos PlayerBannedException
             Assert.Throws<PlayerBannedException>(() =>
                 _manager.JoinLobby(bannedClient, lobbyDto.LobbyCode));
         }
@@ -138,10 +147,14 @@ namespace Tests.Logic
              */
 
             // Arrange
-            var hostClient = new PlayerClient(new UserBuilder().WithId(1).Build(), _mockCallback.Object);
+            var hUser = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
+
             var lobbyDto = _manager.CreateLobby(hostClient);
 
-            var victimClient = new PlayerClient(new UserBuilder().WithId(2).Build(), _mockCallback.Object);
+            var vUser = new UserBuilder().WithId(2).Build();
+            var victimClient = new PlayerClient(vUser.id_user, vUser.nickname, vUser.id_avatar, _mockCallback.Object);
+
             _manager.JoinLobby(victimClient, lobbyDto.LobbyCode);
 
             // Configurar SessionManager para que encuentre a la víctima al kickear
@@ -172,8 +185,11 @@ namespace Tests.Logic
              */
 
             // Arrange
-            var hostClient = new PlayerClient(new UserBuilder().WithId(1).Build(), _mockCallback.Object);
-            var playerClient = new PlayerClient(new UserBuilder().WithId(2).Build(), _mockCallback.Object);
+            var hUser = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
+
+            var pUser = new UserBuilder().WithId(2).Build();
+            var playerClient = new PlayerClient(pUser.id_user, pUser.nickname, pUser.id_avatar, _mockCallback.Object);
 
             var lobbyDto = _manager.CreateLobby(hostClient);
             _manager.JoinLobby(playerClient, lobbyDto.LobbyCode);

@@ -43,7 +43,10 @@ namespace Tests.Handlers
 
             // Arrange
             var user = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(user, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
+
             // Aseguramos que no esté en ningún lobby
             client.CurrentLobby = null;
 
@@ -71,7 +74,9 @@ namespace Tests.Handlers
 
             // Arrange
             var user = new UserBuilder().Build();
-            var client = new PlayerClient(user, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
 
             // Simulamos que ya está en un lobby (Mock parcial)
             var mockExistingLobby = new Mock<Lobby>("EXIST", client);
@@ -119,7 +124,10 @@ namespace Tests.Handlers
 
             // Arrange
             var user = new UserBuilder().Build();
-            var client = new PlayerClient(user, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
+
             string code = "CODE12";
             var expectedDto = new LobbyStateDto { LobbyCode = code };
 
@@ -162,7 +170,9 @@ namespace Tests.Handlers
 
             // Arrange
             var hostUser = new UserBuilder().WithId(1).Build();
-            var hostClient = new PlayerClient(hostUser, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var hostClient = new PlayerClient(hostUser.id_user, hostUser.nickname, hostUser.id_avatar, _mockCallback.Object);
 
             var mockLobby = new Mock<Lobby>("MYLOBBY", hostClient);
             hostClient.CurrentLobby = mockLobby.Object;
@@ -186,7 +196,10 @@ namespace Tests.Handlers
 
             // Arrange
             var user = new UserBuilder().Build();
-            var client = new PlayerClient(user, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
+
             client.CurrentLobby = null; // No está en lobby
 
             _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);

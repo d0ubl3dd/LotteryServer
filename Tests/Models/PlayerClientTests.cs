@@ -29,7 +29,8 @@ namespace Tests.Models
             var mockCallback = new Mock<ILotteryCallback>();
 
             // Act
-            var client = new PlayerClient(user, mockCallback.Object);
+            // FIX: Constructor actualizado con 4 parámetros (desempaquetando el objeto User)
+            var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, mockCallback.Object);
 
             // Assert
             Assert.Equal(10, client.UserId);

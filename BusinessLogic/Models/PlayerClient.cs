@@ -1,5 +1,6 @@
 ﻿using Contracts.Callbacks;
 using DataAccess;
+using System.Collections.Generic;
 
 namespace BusinessLogic.Models
 {
@@ -10,13 +11,17 @@ namespace BusinessLogic.Models
         public int AvatarId { get; }
         public ILotteryCallback CallbackChannel { get; }
         public Lobby CurrentLobby { get; set; }
+        public int SelectedBoardId { get; set; }
+        public HashSet<int> WinningCards { get; set; } = new HashSet<int>();
 
-        public PlayerClient(User user, ILotteryCallback callback)
+        public PlayerClient() { }
+
+        public PlayerClient(int userId, string nickname, int avatarId, ILotteryCallback callbackChannel)
         {
-            UserId = user.id_user;
-            Nickname = user.nickname;
-            AvatarId = user.id_avatar;
-            CallbackChannel = callback;
+            UserId = userId;
+            Nickname = nickname;
+            AvatarId = avatarId;
+            CallbackChannel = callbackChannel;
         }
     }
 }

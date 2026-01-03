@@ -45,7 +45,8 @@ namespace Tests.Handlers
             var host = new UserBuilder().WithId(1).WithNickname("HostUser").Build();
             var settings = new GameSettingsDto();
 
-            var hostClient = new PlayerClient(host, _mockCallback.Object);
+            // FIX: Constructor actualizado con 4 parámetros
+            var hostClient = new PlayerClient(host.id_user, host.nickname, host.id_avatar, _mockCallback.Object);
 
             // Mock del Lobby con método virtual StartLobbyGame
             var mockLobby = new Mock<Lobby>("CODE1", hostClient);
@@ -91,20 +92,11 @@ namespace Tests.Handlers
 
             // Arrange
             var host = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(host, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var client = new PlayerClient(host.id_user, host.nickname, host.id_avatar, _mockCallback.Object);
 
             var mockLobby = new Mock<Lobby>("CODE", client);
-            mockLobby.Object.StartLobbyGame(new GameSettingsDto()); // Forzamos estado activo si la lógica lo permite
-                                                                    // O mejor, mockeamos la propiedad si fuera virtual, o usamos SetupGet si modificaste la clase para ser virtual.
-                                                                    // Como IsGameInProgress tiene set privado, lo simulamos via reflexión o asumiendo estado inicial.
-                                                                    // TRUCO: Como IsGameInProgress no es virtual, Mock no puede sobreescribirlo directamente a menos que 
-                                                                    // usemos un método del builder o setter interno.
-                                                                    // Para esta prueba, asumimos que llamar a StartLobbyGame pone IsGameInProgress = true en la lógica real de Lobby (que no está mockeada del todo aquí).
-
-            // OPCIÓN MEJOR PARA TEST: Configurar el mock para que FindLobby devuelva un lobby "Real" en estado ocupado
-            // O extraer interfaz ILobby (ideal).
-            // Por ahora, usaremos reflexión para setear la propiedad privada si es necesario, 
-            // pero dado tu código de Lobby, podemos llamar a StartLobbyGame real para cambiar el estado.
 
             mockLobby.Setup(l => l.IsGameInProgress).Returns(true); // Esto pone IsGameInProgress = true
 
@@ -146,7 +138,10 @@ namespace Tests.Handlers
 
             // Arrange
             var host = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(host, _mockCallback.Object);
+
+            // FIX: Constructor actualizado con 4 parámetros
+            var client = new PlayerClient(host.id_user, host.nickname, host.id_avatar, _mockCallback.Object);
+
             var mockLobby = new Mock<Lobby>("CODE", client);
 
             // Simulamos juego activo

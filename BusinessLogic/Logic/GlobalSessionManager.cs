@@ -41,7 +41,12 @@ namespace BusinessLogic.Logic
                     throw new ArgumentNullException(nameof(callback));
                 }
 
-                var client = new PlayerClient(user, callback);
+                var client = new PlayerClient(
+                            user.id_user,
+                            user.nickname,
+                            user.id_avatar,
+                            callback
+                );
                 _onlineUsers[user.id_user] = client;
 
                 _logger.InfoFormat("[RegisterClient] Usuario registrado: {0} - {1}", user.id_user, user.nickname);

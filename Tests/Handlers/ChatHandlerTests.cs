@@ -52,8 +52,12 @@ namespace Tests.Handlers
             var user = new UserBuilder().WithNickname("Chatter").Build();
 
             // 1. Preparamos el cliente (PlayerClient)
-            var client = new PlayerClient(user, _mockCallback.Object);
-
+            var client = new PlayerClient(
+                user.id_user,
+                user.nickname,
+                user.id_avatar,
+                _mockCallback.Object
+            );
             // 2. Preparamos un MOCK del Lobby
             // Nota: Al ser 'virtual' el método Broadcast, podemos mockearlo aunque Lobby sea una clase concreta.
             // Pasamos argumentos dummy al constructor base de Lobby para satisfacerlo.
@@ -148,7 +152,12 @@ namespace Tests.Handlers
 
             // Arrange
             var user = new UserBuilder().Build();
-            var client = new PlayerClient(user, _mockCallback.Object);
+            var client = new PlayerClient(
+                user.id_user,
+                user.nickname,
+                user.id_avatar,
+                _mockCallback.Object
+            );
             client.CurrentLobby = null; // ESTADO CRÍTICO: No está en lobby
 
             _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);

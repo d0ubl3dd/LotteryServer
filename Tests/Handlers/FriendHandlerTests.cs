@@ -191,9 +191,12 @@ namespace Tests.Handlers
             var targetUser = new UserBuilder().WithId(2).WithNickname("Target").Build();
 
             // Clientes
-            var inviterClient = new PlayerClient(inviterUser, _mockCallback.Object); // Callback dummy
+            // FIX: Se pasan los parametros desglosados (id, nickname, avatar, callback)
+            var inviterClient = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
+
             var targetCallbackMock = new Mock<ILotteryCallback>(); // Callback que vamos a verificar
-            var targetClient = new PlayerClient(targetUser, targetCallbackMock.Object);
+            // FIX: Se pasan los parametros desglosados
+            var targetClient = new PlayerClient(targetUser.id_user, targetUser.nickname, targetUser.id_avatar, targetCallbackMock.Object);
 
             // Setup Lobby para el inviter
             var mockLobby = new Mock<Lobby>(lobbyCode, inviterClient);
@@ -221,7 +224,10 @@ namespace Tests.Handlers
 
             // Arrange
             var inviterUser = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(inviterUser, _mockCallback.Object);
+
+            // FIX: Se pasan los parametros desglosados
+            var client = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
+
             client.CurrentLobby = null; // Sin lobby
 
             _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(1);
@@ -243,8 +249,12 @@ namespace Tests.Handlers
              */
 
             // Arrange
-            var inviterClient = new PlayerClient(new UserBuilder().WithId(1).Build(), _mockCallback.Object);
-            var targetClient = new PlayerClient(new UserBuilder().WithId(2).Build(), _mockCallback.Object);
+            var inviterUser = new UserBuilder().WithId(1).Build();
+            var targetUser = new UserBuilder().WithId(2).Build();
+
+            // FIX: Instanciamos pasando propiedades individuales
+            var inviterClient = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
+            var targetClient = new PlayerClient(targetUser.id_user, targetUser.nickname, targetUser.id_avatar, _mockCallback.Object);
 
             var lobby = new Mock<Lobby>("CODE", inviterClient);
 

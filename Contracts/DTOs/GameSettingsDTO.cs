@@ -16,5 +16,7 @@ namespace Contracts.DTOs
         public bool IsPrivate { get; set; }
         [DataMember]
         public int CardDrawSpeedSeconds { get; set; }
+        [DataMember]
+        public string GameMode { get; set; }
     }
 }

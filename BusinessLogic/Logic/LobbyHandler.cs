@@ -3,8 +3,10 @@ using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
 using BusinessLogic.Models;
 using Contracts.DTOs;
+using Contracts.GameData;
 using DataAccess;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Logic
@@ -19,6 +21,45 @@ namespace BusinessLogic.Logic
         {
             _lobbyManager = lobbyManager ?? throw new ArgumentNullException(nameof(lobbyManager));
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+        }
+
+        public async Task ChooseBoard(User currentUser, int boardId)
+        {
+            await ExecuteFaultSafeAsync(async () =>
+            {
+                if (currentUser == null)
+                {
+                    throw new ArgumentNullException(nameof(currentUser));
+                }
+
+                var client = GetClientOrThrow(currentUser);
+
+                if (client.CurrentLobby == null)
+                {
+                    throw new LobbyException("No estás en ningún lobby para elegir tablero.");
+                }
+
+                if (client.CurrentLobby.IsGameInProgress)
+                {
+                    throw new GameException("No puedes cambiar de tablero cuando la partida ya comenzó.");
+                }
+
+                var boardCards = BoardConfigurations.GetBoardById(boardId);
+
+                if (boardCards == null || boardCards.Count == 0)
+                {
+                    throw new ArgumentException($"El tablero número {boardId} no es válido.");
+                }
+
+                client.SelectedBoardId = boardId;
+
+                client.WinningCards = new HashSet<int>(boardCards);
+
+                _logger.InfoFormat("[ChooseBoard] Jugador {0} eligió el tablero #{1}.", currentUser.nickname, boardId);
+
+                await Task.CompletedTask;
+
+            }, "ChooseBoard");
         }
 
         private PlayerClient GetClientOrThrow(User user)
