@@ -38,11 +38,6 @@ namespace Tests.Handlers
         [Fact]
         public async Task SendRequest_WhenValid_ShouldCallDao()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: IDs válidos, sin relación previa.
-             * ✔ Salida Esperada: Llamada a RequestFriendshipAsync.
-             */
-
             // Arrange
             int userId = 1, targetId = 2;
             _mockFriendshipDao.Setup(d => d.FriendshipExistsAsync(userId, targetId))
@@ -58,11 +53,6 @@ namespace Tests.Handlers
         [Fact]
         public async Task SendRequest_WhenGuest_ShouldThrowFault_GuestRestricted()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: ID negativo (Invitado).
-             * ✔ Salida Esperada: Fault GUEST_RESTRICTED.
-             */
-
             // Act & Assert
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
                 _handler.SendRequestFriendship(-1, 2));
@@ -73,11 +63,6 @@ namespace Tests.Handlers
         [Fact]
         public async Task SendRequest_WhenSelf_ShouldThrowFault_FriendInvalid()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: Mismo ID para sender y target.
-             * ✔ Salida Esperada: Fault FRIEND_INVALID.
-             */
-
             // Act & Assert
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
                 _handler.SendRequestFriendship(1, 1));
@@ -88,11 +73,6 @@ namespace Tests.Handlers
         [Fact]
         public async Task SendRequest_WhenDuplicate_ShouldThrowFault_FriendDuplicate()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: Relación ya existente en BD.
-             * ✔ Salida Esperada: Fault FRIEND_DUPLICATE.
-             */
-
             // Arrange
             _mockFriendshipDao.Setup(d => d.FriendshipExistsAsync(1, 2)).ReturnsAsync(true);
 
@@ -110,14 +90,8 @@ namespace Tests.Handlers
         [Fact]
         public async Task AcceptRequest_WhenRequestExists_ShouldAccept()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: Request pendiente existente.
-             * ✔ Salida Esperada: Llamada a AcceptRequestAsync.
-             */
-
             // Arrange
             var request = new Friendship { id_user_sender = 2, id_user_receiver = 1 };
-
             _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(2, 1)).ReturnsAsync(request);
 
             // Act
@@ -130,11 +104,6 @@ namespace Tests.Handlers
         [Fact]
         public async Task AcceptRequest_WhenNotFound_ShouldThrowFault_FriendNotFound()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: Request inexistente (null).
-             * ✔ Salida Esperada: Fault FRIEND_NOT_FOUND.
-             */
-
             // Arrange
             _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(It.IsAny<int>(), It.IsAny<int>()))
                               .ReturnsAsync((Friendship)null);
@@ -151,58 +120,63 @@ namespace Tests.Handlers
         {
             /* DOCUMENTACIÓN
              * ✔ Entrada: Usuario con 2 amigos.
-             * ✔ Salida Esperada: Lista de 2 FriendDto mapeados correctamente.
+             * ✔ Corrección: Configuramos SessionManager para que determine quién está Online.
              */
 
             // Arrange
             var friends = new List<User> {
-                new User { id_user = 2, nickname = "Friend1", status = "Online" },
+                // En DB puede decir lo que sea, pero SessionManager manda
+                new User { id_user = 2, nickname = "Friend1", status = "Offline" },
                 new User { id_user = 3, nickname = "Friend2", status = "Offline" }
             };
+
             _mockFriendshipDao.Setup(d => d.GetAcceptedFriendsAsync(1)).ReturnsAsync(friends);
+
+            // --- CORRECCIÓN CLAVE ---
+            // Configuramos SessionManager:
+            // Friend1 (ID 2) -> ESTÁ CONECTADO (true) -> Status final será "Online"
+            // Friend2 (ID 3) -> NO ESTÁ (false) -> Status final será "Offline"
+            _mockSessionManager.Setup(sm => sm.IsUserOnline(2)).Returns(true);
+            _mockSessionManager.Setup(sm => sm.IsUserOnline(3)).Returns(false);
 
             // Act
             var result = await _handler.GetFriends(1);
 
             // Assert
             Assert.Equal(2, result.Count);
+
+            // Verificamos Friend1
             Assert.Equal("Friend1", result[0].Nickname);
-            Assert.Equal("Online", result[0].Status);
+            Assert.Equal("Online", result[0].Status); // Debe ser Online gracias al Mock
+
+            // Verificamos Friend2
+            Assert.Equal("Friend2", result[1].Nickname);
+            Assert.Equal("Offline", result[1].Status);
         }
 
         // ----------------------------------------------------------------------------------
-        // REGIÓN: INVITACIÓN A LOBBY (COMPLEJA)
+        // REGIÓN: INVITACIÓN A LOBBY
         // ----------------------------------------------------------------------------------
 
         [Fact]
         public async Task InviteToLobby_WhenConditionsMet_ShouldSendCallback()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Escenario Complejo: 
-             * - Solicitante en Contexto WCF válido.
-             * - Solicitante tiene Lobby.
-             * - Amigo objetivo está online y sin lobby.
-             * ✔ Salida Esperada: El canal del amigo recibe ReceiveLobbyInvite.
-             */
-
             // Arrange
             string lobbyCode = "LOBBY1";
             var inviterUser = new UserBuilder().WithId(1).WithNickname("Inviter").Build();
             var targetUser = new UserBuilder().WithId(2).WithNickname("Target").Build();
 
-            // Clientes
-            // FIX: Se pasan los parametros desglosados (id, nickname, avatar, callback)
+            // Clientes con constructor de 4 params
             var inviterClient = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
 
-            var targetCallbackMock = new Mock<ILotteryCallback>(); // Callback que vamos a verificar
-            // FIX: Se pasan los parametros desglosados
+            var targetCallbackMock = new Mock<ILotteryCallback>();
             var targetClient = new PlayerClient(targetUser.id_user, targetUser.nickname, targetUser.id_avatar, targetCallbackMock.Object);
 
-            // Setup Lobby para el inviter
+            // Lobby simulado
             var mockLobby = new Mock<Lobby>(lobbyCode, inviterClient);
             inviterClient.CurrentLobby = mockLobby.Object;
 
-            // Setup SessionManager
+            // Session Manager Setup
             _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(1);
             _mockSessionManager.Setup(sm => sm.GetClient(1)).Returns(inviterClient);
             _mockSessionManager.Setup(sm => sm.GetClient(2)).Returns(targetClient);
@@ -217,18 +191,10 @@ namespace Tests.Handlers
         [Fact]
         public async Task InviteToLobby_WhenInviterNotInLobby_ShouldThrowFault_LobbyError()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: Solicitante válido pero CurrentLobby es null.
-             * ✔ Salida Esperada: Fault LOBBY_ERROR.
-             */
-
             // Arrange
             var inviterUser = new UserBuilder().WithId(1).Build();
-
-            // FIX: Se pasan los parametros desglosados
             var client = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
-
-            client.CurrentLobby = null; // Sin lobby
+            client.CurrentLobby = null;
 
             _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(1);
             _mockSessionManager.Setup(sm => sm.GetClient(1)).Returns(client);
@@ -243,16 +209,10 @@ namespace Tests.Handlers
         [Fact]
         public async Task InviteToLobby_WhenTargetAlreadyInSameLobby_ShouldThrowFault_LobbyUserAlreadyIn()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: El amigo ya está en EL MISMO lobby.
-             * ✔ Salida Esperada: Fault LOBBY_USER_ALREADY_IN.
-             */
-
             // Arrange
             var inviterUser = new UserBuilder().WithId(1).Build();
             var targetUser = new UserBuilder().WithId(2).Build();
 
-            // FIX: Instanciamos pasando propiedades individuales
             var inviterClient = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
             var targetClient = new PlayerClient(targetUser.id_user, targetUser.nickname, targetUser.id_avatar, _mockCallback.Object);
 
@@ -276,11 +236,6 @@ namespace Tests.Handlers
         [Fact]
         public async Task InviteToLobby_WhenSessionContextFails_ShouldThrowFault_UserNotConnected()
         {
-            /* DOCUMENTACIÓN
-            * ✔ Entrada: GetUserIdFromContext devuelve null (fallo WCF).
-            * ✔ Salida Esperada: Fault USER_OFFLINE.
-            */
-
             // Arrange
             _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns((int?)null);
 

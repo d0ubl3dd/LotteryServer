@@ -47,6 +47,8 @@ namespace BusinessLogic.Utilities
             Register<InvalidGameActionException>("GAME_ACTION_INVALID", "Movimiento inválido.", useExMsg: true);
             Register<LobbyException>("LOBBY_ERROR", "Error de lobby.", useExMsg: true);
 
+            Register<GameException>("GAME_ERROR", "Error en la partida.", useExMsg: true);
+
             Register<UserNotInLobbyException>("CHAT_USER_NOT_IN_LOBBY", "Debes estar en un lobby para chatear.", useExMsg: true);
             Register<ForbiddenWordException>("CHAT_FORBIDDEN_WORD", "Uso de lenguaje prohibido.", useExMsg: true);
 
@@ -64,9 +66,21 @@ namespace BusinessLogic.Utilities
         {
             Action<string> logAction;
 
-            if (isFatal) logAction = _logger.Fatal;
-            else if (logAsError) logAction = _logger.Error;
-            else logAction = _logger.Warn;
+            if (isFatal)
+            {
+                logAction = _logger.Fatal;
+            }
+            else
+            {
+                if (logAsError)
+                {
+                    logAction = _logger.Error;
+                }
+                else
+                {
+                    logAction = _logger.Warn;
+                }
+            }
 
             if (!_strategies.ContainsKey(typeof(T)))
             {
