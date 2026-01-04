@@ -47,5 +47,10 @@ namespace DataAccess.DAOs
         {
             return await _context.User.FindAsync(id);
         }
+
+        public async Task<User> GetUserByEmailAsync(string email)
+        {
+            return await _context.User.FirstOrDefaultAsync(u => u.email == email);
+        }
     }
 }

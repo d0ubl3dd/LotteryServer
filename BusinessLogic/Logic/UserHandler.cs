@@ -240,6 +240,40 @@ namespace BusinessLogic.Handlers
             }, "RequestEmailChange");
         }
 
+        public async Task<bool> RecoverPasswordRequest(string email)
+        {
+            return await ExecuteFaultSafeAsync(async () =>
+            {
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    throw new ArgumentException("El correo electrónico no puede estar vacío.");
+                }
+
+                _logger.InfoFormat("[RecoverPasswordRequest] Procesando solicitud para el correo: {0}", email);
+
+                bool emailExists = await _userRepository.EmailExistsAsync(email);
+
+                if (!emailExists)
+                {
+                    _logger.WarnFormat("[RecoverPasswordRequest] El correo {0} no está registrado.", email);
+                    throw new UserNotFoundException("No existe ninguna cuenta asociada a este correo electrónico.");
+                }
+
+                bool codeSent = await _verificationHandler.SendVerificationCode(email);
+
+                if (!codeSent)
+                {
+                    _logger.ErrorFormat("[RecoverPasswordRequest] Error al enviar correo a {0}.", email);
+                    throw new VerificationException("No se pudo enviar el código de recuperación. Inténtalo más tarde.");
+                }
+
+                _logger.InfoFormat("[RecoverPasswordRequest] Código de recuperación enviado con éxito a {0}.", email);
+
+                return true;
+
+            }, "RecoverPasswordRequest");
+        }
+
         public async Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
         {
             return await ExecuteFaultSafeAsync(async () =>
@@ -276,15 +310,36 @@ namespace BusinessLogic.Handlers
                 return await Task.FromResult(-1);
             }, "RegisterGuest");
         }
-
-        public async Task RecoverPassword(string email)
+        
+        public async Task<bool> RecoverPassword(string email, string newPassword)
         {
-            await ExecuteFaultSafeAsync(async () =>
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.InfoFormat("[RecoverPassword] Solicitud para {0}.", email);
-                await Task.CompletedTask;
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(newPassword))
+                {
+                    throw new ArgumentException(MANDATORY_FIELDS_MESSAGE);
+                }
 
-            }, "RecoverPassword");
+                _logger.InfoFormat("[ResetPasswordByEmail] Solicitud de cambio para el correo: {0}", email);
+                var user = await _userRepository.GetUserByEmailAsync(email);
+
+                if (user == null)
+                {
+                    _logger.WarnFormat("[ResetPasswordByEmail] No se encontró usuario con el correo: {0}", email);
+                    throw new UserNotFoundException("No existe ninguna cuenta asociada a este correo electrónico.");
+                }
+
+                PasswordHasher.CreatePasswordHash(newPassword, out byte[] hash, out byte[] salt);
+                user.passwordHash = hash;
+                user.passwordSalt = salt;
+
+                await _userRepository.SaveChangesAsync();
+
+                _logger.InfoFormat("[ResetPasswordByEmail] Contraseña actualizada exitosamente para: {0}", email);
+                
+                return true;
+
+            }, "ResetPasswordByEmail");
         }
 
         public async Task<FriendDto> FindUserByNickname(string nickname)

@@ -184,9 +184,9 @@ namespace BusinessLogic
             return _userHandler.RegisterGuest();
         }
 
-        public Task RecoverPassword(string email)
+        public Task<bool> RecoverPassword(string email, string newPassword)
         {
-            return _userHandler.RecoverPassword(email);
+            return _userHandler.RecoverPassword(email, newPassword);
         }
 
         public Task<bool> VerifyPassword(int currentId, string password)
@@ -254,6 +254,11 @@ namespace BusinessLogic
             }
 
             return _userHandler.ConfirmEmailChange(currentUserId, newEmail, verificationCode);
+        }
+
+        public Task<bool> RecoverPasswordRequest(string email)
+        {            
+            return _userHandler.RecoverPasswordRequest(email);
         }
 
         // --- IFriendService ---

@@ -11,5 +11,6 @@ namespace DataAccess.DAOs
         Task<int> SaveChangesAsync();
         Task<User> GetUserByNicknameAsync(string nickname);
         Task<User> GetUserByIdAsync(int id);
+        Task<User> GetUserByEmailAsync(string email);
     }
 }

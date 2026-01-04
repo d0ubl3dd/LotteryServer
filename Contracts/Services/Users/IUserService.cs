@@ -26,7 +26,7 @@ namespace Contracts.Services.Users
         Task<bool> ChangePassword(int currentUserId, string newPassword);
 
         [OperationContract]
-        Task RecoverPassword(string email);
+        Task<bool> RecoverPassword(string email, string newPassword);
 
         [OperationContract]
         Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData);
@@ -43,5 +43,7 @@ namespace Contracts.Services.Users
 
         [OperationContract]
         Task<bool> ConfirmEmailChange(int currentUserId, string newEmail, string verificationCode);
+        [OperationContract]
+        Task<bool> RecoverPasswordRequest(string email);
     }
 }
