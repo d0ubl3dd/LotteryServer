@@ -52,5 +52,13 @@ namespace DataAccess.DAOs
         {
             return await _context.User.FirstOrDefaultAsync(u => u.email == email);
         }
+
+        public async Task<List<User>> GetLeaderboard()
+        {
+            return await _context.User
+                .OrderByDescending(u => u.score)
+                .ThenBy(u => u.nickname)                
+                .ToListAsync();
+        }
     }
 }

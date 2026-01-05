@@ -1,4 +1,5 @@
 ﻿using DataAccess;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace DataAccess.DAOs
@@ -12,5 +13,6 @@ namespace DataAccess.DAOs
         Task<User> GetUserByNicknameAsync(string nickname);
         Task<User> GetUserByIdAsync(int id);
         Task<User> GetUserByEmailAsync(string email);
+        Task<List<User>> GetLeaderboard();
     }
 }

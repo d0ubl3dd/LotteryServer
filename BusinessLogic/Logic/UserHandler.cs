@@ -396,6 +396,29 @@ namespace BusinessLogic.Handlers
             }, "GetUserProfile");
         }
 
+        public async Task<List<LeaderboardPlayerDto>> GetLeaderboard()
+        {
+            return await ExecuteFaultSafeAsync(async () =>
+            {
+                var users = await _userRepository.GetLeaderboard();
+
+                var leaderboard = new List<LeaderboardPlayerDto>();
+
+                foreach (var user in users)
+                {
+                    leaderboard.Add(new LeaderboardPlayerDto
+                    {
+                        UserId = user.id_user,
+                        Nickname = user.nickname,
+                        Score = user.score
+                    });
+                }
+
+                return leaderboard;
+
+            }, "GetLeaderboard");
+        }
+
         private async Task<User> GetUserOrThrow(int userId)
         {
             User user;

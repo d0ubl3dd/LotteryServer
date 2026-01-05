@@ -1,5 +1,6 @@
 ﻿using Contracts.DTOs;
 using Contracts.Faults;
+using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading.Tasks;
 
@@ -45,5 +46,7 @@ namespace Contracts.Services.Users
         Task<bool> ConfirmEmailChange(int currentUserId, string newEmail, string verificationCode);
         [OperationContract]
         Task<bool> RecoverPasswordRequest(string email);
+        [OperationContract]
+        Task<List<LeaderboardPlayerDto>> GetLeaderboard();
     }
 }

@@ -261,6 +261,11 @@ namespace BusinessLogic
             return _userHandler.RecoverPasswordRequest(email);
         }
 
+        public Task<List<LeaderboardPlayerDto>> GetLeaderboard()
+        {
+            return _userHandler.GetLeaderboard();
+        }
+
         // --- IFriendService ---
 
         public Task SendRequestFriendship(int currentUserId, int targetUserId)

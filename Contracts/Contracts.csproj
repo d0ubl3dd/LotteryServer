@@ -50,8 +50,8 @@
     <Compile Include="DTOs\CardDto.cs" />
     <Compile Include="DTOs\FriendDto.cs" />
     <Compile Include="DTOs\GameSettingsDto.cs" />
+    <Compile Include="DTOs\LeaderboardPlayerDto.cs" />
     <Compile Include="DTOs\LobbyStateDto.cs" />
-    <Compile Include="DTOs\ScoreboardDto.cs" />
     <Compile Include="DTOs\SocialMediaDto.cs" />
     <Compile Include="DTOs\UserDto.cs" />
     <Compile Include="Faults\ServiceFault.cs" />
