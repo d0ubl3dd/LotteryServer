@@ -23,5 +23,8 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void ReceiveLobbyInvite(string inviterNickname, string lobbyCode);
+        [OperationContract(IsOneWay = true)]
+        void BoardSelected(int userId, int boardId);
+
     }
 }

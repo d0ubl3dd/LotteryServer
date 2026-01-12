@@ -10,6 +10,6 @@ namespace Contracts.Services.Chat
     {
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
-        Task SendMessage(string message);
+        Task SendMessage(string message);        
     }
 }

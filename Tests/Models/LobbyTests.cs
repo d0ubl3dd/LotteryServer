@@ -1,10 +1,11 @@
-﻿using Xunit;
+﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Models;
+using Contracts.Callbacks;
+using DataAccess.DAOs;
 using Moq;
 using System.Threading.Tasks;
-using BusinessLogic.Models;
-using BusinessLogic.Exceptions;
-using Contracts.Callbacks;
 using Tests.Builders;
+using Xunit;
 
 namespace Tests.Models
 {
@@ -18,13 +19,14 @@ namespace Tests.Models
         {
             _mockCallback = new Mock<ILotteryCallback>();
             var hostUser = new UserBuilder().WithId(1).WithNickname("Host").Build();
-
-            // FIX: Constructor actualizado con 4 parámetros
+            
             _host = new PlayerClient(hostUser.id_user, hostUser.nickname, hostUser.id_avatar, _mockCallback.Object);
 
-            // Creamos un Lobby real para probar su lógica interna
-            _lobby = new Lobby("TEST01", _host);
+            var mockUserDao = new Mock<IUserDao>();
+
+            _lobby = new Lobby("TEST01", _host, mockUserDao.Object);
         }
+
 
         // --- Gestión de Jugadores ---
 

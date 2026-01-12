@@ -1,12 +1,11 @@
 ﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
-using BusinessLogic.Models;
 using Contracts.DTOs;
 using Contracts.GameData;
 using DataAccess;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Logic
@@ -27,80 +26,54 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUser == null)
-                {
-                    throw new ArgumentNullException(nameof(currentUser));
-                }
-
                 var client = GetClientOrThrow(currentUser);
 
                 if (client.CurrentLobby == null)
-                {
-                    throw new LobbyException("No estás en ningún lobby para elegir tablero.");
-                }
+                    throw new LobbyException("No estás en ningún lobby.");
 
                 if (client.CurrentLobby.IsGameInProgress)
-                {
-                    throw new GameException("No puedes cambiar de tablero cuando la partida ya comenzó.");
-                }
+                    throw new GameException("La partida ya comenzó.");
 
-                var boardCards = BoardConfigurations.GetBoardById(boardId);
+                bool taken = client.CurrentLobby.Players
+                    .Any(p => p.SelectedBoardId == boardId && p.UserId != currentUser.id_user);
 
-                if (boardCards == null || boardCards.Count == 0)
-                {
-                    throw new ArgumentException($"El tablero número {boardId} no es válido.");
-                }
+                if (taken)
+                    throw new GameException("Ese tablero ya está ocupado.");
+
+                var cards = BoardConfigurations.GetBoardById(boardId);
+                if (cards == null || cards.Count == 0)
+                    throw new ArgumentException("Tablero inválido.");
 
                 client.SelectedBoardId = boardId;
+                client.WinningCards = new HashSet<int>(cards);
 
-                client.WinningCards = new HashSet<int>(boardCards);
-
-                _logger.InfoFormat("[ChooseBoard] Jugador {0} eligió el tablero #{1}.", currentUser.nickname, boardId);
+                BroadcastLobbyState(client);
 
                 await Task.CompletedTask;
-
             }, "ChooseBoard");
-        }
-
-        private PlayerClient GetClientOrThrow(User user)
-        {
-            _logger.InfoFormat("[GetClient] Buscando sesión para {0} (ID {1}).", user.nickname, user.id_user);
-
-            var client = _sessionManager.GetClient(user.id_user);
-
-            if (client == null)
-            {
-                throw new UserNotConnectedException("No se encontró una sesión activa para realizar esta acción.");
-            }
-
-            return client;
         }
 
         public async Task<LobbyStateDto> CreateLobby(User currentUser)
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUser == null)
-                {
-                    throw new ArgumentNullException(nameof(currentUser));
-                }
+                var host = GetClientOrThrow(currentUser);
 
-                _logger.InfoFormat("[CreateLobby] Intento de creación por {0}.", currentUser.nickname);
+                if (host.CurrentLobby != null)
+                    throw new UserAlreadyInLobbyException("Ya estás en un lobby.");
 
-                var hostClient = GetClientOrThrow(currentUser);
+                var lobbyState = _lobbyManager.CreateLobby(host);
 
-                if (hostClient.CurrentLobby != null)
-                {
-                    throw new UserAlreadyInLobbyException("Ya te encuentras dentro de un lobby.");
-                }
+                host.SelectedBoardId = 1;
+                host.WinningCards = new HashSet<int>(BoardConfigurations.GetBoardById(1));
 
-                var lobbyState = _lobbyManager.CreateLobby(hostClient);
+                var hostDto = lobbyState.Players.First(p => p.UserId == currentUser.id_user);
+                hostDto.SelectedBoardId = 1;
 
-                _logger.InfoFormat("[CreateLobby] Lobby creado: {0}", lobbyState.LobbyCode);
+                BroadcastLobbyState(host);
 
                 await Task.CompletedTask;
                 return lobbyState;
-
             }, "CreateLobby");
         }
 
@@ -108,53 +81,68 @@ namespace BusinessLogic.Logic
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUser == null)
+                var client = GetClientOrThrow(currentUser);
+
+                if (client.CurrentLobby != null)
+                    throw new UserAlreadyInLobbyException("Ya estás en un lobby.");
+
+                var lobbyState = _lobbyManager.JoinLobby(client, lobbyCode);
+
+                var occupied = client.CurrentLobby.Players
+                    .Where(p => p.UserId != currentUser.id_user)
+                    .Select(p => p.SelectedBoardId)
+                    .ToList();
+
+                int board = 1;
+                while (occupied.Contains(board)) board++;
+
+                client.SelectedBoardId = board;
+                client.WinningCards = new HashSet<int>(BoardConfigurations.GetBoardById(board));
+
+                BroadcastLobbyState(client);
+
+                foreach (var dto in lobbyState.Players)
                 {
-                    throw new ArgumentNullException(nameof(currentUser));
+                    var internalClient = client.CurrentLobby.Players
+                        .First(p => p.UserId == dto.UserId);
+
+                    dto.SelectedBoardId = internalClient.SelectedBoardId;
                 }
 
-                if (string.IsNullOrWhiteSpace(lobbyCode))
-                {
-                    throw new ArgumentException("El código de lobby es inválido.");
-                }
-
-                _logger.InfoFormat("[JoinLobby] {0} intenta unirse a {1}.", currentUser.nickname, lobbyCode);
-
-                var playerClient = GetClientOrThrow(currentUser);
-
-                if (playerClient.CurrentLobby != null)
-                {
-                    throw new UserAlreadyInLobbyException("Debes salir de tu lobby actual antes de unirte a otro.");
-                }
-
-                var lobbyState = _lobbyManager.JoinLobby(playerClient, lobbyCode);
-
-                _logger.InfoFormat("[JoinLobby] Unión exitosa al lobby {0}.", lobbyCode);
-
-                await Task.CompletedTask;
                 return lobbyState;
-
             }, "JoinLobby");
+        }
+
+        private void BroadcastLobbyState(PlayerClient source)
+        {
+            var lobby = source.CurrentLobby;
+            if (lobby == null) return;
+
+            var dto = new LobbyStateDto
+            {
+                LobbyCode = lobby.LobbyCode,
+                Players = lobby.Players.Select(p => new UserDto
+                {
+                    UserId = p.UserId,
+                    Nickname = p.Nickname,
+                    SelectedBoardId = p.SelectedBoardId,
+                    IsHost = p.UserId == lobby.HostUserId
+                }).ToList()
+            };
+
+            foreach (var player in lobby.Players)
+            {
+                player.CallbackChannel.LobbyStateUpdated(dto);
+            }
         }
 
         public async Task LeaveLobby(User currentUser)
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUser == null)
-                {
-                    throw new ArgumentNullException(nameof(currentUser));
-                }
-
-                _logger.InfoFormat("[LeaveLobby] {0} solicita salir.", currentUser.nickname);
-
                 var client = GetClientOrThrow(currentUser);
-
                 _lobbyManager.LeaveLobby(client);
-
-                _logger.Info("[LeaveLobby] Salida exitosa.");
                 await Task.CompletedTask;
-
             }, "LeaveLobby");
         }
 
@@ -162,26 +150,19 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (currentUser == null)
-                {
-                    throw new ArgumentNullException(nameof(currentUser));
-                }
-
-                _logger.InfoFormat("[KickPlayer] {0} intenta expulsar al ID {1}.", currentUser.nickname, targetPlayerId);
-
-                var hostClient = GetClientOrThrow(currentUser);
-
-                if (hostClient.CurrentLobby == null)
-                {
-                    throw new LobbyException("No estás en un lobby para expulsar a alguien.");
-                }
-
-                _lobbyManager.KickPlayer(hostClient, targetPlayerId);
-
-                _logger.InfoFormat("[KickPlayer] Jugador {0} expulsado.", targetPlayerId);
+                var host = GetClientOrThrow(currentUser);
+                _lobbyManager.KickPlayer(host, targetPlayerId);
                 await Task.CompletedTask;
-
             }, "KickPlayer");
+        }
+
+        private PlayerClient GetClientOrThrow(User user)
+        {
+            var client = _sessionManager.GetClient(user.id_user);
+            if (client == null)
+                throw new UserNotConnectedException("Sesión no encontrada.");
+
+            return client;
         }
     }
 }

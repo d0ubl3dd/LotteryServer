@@ -31,6 +31,9 @@ namespace Contracts.Callbacks
         void ReceiveLobbyInvite(string inviterNickname, string lobbyCode);
 
         [OperationContract(IsOneWay = true)]
+        void BoardSelected(int userId, int boardId);
+
+        [OperationContract(IsOneWay = true)]
         void OnGameStarted(GameSettingsDto settings);
 
         [OperationContract(IsOneWay = true)]
@@ -38,5 +41,7 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void OnGameFinished();
+        [OperationContract(IsOneWay = true)]
+        void LobbyStateUpdated(LobbyStateDto lobbyState);
     }
 }

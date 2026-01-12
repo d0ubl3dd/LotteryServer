@@ -18,6 +18,10 @@ namespace Contracts.Services.Game
         Task GetScoreboard();
 
         [OperationContract]
-        Task DeclareWin(int currentUserId);
+        Task DeclareWin(PlayerBoardDto playerBoard);
+
+        [OperationContract]
+        Task<bool> ValidateFalseLoteriaAsync(int challengerUserId);
+
     }
 }

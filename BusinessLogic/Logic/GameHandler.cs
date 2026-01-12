@@ -93,5 +93,32 @@ namespace BusinessLogic.Handlers
 
             }, "GetScoreboard");
         }
+        public async Task DeclareWin(PlayerBoardDto playerBoard)
+        {
+            await ExecuteFaultSafeAsync(async () =>
+            {
+                var lobby = _lobbyManager.FindLobbyByPlayerId(playerBoard.PlayerId);
+                if (lobby == null)
+                    throw new LobbyNotFoundException("Lobby no encontrado.");
+
+                await lobby.DeclareWinAsync(playerBoard);
+
+            }, "DeclareWin");
+        }
+
+        public async Task<bool> ValidateFalseLoteriaAsync(int challengerUserId)
+        {
+            return await ExecuteFaultSafeAsync(async () =>
+            {
+                var lobby = _lobbyManager.FindLobbyByPlayerId(challengerUserId);
+                if (lobby == null)
+                {
+                    throw new LobbyNotFoundException("No se encontró el lobby del jugador.");
+                }
+
+                return await lobby.ValidateFalseLoteriaAsync(challengerUserId);
+
+            }, "ValidateFalseLoteriaAsync");
+        }
     }
 }

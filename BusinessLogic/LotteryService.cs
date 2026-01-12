@@ -21,7 +21,9 @@ namespace BusinessLogic
     {
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LotteryService));
 
-        private static readonly ILobbyManager _sharedLobbyManager = new LobbyManager(GlobalSessionManager.Instance);
+        private static readonly IUserDao _userDao = new UserDao();
+        private static readonly ILobbyManager _sharedLobbyManager = new LobbyManager(GlobalSessionManager.Instance, _userDao);
+
 
         private const string INVALID_SESSION_MSG = "Sesión de usuario no válida para esta operación.";
         private const string INVALID_SESSION_REASON = "Sesión inválida";
@@ -446,7 +448,7 @@ namespace BusinessLogic
             }
 
             return _lobbyHandler.ChooseBoard(_currentUser, boardId);
-        }
+        }        
 
         // --- IGameService ---
 
@@ -481,9 +483,14 @@ namespace BusinessLogic
             return _gameHandler.GetScoreboard();
         }
 
-        public async Task DeclareWin(int currentUserId)
+        public Task DeclareWin(PlayerBoardDto playerBoard)
         {
-            await Task.CompletedTask;
+            return _gameHandler.DeclareWin(playerBoard);
+        }
+
+        public Task<bool> ValidateFalseLoteriaAsync(int challengerUserId)
+        {
+            return _gameHandler.ValidateFalseLoteriaAsync(challengerUserId);
         }
 
         // --- IChatService ---

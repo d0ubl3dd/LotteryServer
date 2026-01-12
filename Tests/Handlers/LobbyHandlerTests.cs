@@ -1,17 +1,18 @@
-﻿using Xunit;
-using Moq;
-using System;
-using System.Threading.Tasks;
-using System.ServiceModel;
-using BusinessLogic.Logic;
+﻿using BusinessLogic.Logic;
 using BusinessLogic.Models;
-using DataAccess;
+using Contracts.Callbacks;
 using Contracts.DTOs;
 using Contracts.Faults;
-using Contracts.Callbacks;
-using Tests.Builders;
+using DataAccess;
+using DataAccess.DAOs;
+using Moq;
+using System;
 using System.Collections.Generic;
 using System.Reflection; // Necesario para el truco de Reflexión
+using System.ServiceModel;
+using System.Threading.Tasks;
+using Tests.Builders;
+using Xunit;
 
 namespace Tests.Handlers
 {
@@ -87,21 +88,21 @@ namespace Tests.Handlers
         [Fact]
         public async Task CreateLobby_WhenUserAlreadyInLobby_ShouldThrowFault_AlreadyInLobby()
         {
-            // Arrange
             var user = new UserBuilder().Build();
             var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
 
-            var existingLobby = new Lobby("EXIST", client);
+            var mockUserDao = new Mock<IUserDao>();
+            var existingLobby = new Lobby("EXIST", client, mockUserDao.Object);
             client.CurrentLobby = existingLobby;
 
             _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);
-
-            // Act & Assert
+            
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
                 _handler.CreateLobby(user));
 
             Assert.Equal("LOBBY_USER_ALREADY_IN", ex.Detail.ErrorCode);
         }
+
 
         [Fact]
         public async Task CreateLobby_WhenSessionNotFound_ShouldThrowFault_UserOffline()
@@ -156,22 +157,22 @@ namespace Tests.Handlers
 
         [Fact]
         public async Task KickPlayer_WhenHostIsInLobby_ShouldCallManagerKick()
-        {
-            // Arrange
+        {            
             var hostUser = new UserBuilder().WithId(1).Build();
             var hostClient = new PlayerClient(hostUser.id_user, hostUser.nickname, hostUser.id_avatar, _mockCallback.Object);
 
-            var realLobby = new Lobby("MYLOBBY", hostClient);
+            var mockUserDao = new Mock<IUserDao>();
+
+            var realLobby = new Lobby("MYLOBBY", hostClient, mockUserDao.Object);
             hostClient.CurrentLobby = realLobby;
 
             _mockSessionManager.Setup(sm => sm.GetClient(hostUser.id_user)).Returns(hostClient);
 
-            // Act
             await _handler.KickPlayer(hostUser, 50);
 
-            // Assert
             _mockLobbyManager.Verify(lm => lm.KickPlayer(hostClient, 50), Times.Once);
         }
+
 
         [Fact]
         public async Task KickPlayer_WhenHostNotInLobby_ShouldThrowFault_LobbyError()
@@ -198,10 +199,11 @@ namespace Tests.Handlers
         public async Task ChooseBoard_WhenBoardIsValid_ShouldAssignToClient()
         {
             // Arrange
+            var mockUserDao = new Mock<IUserDao>();
             var user = new UserBuilder().WithId(10).Build();
             var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
 
-            var realLobby = new Lobby("LOBBY1", client);
+            var realLobby = new Lobby("LOBBY1", client, mockUserDao.Object);
             client.CurrentLobby = realLobby;
 
             _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);
@@ -239,7 +241,9 @@ namespace Tests.Handlers
             var user = new UserBuilder().Build();
             var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
 
-            var realLobby = new Lobby("LOBBY1", client);
+            var mockUserDao = new Mock<IUserDao>();
+            var realLobby = new Lobby("LOBBY1", client, mockUserDao.Object);
+
 
             // --- USO DEL HELPER DE REFLEXIÓN ---
             ForceSetGameInProgress(realLobby, true);
@@ -263,7 +267,9 @@ namespace Tests.Handlers
             var user = new UserBuilder().Build();
             var client = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
 
-            var realLobby = new Lobby("LOBBY1", client);
+            var mockUserDao = new Mock<IUserDao>();
+            var realLobby = new Lobby("LOBBY1", client, mockUserDao.Object);
+
             client.CurrentLobby = realLobby;
 
             _mockSessionManager.Setup(sm => sm.GetClient(user.id_user)).Returns(client);

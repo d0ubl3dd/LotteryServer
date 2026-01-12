@@ -31,6 +31,8 @@ namespace Contracts.DTOs
         [DataMember]
         public bool IsHost { get; set; }
         [DataMember]
+        public int SelectedBoardId { get; set; }
+        [DataMember]
         public SocialMediaDto SocialMedia { get; set; }
     }
 }

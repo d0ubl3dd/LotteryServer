@@ -1,6 +1,7 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Models;
 using Contracts.DTOs;
+using DataAccess.DAOs;
 using log4net;
 using System;
 using System.Collections.Concurrent;
@@ -15,9 +16,12 @@ namespace BusinessLogic.Logic
 
         private readonly ISessionManager _sessionManager;
 
-        public LobbyManager(ISessionManager sessionManager)
+        private readonly IUserDao _userDao;
+
+        public LobbyManager(ISessionManager sessionManager, IUserDao userDao)
         {
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+            _userDao = userDao ?? throw new ArgumentNullException(nameof(userDao));
         }
 
         public LobbyStateDto CreateLobby(PlayerClient host)
@@ -25,7 +29,7 @@ namespace BusinessLogic.Logic
             if (host == null) throw new ArgumentNullException(nameof(host));
 
             var lobbyCode = GenerateLobbyCode();
-            var lobby = new Lobby(lobbyCode, host);
+            var lobby = new Lobby(lobbyCode, host, _userDao);
 
             if (!_lobbies.TryAdd(lobbyCode, lobby))
             {
@@ -102,8 +106,7 @@ namespace BusinessLogic.Logic
         private void CloseLobby(Lobby lobby)
         {
             lobby.BroadcastLobbyClosed();
-
-            // Copia defensiva para iterar
+            
             foreach (var player in lobby.Players.ToList())
             {
                 player.CurrentLobby = null;
