@@ -43,5 +43,10 @@ namespace Contracts.Callbacks
         void OnGameFinished();
         [OperationContract(IsOneWay = true)]
         void LobbyStateUpdated(LobbyStateDto lobbyState);
+
+        [OperationContract(IsOneWay = true)]
+        void OnGameResumed();
+        [OperationContract(IsOneWay = true)]
+        void OnFalseLoteriaResult(string declarerNickname, string challengerNickname, bool wasCorrect);
     }
 }
