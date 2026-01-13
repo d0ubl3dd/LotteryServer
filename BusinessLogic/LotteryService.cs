@@ -176,9 +176,9 @@ namespace BusinessLogic
             return await _userHandler.RequestUserVerification(userData);
         }
 
-        public async Task<int> RegisterUser(UserDto userData)
+        public async Task<int> RegisterUserWithCode(UserDto userData, string code)
         {
-            return await _userHandler.RegisterUser(userData);
+            return await _userHandler.RegisterUserWithCode(userData, code);
         }
 
         public Task<int> RegisterGuest()
@@ -232,7 +232,7 @@ namespace BusinessLogic
             return _userHandler.GetUserProfile(currentId);
         }
 
-        public Task<bool> RequestEmailChange(int currentUserId, string newEmail)
+        public Task<bool> ChangeEmailWithCodeAsync(int currentUserId, string newEmail, string code)
         {
             if (_currentUser == null || _currentUser.id_user != currentUserId)
             {
@@ -241,21 +241,7 @@ namespace BusinessLogic
                     new FaultReason(INVALID_SESSION_REASON)
                 );
             }
-
-            return _userHandler.RequestEmailChange(currentUserId, newEmail);
-        }
-
-        public Task<bool> ConfirmEmailChange(int currentUserId, string newEmail, string verificationCode)
-        {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
-            return _userHandler.ConfirmEmailChange(currentUserId, newEmail, verificationCode);
+            return _userHandler.ChangeEmailWithCodeAsync(currentUserId, newEmail, code);
         }
 
         public Task<bool> RecoverPasswordRequest(string email)
@@ -510,6 +496,11 @@ namespace BusinessLogic
         public Task<bool> VerifyCode(string email, string code)
         {
             return _verificationHandler.VerifyCode(email, code);
+        }
+
+        public Task<bool> ConsumeVerificationCode(string email)
+        {
+            return _verificationHandler.ConsumeVerificationCode(email);
         }
 
         // --- ISocialMediaService ---

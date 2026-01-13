@@ -14,7 +14,7 @@ namespace Contracts.Services.Users
         Task<int> RequestUserVerification(UserDto userData);
 
         [OperationContract]
-        Task<int> RegisterUser(UserDto userData);
+        Task<int> RegisterUserWithCode(UserDto userData, string code);
 
         [OperationContract]
         Task<int> RegisterGuest();
@@ -38,12 +38,9 @@ namespace Contracts.Services.Users
 
         [OperationContract]
         Task<UserDto> GetUserProfile(int currentUserId);
-
+        
         [OperationContract]
-        Task<bool> RequestEmailChange(int currentUserId, string newEmail);
-
-        [OperationContract]
-        Task<bool> ConfirmEmailChange(int currentUserId, string newEmail, string verificationCode);
+        Task<bool> ChangeEmailWithCodeAsync(int currentUserId, string newEmail, string verificationCode);
         [OperationContract]
         Task<bool> RecoverPasswordRequest(string email);
         [OperationContract]

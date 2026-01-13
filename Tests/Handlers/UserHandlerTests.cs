@@ -34,13 +34,8 @@ namespace Tests.Logic
         // ==========================================
 
         [Fact]
-        public async Task RegisterUser_WhenDtoIsValid_ShouldAddUserAndReturnId()
+        public async Task RegisterUserWithCode_WhenDtoAndCodeAreValid_ShouldAddUserAndReturnId()
         {
-            /* DOCUMENTACIÓN
-             * ✔ Entrada: UserDto válido.
-             * ✔ Salida Esperada: Llamada a AddUser y SaveChanges.
-             */
-
             // Arrange
             var dto = new UserDto
             {
@@ -51,13 +46,29 @@ namespace Tests.Logic
                 PaternalLastName = "Test"
             };
 
+            string verificationCode = "123456";
+
+            // Mock del verification handler para que devuelva true al verificar
+            _mockVerificationService
+                .Setup(v => v.VerifyCode(dto.Email, verificationCode))
+                .ReturnsAsync(true);
+
+            _mockVerificationService
+                .Setup(v => v.ConsumeVerificationCode(dto.Email))
+                .Returns((Task<bool>)Task.CompletedTask);
+
             // Act
-            int result = await _handler.RegisterUser(dto);
+            int result = await _handler.RegisterUserWithCode(dto, verificationCode);
 
             // Assert
-            _mockUserDao.Verify(d => d.AddUser(It.Is<User>(u => u.nickname == dto.Nickname)), Times.Once);
+            _mockUserDao.Verify(d => d.AddUser(It.Is<User>(u => u.nickname == dto.Nickname && u.email == dto.Email)), Times.Once);
             _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+
+            _mockVerificationService.Verify(v => v.ConsumeVerificationCode(dto.Email), Times.Once);
+
+            Assert.True(result > 0); // Devuelve el ID del usuario registrado
         }
+
 
         [Fact]
         public async Task RequestVerification_WhenNicknameExists_ShouldThrowFault_UserDuplicate()

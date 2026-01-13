@@ -14,5 +14,7 @@ namespace Contracts.Services.Users
         Task<bool> SendVerificationCode(string email);
         [OperationContract]
         Task<bool> VerifyCode(string email, string code);
+        [OperationContract]
+        Task<bool> ConsumeVerificationCode(string email);
     }
 }

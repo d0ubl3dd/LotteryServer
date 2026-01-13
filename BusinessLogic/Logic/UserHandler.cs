@@ -96,21 +96,31 @@ namespace BusinessLogic.Handlers
             }, "RequestUserVerification");
         }
 
-        public async Task<int> RegisterUser(UserDto userData)
+        public async Task<int> RegisterUserWithCode(UserDto userData, string code)
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
                 if (userData == null)
-                {
                     throw new ArgumentNullException(nameof(userData));
-                }
+                
+                bool isValidCode = await _verificationHandler.VerifyCode(userData.Email, code);
+                if (!isValidCode)
+                    throw new VerificationException("El código de verificación es incorrecto o ha expirado.");
+                
+                bool nickExists = await _userRepository.NicknameExistsAsync(userData.Nickname);
+                bool emailExists = await _userRepository.EmailExistsAsync(userData.Email);
+                var validationResult = RegistrationValidator.Validate(new User
+                {
+                    nickname = userData.Nickname,
+                    email = userData.Email,
+                    first_name = userData.FirstName,
+                    paternal_last_name = userData.PaternalLastName
+                }, userData.Password, nickExists, emailExists);
 
-                int newUserId;
-
-                _logger.InfoFormat("[RegisterUser] Registrando: {0}", userData.Nickname);
-
+                if (validationResult != RegistrationValidationResult.Success)
+                    ThrowRegistrationException(validationResult);
+               
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
                 var newUser = new User
                 {
                     nickname = userData.Nickname,
@@ -129,13 +139,13 @@ namespace BusinessLogic.Handlers
 
                 _userRepository.AddUser(newUser);
                 await _userRepository.SaveChangesAsync();
+                
+                await _verificationHandler.ConsumeVerificationCode(userData.Email);
 
-                _logger.InfoFormat("[RegisterUser] Registro exitoso. ID: {0}", newUser.id_user);
-                newUserId = newUser.id_user;
+                _logger.InfoFormat("[RegisterUserWithCode] Registro exitoso ID: {0}", newUser.id_user);
+                return newUser.id_user;
 
-                return newUserId;
-
-            }, "RegisterUser");
+            }, "RegisterUserWithCode");
         }
 
         public async Task<bool> VerifyPassword(int userId, string password)
@@ -208,36 +218,38 @@ namespace BusinessLogic.Handlers
             }, "UpdateProfile");
         }
 
-        public async Task<bool> RequestEmailChange(int userId, string newEmail)
+        public async Task<bool> ChangeEmailWithCodeAsync(int userId, string newEmail, string code)
         {
             return await ExecuteFaultSafeAsync(async () =>
             {
-                if (string.IsNullOrWhiteSpace(newEmail))
+                _logger.InfoFormat("[ChangeEmailWithCode] Usuario {0} intenta cambiar correo a {1}", userId, newEmail);
+
+                var user = await GetUserOrThrow(userId);
+
+                bool isValid = await _verificationHandler.VerifyCode(newEmail, code);
+                if (!isValid)
                 {
-                    throw new ArgumentException("El nuevo correo no puede estar vacío.");
+                    throw new VerificationException("El código de verificación es incorrecto o ha expirado.");
                 }
 
-                bool success = false;
-
-                _logger.InfoFormat("[RequestEmailChange] Usuario {0} solicita cambio a {1}", userId, newEmail);
-
-                await GetUserOrThrow(userId);
-
-                if (await _userRepository.EmailExistsAsync(newEmail))
+                try
                 {
-                    throw new UserAlreadyExistsException("Ese correo ya está asociado a otra cuenta.");
+                    user.email = newEmail;
+                    await _userRepository.SaveChangesAsync();
                 }
-
-                bool sent = await _verificationHandler.SendVerificationCode(newEmail);
-                if (!sent)
+                catch (Exception ex)
                 {
-                    throw new VerificationException("Error al enviar el código de confirmación al nuevo correo.");
+                    _logger.ErrorFormat("[ChangeEmailWithCode] Error al guardar correo: {0}", ex.Message);
+                    throw new Exception("No se pudo actualizar el correo. Inténtalo más tarde.", ex);
                 }
+        
+                await _verificationHandler.ConsumeVerificationCode(newEmail);
 
-                success = true;
-                return success;
+                _logger.InfoFormat("[ChangeEmailWithCode] Correo actualizado correctamente para ID {0}", userId);
 
-            }, "RequestEmailChange");
+                return true;
+
+            }, "ChangeEmailWithCode");
         }
 
         public async Task<bool> RecoverPasswordRequest(string email)
@@ -273,35 +285,7 @@ namespace BusinessLogic.Handlers
 
             }, "RecoverPasswordRequest");
         }
-
-        public async Task<bool> ConfirmEmailChange(int userId, string newEmail, string verificationCode)
-        {
-            return await ExecuteFaultSafeAsync(async () =>
-            {
-                bool success = false;
-
-                _logger.InfoFormat("[ConfirmEmailChange] Usuario {0}", userId);
-
-                var userInDb = await GetUserOrThrow(userId);
-
-                bool isValid = await _verificationHandler.VerifyCode(newEmail, verificationCode);
-                
-                if (!isValid)
-                {
-                    throw new VerificationException("El código de verificación es incorrecto o ha expirado.");
-                }
-
-                userInDb.email = newEmail;
-                await _userRepository.SaveChangesAsync();
-
-                _logger.InfoFormat("[ConfirmEmailChange] Correo actualizado para ID {0}", userId);
-                success = true;
-
-                return success;
-
-            }, "ConfirmEmailChange");
-        }
-
+        
         public async Task<int> RegisterGuest()
         {
             return await ExecuteFaultSafeAsync(async () =>
