@@ -17,9 +17,13 @@ namespace BusinessLogic.Exceptions
         public GameAlreadyRunningException(string message) : base(message) { }
     }
 
-    // Para cuando alguien canta victoria pero no tiene las cartas (hace trampa o se equivocó)
     public class InvalidGameActionException : GameException
     {
         public InvalidGameActionException(string message) : base(message) { }
+    }
+
+    public class NotEnoughPlayersException : GameException
+    {
+        public NotEnoughPlayersException(string message) : base(message) { }
     }
 }

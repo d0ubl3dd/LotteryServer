@@ -45,6 +45,11 @@ namespace BusinessLogic.Handlers
                     throw new GameAlreadyRunningException("El juego ya está en curso en este lobby.");
                 }
 
+                if (lobby.Players.Count < 2)
+                {
+                    throw new NotEnoughPlayersException("Se necesitan al menos 2 jugadores para iniciar la partida.");
+                }
+
                 lobby.StartLobbyGame(settings);
 
                 _logger.InfoFormat("[StartGame] Juego iniciado exitosamente por {0}.", hostUser.nickname);

@@ -48,6 +48,7 @@ namespace BusinessLogic.Utilities
             Register<LobbyException>("LOBBY_ERROR", "Error de lobby.", useExMsg: true);
 
             Register<GameException>("GAME_ERROR", "Error en la partida.", useExMsg: true);
+            Register<NotEnoughPlayersException>("GAME_NOT_ENOUGH_PLAYERS", "Se necesitan al menos 2 jugadores.", useExMsg: true);
 
             Register<UserNotInLobbyException>("CHAT_USER_NOT_IN_LOBBY", "Debes estar en un lobby para chatear.", useExMsg: true);
             Register<ForbiddenWordException>("CHAT_FORBIDDEN_WORD", "Uso de lenguaje prohibido.", useExMsg: true);

@@ -29,20 +29,28 @@ namespace BusinessLogic.Logic
                 var client = GetClientOrThrow(currentUser);
 
                 if (client.CurrentLobby == null)
+                {
                     throw new LobbyException("No estás en ningún lobby.");
+                }
 
                 if (client.CurrentLobby.IsGameInProgress)
+                {
                     throw new GameException("La partida ya comenzó.");
+                }
 
                 bool taken = client.CurrentLobby.Players
                     .Any(p => p.SelectedBoardId == boardId && p.UserId != currentUser.id_user);
 
                 if (taken)
+                {
                     throw new GameException("Ese tablero ya está ocupado.");
+                }
 
                 var cards = BoardConfigurations.GetBoardById(boardId);
                 if (cards == null || cards.Count == 0)
+                {
                     throw new ArgumentException("Tablero inválido.");
+                }
 
                 client.SelectedBoardId = boardId;
                 client.WinningCards = new HashSet<int>(cards);
@@ -60,7 +68,9 @@ namespace BusinessLogic.Logic
                 var host = GetClientOrThrow(currentUser);
 
                 if (host.CurrentLobby != null)
+                {
                     throw new UserAlreadyInLobbyException("Ya estás en un lobby.");
+                }
 
                 var lobbyState = _lobbyManager.CreateLobby(host);
 
@@ -84,7 +94,9 @@ namespace BusinessLogic.Logic
                 var client = GetClientOrThrow(currentUser);
 
                 if (client.CurrentLobby != null)
+                {
                     throw new UserAlreadyInLobbyException("Ya estás en un lobby.");
+                }
 
                 var lobbyState = _lobbyManager.JoinLobby(client, lobbyCode);
 
@@ -94,7 +106,10 @@ namespace BusinessLogic.Logic
                     .ToList();
 
                 int board = 1;
-                while (occupied.Contains(board)) board++;
+                while (occupied.Contains(board))
+                {
+                    board++;
+                }
 
                 client.SelectedBoardId = board;
                 client.WinningCards = new HashSet<int>(BoardConfigurations.GetBoardById(board));
@@ -116,7 +131,10 @@ namespace BusinessLogic.Logic
         private void BroadcastLobbyState(PlayerClient source)
         {
             var lobby = source.CurrentLobby;
-            if (lobby == null) return;
+            if (lobby == null)
+            {
+                return;
+            }
 
             var dto = new LobbyStateDto
             {
@@ -160,7 +178,9 @@ namespace BusinessLogic.Logic
         {
             var client = _sessionManager.GetClient(user.id_user);
             if (client == null)
+            {
                 throw new UserNotConnectedException("Sesión no encontrada.");
+            }
 
             return client;
         }

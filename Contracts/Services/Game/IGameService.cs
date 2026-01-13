@@ -1,5 +1,6 @@
 ﻿using Contracts.Callbacks;
 using Contracts.DTOs;
+using Contracts.Faults;
 using System.ServiceModel;
 using System.Threading.Tasks;
 
@@ -9,6 +10,7 @@ namespace Contracts.Services.Game
     public interface IGameService
     {
         [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
         Task StartGame(GameSettingsDto settings);
 
         [OperationContract]
