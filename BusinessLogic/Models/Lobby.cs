@@ -178,7 +178,17 @@ namespace BusinessLogic.Models
 
         public void BroadcastGameStarted(GameSettingsDto settings)
         {
-            BroadcastToAll(client => client.OnGameStarted(settings));
+            foreach (var player in Players)
+            {
+                try
+                {
+                    player.CallbackChannel.OnGameStarted(settings);
+                }
+                catch (Exception ex)
+                {                    
+                    _logger.Warn($"No se pudo notificar al jugador {player.UserId}: {ex.Message}");
+                }
+            }
         }
 
         public void BroadcastCardDrawn(CardDto card)
