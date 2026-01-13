@@ -7,7 +7,6 @@ namespace Tests.Validation
 {
     public class RegistrationValidatorTests
     {
-        // Helper para crear un usuario válido base y solo romper lo que queremos probar
         private User CreateValidUser()
         {
             return new User
@@ -20,11 +19,7 @@ namespace Tests.Validation
             };
         }
 
-        private const string VALID_PASS = "Password123!"; // Cumple todas las reglas
-
-        // ==========================================
-        // PRUEBAS: Validate (Campos Requeridos)
-        // ==========================================
+        private const string VALID_PASS = "Password123!";
 
         [Fact]
         public void Validate_WhenNicknameEmpty_ShouldReturnEmptyNickname()
@@ -35,13 +30,9 @@ namespace Tests.Validation
             Assert.Equal(RegistrationValidationResult.EmptyNickname, result);
         }
 
-        // ==========================================
-        // PRUEBAS: Regex de Nickname
-        // ==========================================
-
         [Theory]
-        [InlineData("abc")] // Muy corto (<4)
-        [InlineData("thisnicknameiswaytoolongtobevalid")] // Muy largo (>20)
+        [InlineData("abc")]
+        [InlineData("thisnicknameiswaytoolongtobevalid")]
         public void Validate_WhenNicknameLengthInvalid_ShouldReturnInvalidLength(string badNick)
         {
             var user = CreateValidUser();
@@ -51,8 +42,8 @@ namespace Tests.Validation
         }
 
         [Theory]
-        [InlineData("Nick$Name")] // Caracter inválido $
-        [InlineData("Nick Name")] // Espacio
+        [InlineData("Nick$Name")]
+        [InlineData("Nick Name")]
         public void Validate_WhenNicknameFormatInvalid_ShouldReturnInvalidFormat(string badNick)
         {
             var user = CreateValidUser();
@@ -61,13 +52,9 @@ namespace Tests.Validation
             Assert.Equal(RegistrationValidationResult.InvalidNicknameFormat, result);
         }
 
-        // ==========================================
-        // PRUEBAS: Email
-        // ==========================================
-
         [Theory]
         [InlineData("invalid-email")]
-        [InlineData("user@domain")] // Falta TLD (.com)
+        [InlineData("user@domain")]
         [InlineData("@domain.com")]
         public void Validate_WhenEmailInvalid_ShouldReturnInvalidEmailFormat(string badEmail)
         {
@@ -76,10 +63,6 @@ namespace Tests.Validation
             var result = RegistrationValidator.Validate(user, VALID_PASS, false, false);
             Assert.Equal(RegistrationValidationResult.InvalidEmailFormat, result);
         }
-
-        // ==========================================
-        // PRUEBAS: Contraseña (Complejidad)
-        // ==========================================
 
         [Fact]
         public void Validate_WhenPasswordTooShort_ShouldReturnPasswordTooShort()
@@ -116,10 +99,6 @@ namespace Tests.Validation
             Assert.Equal(RegistrationValidationResult.PasswordNoSpecialCharacter, result);
         }
 
-        // ==========================================
-        // PRUEBAS: Unicidad (Duplicados)
-        // ==========================================
-
         [Fact]
         public void Validate_WhenNicknameExists_ShouldReturnNicknameAlreadyExists()
         {
@@ -140,10 +119,6 @@ namespace Tests.Validation
             var result = RegistrationValidator.Validate(CreateValidUser(), VALID_PASS, false, false);
             Assert.Equal(RegistrationValidationResult.Success, result);
         }
-
-        // ==========================================
-        // PRUEBAS: Guest Validator
-        // ==========================================
 
         [Fact]
         public void ValidateGuest_WhenValid_ShouldReturnSuccess()

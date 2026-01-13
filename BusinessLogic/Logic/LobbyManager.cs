@@ -15,7 +15,6 @@ namespace BusinessLogic.Logic
         private readonly ConcurrentDictionary<string, Lobby> _lobbies = new ConcurrentDictionary<string, Lobby>();
 
         private readonly ISessionManager _sessionManager;
-
         private readonly IUserDao _userDao;
 
         public LobbyManager(ISessionManager sessionManager, IUserDao userDao)
@@ -106,7 +105,7 @@ namespace BusinessLogic.Logic
         private void CloseLobby(Lobby lobby)
         {
             lobby.BroadcastLobbyClosed();
-            
+
             foreach (var player in lobby.Players.ToList())
             {
                 player.CurrentLobby = null;

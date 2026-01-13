@@ -3,7 +3,7 @@ using BusinessLogic.Logic;
 using BusinessLogic.Models;
 using Contracts.Callbacks;
 using Contracts.DTOs;
-using DataAccess; // Para User
+using DataAccess;
 using DataAccess.DAOs;
 using Moq;
 using System;
@@ -31,14 +31,13 @@ namespace Tests.Logic
 
         [Fact]
         public void CreateLobby_WhenHostIsValid_ShouldCreateLobbyAndReturnState()
-        {           
-
+        {
             var hostUser = new UserBuilder().WithId(1).Build();
-            
+
             var hostClient = new PlayerClient(hostUser.id_user, hostUser.nickname, hostUser.id_avatar, _mockCallback.Object);
-            
+
             var result = _manager.CreateLobby(hostClient);
-            
+
             Assert.NotNull(result);
             Assert.False(string.IsNullOrEmpty(result.LobbyCode));
             Assert.Single(result.Players);
@@ -46,7 +45,7 @@ namespace Tests.Logic
 
             var lobby = _manager.FindLobbyByHostId(hostUser.id_user);
             Assert.NotNull(lobby);
-        }        
+        }
 
         [Fact]
         public void JoinLobby_WhenLobbyExistsAndOpen_ShouldAddPlayer()
@@ -55,21 +54,20 @@ namespace Tests.Logic
             var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
 
             var lobbyDto = _manager.CreateLobby(hostClient);
-           
+
             var joinerUser = new UserBuilder().WithId(2).Build();
             var joinerClient = new PlayerClient(joinerUser.id_user, joinerUser.nickname, joinerUser.id_avatar, _mockCallback.Object);
-            
+
             var result = _manager.JoinLobby(joinerClient, lobbyDto.LobbyCode);
-            
+
             Assert.Equal(2, result.Players.Count);
-            
+
             _mockCallback.Verify(cb => cb.PlayerJoined(It.Is<UserDto>(u => u.UserId == 2)), Times.AtLeastOnce);
         }
 
         [Fact]
         public void JoinLobby_WhenLobbyCodeInvalid_ShouldThrowException()
         {
-
             var u = new UserBuilder().Build();
             var client = new PlayerClient(u.id_user, u.nickname, u.id_avatar, _mockCallback.Object);
 
@@ -97,7 +95,7 @@ namespace Tests.Logic
 
         [Fact]
         public void KickPlayer_WhenHostKicksPlayer_ShouldRemoveAndBan()
-        {            
+        {
             var hUser = new UserBuilder().WithId(1).Build();
             var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
 
@@ -109,21 +107,19 @@ namespace Tests.Logic
             _manager.JoinLobby(victimClient, lobbyDto.LobbyCode);
 
             _mockSessionManager.Setup(sm => sm.GetClient(2)).Returns(victimClient);
-            
+
             _manager.KickPlayer(hostClient, 2);
-            
+
             var lobby = _manager.FindLobbyByHostId(1);
             Assert.Single(lobby.Players);
-            Assert.True(lobby.IsBanned(2)); 
-                                            
+            Assert.True(lobby.IsBanned(2));
+
             _mockCallback.Verify(cb => cb.YouWereKicked(), Times.Once);
-        }        
+        }
 
         [Fact]
         public void LeaveLobby_WhenHostLeaves_ShouldCloseLobbyAndNotifyAll()
         {
-
-
             var hUser = new UserBuilder().WithId(1).Build();
             var hostClient = new PlayerClient(hUser.id_user, hUser.nickname, hUser.id_avatar, _mockCallback.Object);
 
@@ -132,15 +128,14 @@ namespace Tests.Logic
 
             var lobbyDto = _manager.CreateLobby(hostClient);
             _manager.JoinLobby(playerClient, lobbyDto.LobbyCode);
-            
+
             _manager.LeaveLobby(hostClient);
-            
+
             var lobby = _manager.FindLobbyByHostId(1);
             Assert.Null(lobby);
 
-
             _mockCallback.Verify(cb => cb.LobbyClosed(), Times.AtLeastOnce);
-            
+
             Assert.Null(playerClient.CurrentLobby);
         }
     }

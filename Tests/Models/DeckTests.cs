@@ -30,7 +30,6 @@ namespace Tests.Models
         {
             var deck = new Deck();
 
-            // Vaciamos el mazo
             for (int i = 0; i < 54; i++)
             {
                 deck.DrawCard();
@@ -38,7 +37,6 @@ namespace Tests.Models
 
             Assert.Equal(0, deck.CardsRemaining);
 
-            // Intentamos sacar una más
             var card = deck.DrawCard();
 
             Assert.Null(card);
