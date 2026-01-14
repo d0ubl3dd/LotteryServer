@@ -24,6 +24,7 @@ namespace BusinessLogic.Models
         private readonly HashSet<int> _bannedPlayers = new HashSet<int>();
         public const int MAX_PLAYERS = 4;
         private List<bool> _lastDeclarerBoardSnapshot;
+        private readonly List<string> _recentChatMessages = new List<string>();
         public virtual bool IsGameInProgress { get; private set; }
         private Deck _gameDeck;
         private CancellationTokenSource _gameCts;
@@ -65,7 +66,12 @@ namespace BusinessLogic.Models
                 return false;
             }
             Players.Add(player);
-            player.CurrentLobby = this;
+            player.CurrentLobby = this;            
+            if (player.CallbackChannel is ICommunicationObject channel)
+            {
+                channel.Closed += (s, e) => RemovePlayer(player);
+                channel.Faulted += (s, e) => RemovePlayer(player);
+            }            
             return true;
         }
 
@@ -73,10 +79,21 @@ namespace BusinessLogic.Models
         {
             Players.Remove(player);
             player.CurrentLobby = null;
+
             if (player.UserId == Host.UserId)
             {
                 StopLobbyGame();
+                return;
+            }            
+            if (IsGameInProgress && Players.Count < 2)
+            {
+                StopLobbyGame();
             }
+        }
+
+        public List<string> GetChatHistory()
+        {
+            return new List<string>(_recentChatMessages);
         }
 
         private static HashSet<string> LoadForbiddenWords(string path)
@@ -129,6 +146,13 @@ namespace BusinessLogic.Models
             if (history[message] > 10)
             {
                 throw new ChatException("Spam detectado.");
+            }
+
+            string formattedMessage = $"{nickname}: {message}";
+            _recentChatMessages.Add(formattedMessage);
+            if (_recentChatMessages.Count > 50)
+            {
+                _recentChatMessages.RemoveAt(0);
             }
 
             BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
@@ -194,32 +218,50 @@ namespace BusinessLogic.Models
         public async Task NotifyGameWinAsync(int winnerId)
         {
             var winnerClient = Players.FirstOrDefault(p => p.UserId == winnerId);
-            if (winnerClient == null)
+            if (winnerClient == null) 
             {
                 return;
             }
-
             StopLobbyGame();
-
-            var user = await _userDao.GetUserByIdAsync(winnerClient.UserId);
-            if (user != null)
+            string mensajeCodigo;            
+            try
             {
-                user.score += 1000;
-                await _userDao.SaveChangesAsync();
+                if (winnerClient.UserId > 0)
+                {
+                    var user = await _userDao.GetUserByIdAsync(winnerClient.UserId);
+                    if (user != null)
+                    {
+                        user.score += 1000;
+                        await _userDao.SaveChangesAsync();
+                        mensajeCodigo = $"WIN_REG|{winnerClient.Nickname}|1000";
+                    }
+                    else
+                    {
+                        mensajeCodigo = $"WIN_SIMPLE|{winnerClient.Nickname}";
+                    }
+                }
+                else
+                {
+                    mensajeCodigo = $"WIN_GST|{winnerClient.Nickname}";
+                }
             }
-
-            string mensajeGanador = $"¡El jugador {winnerClient.Nickname} ha ganado la partida y recibe 1000 puntos!";
-            BroadcastSystemMessage(mensajeGanador);
-
+            catch (Exception)
+            {                
+                throw new FaultException("DB_ERROR");
+            }           
+            BroadcastSystemMessage(mensajeCodigo);
             BroadcastToAll(client =>
             {
                 try
                 {
-                    client.NotifyWinner(winnerClient.Nickname);
+                    var markedPositions = winnerClient.MarkedPositions ?? new List<int>();
+                    client.NotifyWinner(
+                        winnerClient.Nickname,
+                        winnerClient.UserId,
+                        winnerClient.SelectedBoardId,
+                        markedPositions);
                 }
-                catch
-                {
-                }
+                catch { }
             });
         }
 
@@ -257,13 +299,19 @@ namespace BusinessLogic.Models
                 {
                 }
             }
-
             if (_gameCts != null)
             {
                 _gameCts.Cancel();
                 _gameCts.Dispose();
                 _gameCts = null;
             }
+
+            _lastDeclarer = null;
+            _lastMarkedPositions = null;
+            _lastDeclarerBoardSnapshot = null;
+            _drawnCards.Clear();
+
+            BroadcastGameFinished();
         }
 
         private async Task RunGameLoop(GameSettingsDto settings, CancellationToken token)
@@ -319,14 +367,17 @@ namespace BusinessLogic.Models
 
             var boardConfig = BoardConfigurations.GetBoardById(_lastDeclarer.SelectedBoardId);
             _lastDeclarerBoardSnapshot = boardConfig.Select(c => _drawnCards.Contains(c)).ToList();
-
             PauseGame();
 
             foreach (var player in Players)
             {
                 try
                 {
-                    player.CallbackChannel.NotifyWinner(_lastDeclarer.Nickname);
+                    player.CallbackChannel.NotifyWinner(
+                        _lastDeclarer.Nickname,
+                        _lastDeclarer.UserId,
+                        _lastDeclarer.SelectedBoardId,
+                        playerBoard.MarkedPositions);
                 }
                 catch
                 {
@@ -355,75 +406,65 @@ namespace BusinessLogic.Models
                 challengerUser = await _userDao.GetUserByIdAsync(challenger.UserId);
             }
 
-            bool declarerHasCompleteBoard = _lastDeclarerBoardSnapshot.All(marked => marked);
-            bool isChallengerCorrect = false;
-
-            if (!declarerHasCompleteBoard)
+            bool declarerWasCorrect = _lastMarkedPositions.All(pos =>
             {
-                isChallengerCorrect = _lastMarkedPositions.All(pos =>
+                if (pos < 0 || pos >= boardConfig.Count)
                 {
-                    return pos > 0 && pos <= boardConfig.Count && !_lastDeclarerBoardSnapshot[pos - 1];
-                });
+                    return false;
+                }
+
+                int cardNumber = boardConfig[pos];
+                return _drawnCards.Contains(cardNumber);
+            });
+
+            bool isChallengerCorrect = !declarerWasCorrect;
+
+            BroadcastToAll(c => c.OnFalseLoteriaResult(_lastDeclarer.Nickname, challenger?.Nickname, declarerWasCorrect));
+
+            try
+            {
+                if (declarerWasCorrect)
+                {
+                    if (declarerUser != null)
+                    {
+                        declarerUser.score = (sbyte)Math.Min((declarerUser.score ?? 0) + 1000, sbyte.MaxValue);
+                    }
+                    if (challengerUser != null)
+                    {
+                        challengerUser.score = (sbyte)Math.Max(0, (challengerUser.score ?? 0) - 500);
+                    }
+                    if (challenger != null)
+                    {
+                        BroadcastSystemMessage($"FL_FAIL|{challenger.Nickname}");
+                    }
+                    await _userDao.SaveChangesAsync();
+                    StopLobbyGame();
+                }
+                else
+                {
+                    if (declarerUser != null)
+                    {
+                        declarerUser.score = (sbyte)Math.Max(0, (declarerUser.score ?? 0) - 500);
+                    }
+                    if (challengerUser != null)
+                    {
+                        challengerUser.score = (sbyte)Math.Min((challengerUser.score ?? 0) + 500, sbyte.MaxValue);
+                    }
+                    BroadcastSystemMessage($"FL_LIE|{_lastDeclarer.Nickname}");
+                    await _userDao.SaveChangesAsync();
+                    ResumeGame();
+                    BroadcastGameResumed();
+                }
             }
-
-            BroadcastToAll(c => c.OnFalseLoteriaResult(_lastDeclarer.Nickname, challenger?.Nickname, isChallengerCorrect));
-
-            if (declarerHasCompleteBoard)
+            catch (Exception)
             {
-                if (declarerUser != null)
-                {
-                    declarerUser.score = (sbyte)Math.Min((declarerUser.score ?? 0) + 1000, sbyte.MaxValue);
-                }
-
-                if (challengerUser != null)
-                {
-                    challengerUser.score = (sbyte)Math.Max(0, (challengerUser.score ?? 0) - 500);
-                }
-
-                if (challenger != null)
-                {
-                    BroadcastSystemMessage($"¡Jugador {challenger.Nickname} se equivocó al acusar Falsa Lotería!");
-                }
-
-                await _userDao.SaveChangesAsync();
-                StopLobbyGame();
-                _lastDeclarer = null;
-                _lastMarkedPositions = null;
-                BroadcastGameFinished();
-            }
-            else if (isChallengerCorrect)
-            {
-                if (declarerUser != null)
-                {
-                    declarerUser.score = (sbyte)Math.Max(0, (declarerUser.score ?? 0) - 500);
-                }
-
-                if (challengerUser != null)
-                {
-                    challengerUser.score = (sbyte)Math.Min((challengerUser.score ?? 0) + 500, sbyte.MaxValue);
-                }
-
-                BroadcastSystemMessage($"¡Jugador {_lastDeclarer.Nickname} declaró Lotería falsa correctamente denunciada!");
-                await _userDao.SaveChangesAsync();
-                ResumeGame();
-                BroadcastGameResumed();
-            }
-            else
-            {
-                if (challengerUser != null)
-                {
-                    challengerUser.score = (sbyte)Math.Max(0, (challengerUser.score ?? 0) - 500);
-                }
-
-                BroadcastSystemMessage($"¡Jugador {challenger?.Nickname} falló al acusar Falsa Lotería!");
-                await _userDao.SaveChangesAsync();
-                ResumeGame();
-                BroadcastGameResumed();
+                throw new FaultException("DB_ERROR");
             }
 
             _lastDeclarer = null;
             _lastMarkedPositions = null;
             _lastDeclarerBoardSnapshot = null;
+
             return isChallengerCorrect;
         }
 
@@ -444,6 +485,13 @@ namespace BusinessLogic.Models
 
         private void BroadcastSystemMessage(string message)
         {
+            string formattedMessage = $"Sistema: {message}";
+            _recentChatMessages.Add(formattedMessage);
+            if (_recentChatMessages.Count > 50)
+            {
+                _recentChatMessages.RemoveAt(0);
+            }
+
             BroadcastToAll(client =>
             {
                 try
@@ -519,7 +567,13 @@ namespace BusinessLogic.Models
                 _isPaused = false;
                 if (_pauseSemaphore.CurrentCount == 0)
                 {
-                    _pauseSemaphore.Release();
+                    try
+                    {
+                        _pauseSemaphore.Release();
+                    }
+                    catch
+                    {
+                    }
                 }
                 _logger.InfoFormat("[ResumeGame] Juego reanudado en lobby {0}", LobbyCode);
             }

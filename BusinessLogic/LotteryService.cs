@@ -434,7 +434,7 @@ namespace BusinessLogic
             }
 
             return _lobbyHandler.ChooseBoard(_currentUser, boardId);
-        }        
+        }
 
         // --- IGameService ---
 
@@ -479,6 +479,18 @@ namespace BusinessLogic
             return _gameHandler.ValidateFalseLoteriaAsync(challengerUserId);
         }
 
+        public Task ConfirmGameEnd(int winnerId)
+        {        
+            if (_currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                   new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
+                   new FaultReason(INVALID_SESSION_REASON)
+               );
+            }          
+            return _gameHandler.ConfirmGameEnd(_currentUser, winnerId);
+        }
+
         // --- IChatService ---
 
         public async Task SendMessage(string message)
@@ -501,6 +513,18 @@ namespace BusinessLogic
         public Task<bool> ConsumeVerificationCode(string email)
         {
             return _verificationHandler.ConsumeVerificationCode(email);
+        }
+
+        public Task<LobbyStateDto> GetLobbyState(string lobbyCode)
+        {            
+            if (_currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
+                    new FaultReason(INVALID_SESSION_REASON)
+                );
+            }            
+            return _lobbyHandler.GetLobbyState(_currentUser, lobbyCode);
         }
 
         // --- ISocialMediaService ---

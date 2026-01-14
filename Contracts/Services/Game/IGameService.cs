@@ -25,5 +25,7 @@ namespace Contracts.Services.Game
         [OperationContract]
         Task<bool> ValidateFalseLoteriaAsync(int challengerUserId);
 
+        [OperationContract]
+        Task ConfirmGameEnd(int winnerId);
     }
 }

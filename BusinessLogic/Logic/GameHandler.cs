@@ -125,5 +125,20 @@ namespace BusinessLogic.Handlers
 
             }, "ValidateFalseLoteriaAsync");
         }
+        
+        public async Task ConfirmGameEnd(User currentUser, int winnerId)
+        {
+            await ExecuteFaultSafeAsync(async () =>
+            {                
+                var lobby = _lobbyManager.FindLobbyByPlayerId(currentUser.id_user);                
+                if (lobby == null)
+                {
+                    _logger.Warn($"[ConfirmGameEnd] Usuario {currentUser.nickname} intentó confirmar fin, pero no tiene lobby.");
+                    return;
+                }                
+                await lobby.NotifyGameWinAsync(winnerId);
+                _logger.InfoFormat("[ConfirmGameEnd] Fin de juego confirmado para el ganador {0}.", winnerId);
+            }, "ConfirmGameEnd");
+        }
     }
 }

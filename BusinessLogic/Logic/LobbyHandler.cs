@@ -123,7 +123,7 @@ namespace BusinessLogic.Logic
 
                     dto.SelectedBoardId = internalClient.SelectedBoardId;
                 }
-
+                lobbyState.ChatHistory = client.CurrentLobby.GetChatHistory();
                 return lobbyState;
             }, "JoinLobby");
         }
@@ -172,6 +172,31 @@ namespace BusinessLogic.Logic
                 _lobbyManager.KickPlayer(host, targetPlayerId);
                 await Task.CompletedTask;
             }, "KickPlayer");
+        }
+
+        public async Task<LobbyStateDto> GetLobbyState(User currentUser, string lobbyCode)
+        {
+            return await ExecuteFaultSafeAsync(async () =>
+            {
+                var client = GetClientOrThrow(currentUser);
+                var lobby = client.CurrentLobby;
+
+                if (lobby == null || lobby.LobbyCode != lobbyCode)
+                {
+                    throw new LobbyException("No perteneces a este lobby.");
+                }
+
+                var state = new LobbyStateDto
+                {
+                    LobbyCode = lobby.LobbyCode,
+                    Players = lobby.GetPlayerDTOs(),                    
+                    ChatHistory = lobby.GetChatHistory()
+                };
+
+                await Task.CompletedTask;
+                return state;
+
+            }, "GetLobbyState");
         }
 
         private PlayerClient GetClientOrThrow(User user)

@@ -1,4 +1,5 @@
 ﻿using Contracts.DTOs;
+using System.Collections.Generic;
 using System.ServiceModel;
 
 namespace Contracts.Callbacks
@@ -10,7 +11,7 @@ namespace Contracts.Callbacks
         void NotifyCard(int cardId);
 
         [OperationContract(IsOneWay = true)]
-        void NotifyWinner(string nickname);
+        void NotifyWinner(string nickname, int winnerId, int winnerBoardId, List<int> markedPositions);
 
         [OperationContract(IsOneWay = true)]
         void PlayerJoined(UserDto newPlayer);
@@ -41,11 +42,13 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void OnGameFinished();
+
         [OperationContract(IsOneWay = true)]
         void LobbyStateUpdated(LobbyStateDto lobbyState);
 
         [OperationContract(IsOneWay = true)]
         void OnGameResumed();
+
         [OperationContract(IsOneWay = true)]
         void OnFalseLoteriaResult(string declarerNickname, string challengerNickname, bool wasCorrect);
     }

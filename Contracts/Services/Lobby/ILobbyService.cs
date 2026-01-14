@@ -25,5 +25,8 @@ namespace Contracts.Services.Lobby
         [OperationContract]
         [FaultContract(typeof(Contracts.Faults.ServiceFault))]
         Task ChooseBoard(UserDto user, int boardId);
+
+        [OperationContract]
+        Task<LobbyStateDto> GetLobbyState(string lobbyCode);
     }
 }

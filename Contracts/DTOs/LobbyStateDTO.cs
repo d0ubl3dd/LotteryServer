@@ -12,5 +12,8 @@ namespace Contracts.DTOs
         public string HostNickname { get; set; }
         [DataMember]
         public List<UserDto> Players { get; set; }
+        
+        [DataMember]
+        public List<string> ChatHistory { get; set; }
     }
 }
