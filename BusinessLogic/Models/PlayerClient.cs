@@ -8,7 +8,7 @@ public class PlayerClient
     public string Nickname { get; }
     public int AvatarId { get; }
 
-    public ILotteryCallback CallbackChannel { get; }   
+    public ILotteryCallback CallbackChannel { get; set; }
 
     public Lobby CurrentLobby { get; set; }
     public int SelectedBoardId { get; set; }

@@ -43,7 +43,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Callbacks\IChatCallback.cs" />
     <Compile Include="Callbacks\IGameCallback.cs" />
     <Compile Include="Callbacks\ILobbyCallback.cs" />
     <Compile Include="Callbacks\ILotteryCallback.cs" />

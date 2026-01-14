@@ -152,6 +152,56 @@ namespace BusinessLogic.Logic
             }, "GetUserIdFromContext");
         }
 
+        public void ReconnectUser(int userId, ILotteryCallback newCallback)
+        {
+            ExecuteFaultSafe(() =>
+            {
+                if (newCallback == null)
+                {
+                    throw new ArgumentNullException(nameof(newCallback));
+                }
+
+                if (_onlineUsers.TryGetValue(userId, out var existingClient))
+                {
+                    _logger.InfoFormat(
+                        "[ReconnectUser] Usuario {0} reconectando. Reemplazando callback.",
+                        userId
+                    );
+
+                    existingClient.CallbackChannel = newCallback;
+
+                    if (newCallback is ICommunicationObject channel)
+                    {
+                        channel.Closed += (s, e) => AutoDisconnect(userId);
+                        channel.Faulted += (s, e) => AutoDisconnect(userId);
+                    }
+                }
+                else
+                {
+                    _logger.WarnFormat(
+                        "[ReconnectUser] Usuario {0} no estaba registrado. Se registra como nuevo.",
+                        userId
+                    );
+
+                    var client = new PlayerClient(
+                        userId,
+                        "Unknown",
+                        0,
+                        newCallback
+                    );
+
+                    _onlineUsers[userId] = client;
+
+                    if (newCallback is ICommunicationObject channel)
+                    {
+                        channel.Closed += (s, e) => AutoDisconnect(userId);
+                        channel.Faulted += (s, e) => AutoDisconnect(userId);
+                    }
+                }
+
+            }, "ReconnectUser");
+        }
+
         public IEnumerable<PlayerClient> GetAllOnlineUsers()
         {
             return _onlineUsers.Values;

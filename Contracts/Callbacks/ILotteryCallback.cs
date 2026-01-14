@@ -5,7 +5,7 @@ using System.ServiceModel;
 namespace Contracts.Callbacks
 {
     [ServiceContract]
-    public interface ILotteryCallback : IChatCallback
+    public interface ILotteryCallback
     {
         [OperationContract(IsOneWay = true)]
         void NotifyCard(int cardId);
@@ -51,5 +51,8 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void OnFalseLoteriaResult(string declarerNickname, string challengerNickname, bool wasCorrect);
+
+        [OperationContract(IsOneWay = true)]
+        void ReceiveChatMessage(string nickname, string message);
     }
 }

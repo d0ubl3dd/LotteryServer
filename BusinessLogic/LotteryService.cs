@@ -498,6 +498,14 @@ namespace BusinessLogic
             await _chatHandler.SendMessage(_currentUser, message);
         }
 
+        public void Reconnect(int userId)
+        {
+            var callback =
+                OperationContext.Current.GetCallbackChannel<ILotteryCallback>();
+
+            GlobalSessionManager.Instance.ReconnectUser(userId, callback);
+        }
+
         // --- IVerificationService ---
 
         public Task<bool> SendVerificationCode(string email)
