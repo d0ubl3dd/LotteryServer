@@ -104,4 +104,4 @@ DataAccess/*.diagram
 *.dtbcache.json
 *.csproj.user
 
-connections.config
+connections.config.sonarqube/conf/4/ 
