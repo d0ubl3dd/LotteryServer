@@ -54,5 +54,8 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void ReceiveChatMessage(string nickname, string message);
+
+        [OperationContract(IsOneWay = true)]
+        void OnGameCancelledByAbandonment();
     }
 }

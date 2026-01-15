@@ -43,8 +43,9 @@ namespace Contracts.Services.Users
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]
         Task<UserDto> GetUserProfile(int currentUserId);
-        
+
         [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
         Task<bool> ChangeEmailWithCodeAsync(int currentUserId, string newEmail, string verificationCode);
 
         [OperationContract]
@@ -52,6 +53,11 @@ namespace Contracts.Services.Users
         Task<bool> RecoverPasswordRequest(string email);
 
         [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
         Task<List<LeaderboardPlayerDto>> GetLeaderboard();
+
+        [OperationContract]
+        [FaultContract(typeof(ServiceFault))]
+        Task<bool> RequestEmailChangeVerification(string newEmail);
     }
 }

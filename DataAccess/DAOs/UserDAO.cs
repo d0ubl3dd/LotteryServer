@@ -56,6 +56,7 @@ namespace DataAccess.DAOs
         public async Task<List<User>> GetLeaderboard()
         {
             return await _context.User
+                .AsNoTracking()
                 .OrderByDescending(u => u.score)
                 .ThenBy(u => u.nickname)                
                 .ToListAsync();

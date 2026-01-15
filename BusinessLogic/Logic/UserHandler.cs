@@ -3,12 +3,14 @@ using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
 using BusinessLogic.Validation;
 using Contracts.DTOs;
+using Contracts.Faults;
 using Contracts.Services.Users;
 using DataAccess;
 using DataAccess.DAOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
@@ -113,7 +115,9 @@ namespace BusinessLogic.Handlers
                 }, userData.Password, nickExists, emailExists);
 
                 if (validationResult != RegistrationValidationResult.Success)
+                {
                     ThrowRegistrationException(validationResult);
+                }
 
                 PasswordHasher.CreatePasswordHash(userData.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -208,8 +212,57 @@ namespace BusinessLogic.Handlers
             }, "UpdateProfile");
         }
 
+        public async Task<bool> RequestEmailChangeVerification(string newEmail)
+        {
+            if (string.IsNullOrWhiteSpace(newEmail))
+            {
+                throw new ArgumentException("Email vacío", nameof(newEmail));
+            }
+
+            return await ExecuteFaultSafeAsync(async () =>
+            {
+                bool emailExists = false;
+
+                try
+                {
+                    emailExists = await _userRepository.EmailExistsAsync(newEmail);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Error BD: {ex.Message}", ex);
+                    throw new FaultException<ServiceFault>(
+                        new ServiceFault { ErrorCode = "DB_ERROR", Message = "Error de base de datos" },
+                        new FaultReason("Database Error"));
+                }
+
+                if (emailExists)
+                {
+                    ThrowRegistrationException(RegistrationValidationResult.EmailAlreadyExists);
+                }
+
+                bool codeSent = await _verificationHandler.SendVerificationCode(newEmail);
+
+                if (!codeSent)
+                {
+                    throw new VerificationException("No se pudo enviar el código de verificación.");
+                }
+
+                return true;
+            }, "RequestEmailChangeVerification");
+        }
+
         public async Task<bool> ChangeEmailWithCodeAsync(int userId, string newEmail, string code)
         {
+            if (string.IsNullOrWhiteSpace(newEmail))
+            {
+                throw new ArgumentException("El correo no puede estar vacío.", nameof(newEmail));
+            }
+
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new ArgumentException("El código de verificación no puede estar vacío.", nameof(code));
+            }
+
             return await ExecuteFaultSafeAsync(async () =>
             {
                 _logger.InfoFormat("[ChangeEmailWithCode] Usuario {0} intenta cambiar correo a {1}", userId, newEmail);
@@ -219,19 +272,19 @@ namespace BusinessLogic.Handlers
                 bool isValid = await _verificationHandler.VerifyCode(newEmail, code);
                 if (!isValid)
                 {
+                    _logger.WarnFormat("[ChangeEmailWithCode] Código inválido para {0}", newEmail);
                     throw new VerificationException("El código de verificación es incorrecto o ha expirado.");
                 }
 
-                try
+                bool emailExists = await _userRepository.EmailExistsAsync(newEmail);
+                if (emailExists)
                 {
-                    user.email = newEmail;
-                    await _userRepository.SaveChangesAsync();
+                    _logger.WarnFormat("[ChangeEmailWithCode] El correo {0} ya fue registrado por otro usuario", newEmail);
+                    throw new UserAlreadyExistsException("El correo electrónico ya está registrado.");
                 }
-                catch (Exception ex)
-                {
-                    _logger.ErrorFormat("[ChangeEmailWithCode] Error al guardar correo: {0}", ex.Message);
-                    throw new InvalidOperationException("No se pudo actualizar el correo. Inténtalo más tarde.", ex);
-                }
+
+                user.email = newEmail;
+                await _userRepository.SaveChangesAsync();
 
                 await _verificationHandler.ConsumeVerificationCode(newEmail);
 

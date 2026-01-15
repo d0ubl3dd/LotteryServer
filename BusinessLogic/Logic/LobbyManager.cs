@@ -71,7 +71,7 @@ namespace BusinessLogic.Logic
                 throw new UserAlreadyInLobbyException("Ya te encuentras unido a este lobby.");
             }
 
-            if (lobby.Players.Count >= Lobby.MaxPlayers)
+            if (lobby.Players.Count >= Lobby.MAX_PLAYERS)
             {
                 throw new LobbyFullException("El lobby está lleno.");
             }

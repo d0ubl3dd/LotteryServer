@@ -254,6 +254,23 @@ namespace BusinessLogic
             return _userHandler.GetLeaderboard();
         }
 
+        public Task<bool> RequestEmailChangeVerification(string newEmail)
+        {
+            if (_currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault
+                    {
+                        ErrorCode = "USER_NOT_CONNECTED",
+                        Message = USER_NOT_CONNECTED_MSG
+                    },
+                    new FaultReason(INVALID_SESSION_REASON)
+                );
+            }
+
+            return _userHandler.RequestEmailChangeVerification(newEmail);
+        }
+
         // --- IFriendService ---
 
         public Task SendRequestFriendship(int currentUserId, int targetUserId)
