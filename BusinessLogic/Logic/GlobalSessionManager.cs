@@ -1,10 +1,8 @@
 ﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
 using BusinessLogic.Models;
 using Contracts.Callbacks;
 using DataAccess;
-using DataAccess.DAOs;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -29,33 +27,30 @@ namespace BusinessLogic.Logic
 
         public void RegisterClient(User user, ILotteryCallback callback)
         {
+            if (user == null)
+            {
+                throw new ArgumentNullException(nameof(user));
+            }
+            if (callback == null)
+            {
+                throw new ArgumentNullException(nameof(callback));
+            }
+
             ExecuteFaultSafe(() =>
             {
-                if (user == null)
-                {
-                    throw new ArgumentNullException(nameof(user));
-                }
-
-                if (callback == null)
-                {
-                    throw new ArgumentNullException(nameof(callback));
-                }
-
                 var client = new PlayerClient(
                             user.id_user,
                             user.nickname,
                             user.id_avatar,
                             callback
                 );
+
                 _onlineUsers[user.id_user] = client;
 
                 _logger.InfoFormat("[RegisterClient] Usuario registrado: {0} - {1}", user.id_user, user.nickname);
 
-                if (callback is ICommunicationObject channel)
-                {
-                    channel.Closed += (s, e) => AutoDisconnect(user.id_user);
-                    channel.Faulted += (s, e) => AutoDisconnect(user.id_user);
-                }
+                SubscribeToChannelEvents(callback, user.id_user);
+
             }, "RegisterClient");
         }
 
@@ -63,17 +58,13 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
-                PlayerClient clientResult;
-
                 if (!_onlineUsers.TryGetValue(userId, out var client))
                 {
                     throw new ClientNotFoundException(string.Format("El cliente con ID {0} no está conectado.", userId));
                 }
 
                 _logger.InfoFormat("[GetClient] Cliente recuperado: {0}", userId);
-                clientResult = client;
-
-                return clientResult;
+                return client;
 
             }, "GetClient");
         }
@@ -82,19 +73,14 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
-                PlayerClient clientResult = null;
-
                 if (!_onlineUsers.TryRemove(userId, out var client))
                 {
                     _logger.WarnFormat("[UnregisterClient] Usuario {0} ya estaba desconectado. No se toma acción.", userId);
-                }
-                else
-                {
-                    _logger.InfoFormat("[UnregisterClient] Usuario desconectado y marcado como Offline: {0}", userId);
-                    clientResult = client;
+                    return null;
                 }
 
-                return clientResult;
+                _logger.InfoFormat("[UnregisterClient] Usuario desconectado y marcado como Offline: {0}", userId);
+                return client;
 
             }, "UnregisterClient");
         }
@@ -103,14 +89,15 @@ namespace BusinessLogic.Logic
         {
             try
             {
-                if (!_onlineUsers.ContainsKey(userId))
+                var disconnectedClient = UnregisterClient(userId);
+
+                if (disconnectedClient == null)
                 {
                     _logger.WarnFormat("[AutoDisconnect] Usuario {0} ya estaba desconectado. Ignorando evento duplicado.", userId);
                 }
                 else
                 {
                     _logger.WarnFormat("[AutoDisconnect] Detectada desconexión para userId={0}. Procediendo a limpiar sesión.", userId);
-                    UnregisterClient(userId);
                 }
             }
             catch (Exception exception)
@@ -123,8 +110,6 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
-                int? resultId;
-
                 var context = OperationContext.Current;
                 if (context == null)
                 {
@@ -145,43 +130,28 @@ namespace BusinessLogic.Logic
                 }
 
                 _logger.InfoFormat("[GetUserIdFromContext] Usuario identificado: {0}", entry.Key);
-                resultId = (int?)entry.Key;
-
-                return resultId;
+                return (int?)entry.Key;
 
             }, "GetUserIdFromContext");
         }
 
         public void ReconnectUser(int userId, ILotteryCallback newCallback)
         {
+            if (newCallback == null)
+            {
+                throw new ArgumentNullException(nameof(newCallback));
+            }
+
             ExecuteFaultSafe(() =>
             {
-                if (newCallback == null)
-                {
-                    throw new ArgumentNullException(nameof(newCallback));
-                }
-
                 if (_onlineUsers.TryGetValue(userId, out var existingClient))
                 {
-                    _logger.InfoFormat(
-                        "[ReconnectUser] Usuario {0} reconectando. Reemplazando callback.",
-                        userId
-                    );
-
+                    _logger.InfoFormat("[ReconnectUser] Usuario {0} reconectando. Reemplazando callback.", userId);
                     existingClient.CallbackChannel = newCallback;
-
-                    if (newCallback is ICommunicationObject channel)
-                    {
-                        channel.Closed += (s, e) => AutoDisconnect(userId);
-                        channel.Faulted += (s, e) => AutoDisconnect(userId);
-                    }
                 }
                 else
                 {
-                    _logger.WarnFormat(
-                        "[ReconnectUser] Usuario {0} no estaba registrado. Se registra como nuevo.",
-                        userId
-                    );
+                    _logger.WarnFormat("[ReconnectUser] Usuario {0} no estaba registrado. Se registra como nuevo.", userId);
 
                     var client = new PlayerClient(
                         userId,
@@ -189,15 +159,10 @@ namespace BusinessLogic.Logic
                         0,
                         newCallback
                     );
-
                     _onlineUsers[userId] = client;
-
-                    if (newCallback is ICommunicationObject channel)
-                    {
-                        channel.Closed += (s, e) => AutoDisconnect(userId);
-                        channel.Faulted += (s, e) => AutoDisconnect(userId);
-                    }
                 }
+
+                SubscribeToChannelEvents(newCallback, userId);
 
             }, "ReconnectUser");
         }
@@ -210,6 +175,15 @@ namespace BusinessLogic.Logic
         public bool IsUserOnline(int userId)
         {
             return _onlineUsers.ContainsKey(userId);
+        }
+
+        private void SubscribeToChannelEvents(ILotteryCallback callback, int userId)
+        {
+            if (callback is ICommunicationObject channel)
+            {
+                channel.Closed += (s, e) => AutoDisconnect(userId);
+                channel.Faulted += (s, e) => AutoDisconnect(userId);
+            }
         }
     }
 }

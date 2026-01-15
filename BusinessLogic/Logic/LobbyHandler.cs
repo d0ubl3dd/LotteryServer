@@ -1,5 +1,6 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Logic.Base;
+using BusinessLogic.Models;
 using Contracts.DTOs;
 using Contracts.GameData;
 using DataAccess;
@@ -24,7 +25,9 @@ namespace BusinessLogic.Logic
 
         public async Task ChooseBoard(User currentUser, int boardId)
         {
-            await ExecuteFaultSafeAsync(async () =>
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+
+            await ExecuteFaultSafeAsync(() =>
             {
                 var client = GetClientOrThrow(currentUser);
 
@@ -57,13 +60,16 @@ namespace BusinessLogic.Logic
 
                 BroadcastLobbyState(client);
 
-                await Task.CompletedTask;
+                return Task.CompletedTask;
+
             }, "ChooseBoard");
         }
 
         public async Task<LobbyStateDto> CreateLobby(User currentUser)
         {
-            return await ExecuteFaultSafeAsync(async () =>
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+
+            return await ExecuteFaultSafeAsync(() =>
             {
                 var host = GetClientOrThrow(currentUser);
 
@@ -82,14 +88,16 @@ namespace BusinessLogic.Logic
 
                 BroadcastLobbyState(host);
 
-                await Task.CompletedTask;
-                return lobbyState;
+                return Task.FromResult(lobbyState);
+
             }, "CreateLobby");
         }
 
         public async Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
         {
-            return await ExecuteFaultSafeAsync(async () =>
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+
+            return await ExecuteFaultSafeAsync(() =>
             {
                 var client = GetClientOrThrow(currentUser);
 
@@ -124,8 +132,64 @@ namespace BusinessLogic.Logic
                     dto.SelectedBoardId = internalClient.SelectedBoardId;
                 }
                 lobbyState.ChatHistory = client.CurrentLobby.GetChatHistory();
-                return lobbyState;
+
+                return Task.FromResult(lobbyState);
+
             }, "JoinLobby");
+        }
+
+        public async Task LeaveLobby(User currentUser)
+        {
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+
+            await ExecuteFaultSafeAsync(() =>
+            {
+                var client = GetClientOrThrow(currentUser);
+                _lobbyManager.LeaveLobby(client);
+
+                return Task.CompletedTask;
+
+            }, "LeaveLobby");
+        }
+
+        public async Task KickPlayer(User currentUser, int targetPlayerId)
+        {
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+
+            await ExecuteFaultSafeAsync(() =>
+            {
+                var host = GetClientOrThrow(currentUser);
+                _lobbyManager.KickPlayer(host, targetPlayerId);
+
+                return Task.CompletedTask;
+
+            }, "KickPlayer");
+        }
+
+        public async Task<LobbyStateDto> GetLobbyState(User currentUser, string lobbyCode)
+        {
+            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+
+            return await ExecuteFaultSafeAsync(() =>
+            {
+                var client = GetClientOrThrow(currentUser);
+                var lobby = client.CurrentLobby;
+
+                if (lobby == null || lobby.LobbyCode != lobbyCode)
+                {
+                    throw new LobbyException("No perteneces a este lobby.");
+                }
+
+                var state = new LobbyStateDto
+                {
+                    LobbyCode = lobby.LobbyCode,
+                    Players = lobby.GetPlayerDTOs(),
+                    ChatHistory = lobby.GetChatHistory()
+                };
+
+                return Task.FromResult(state);
+
+            }, "GetLobbyState");
         }
 
         private void BroadcastLobbyState(PlayerClient source)
@@ -152,51 +216,6 @@ namespace BusinessLogic.Logic
             {
                 player.CallbackChannel.LobbyStateUpdated(dto);
             }
-        }
-
-        public async Task LeaveLobby(User currentUser)
-        {
-            await ExecuteFaultSafeAsync(async () =>
-            {
-                var client = GetClientOrThrow(currentUser);
-                _lobbyManager.LeaveLobby(client);
-                await Task.CompletedTask;
-            }, "LeaveLobby");
-        }
-
-        public async Task KickPlayer(User currentUser, int targetPlayerId)
-        {
-            await ExecuteFaultSafeAsync(async () =>
-            {
-                var host = GetClientOrThrow(currentUser);
-                _lobbyManager.KickPlayer(host, targetPlayerId);
-                await Task.CompletedTask;
-            }, "KickPlayer");
-        }
-
-        public async Task<LobbyStateDto> GetLobbyState(User currentUser, string lobbyCode)
-        {
-            return await ExecuteFaultSafeAsync(async () =>
-            {
-                var client = GetClientOrThrow(currentUser);
-                var lobby = client.CurrentLobby;
-
-                if (lobby == null || lobby.LobbyCode != lobbyCode)
-                {
-                    throw new LobbyException("No perteneces a este lobby.");
-                }
-
-                var state = new LobbyStateDto
-                {
-                    LobbyCode = lobby.LobbyCode,
-                    Players = lobby.GetPlayerDTOs(),                    
-                    ChatHistory = lobby.GetChatHistory()
-                };
-
-                await Task.CompletedTask;
-                return state;
-
-            }, "GetLobbyState");
         }
 
         private PlayerClient GetClientOrThrow(User user)

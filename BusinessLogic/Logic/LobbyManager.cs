@@ -14,6 +14,8 @@ namespace BusinessLogic.Logic
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LobbyManager));
         private readonly ConcurrentDictionary<string, Lobby> _lobbies = new ConcurrentDictionary<string, Lobby>();
 
+        private const string LobbyCodeChars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
+
         private readonly ISessionManager _sessionManager;
         private readonly IUserDao _userDao;
 
@@ -25,7 +27,10 @@ namespace BusinessLogic.Logic
 
         public LobbyStateDto CreateLobby(PlayerClient host)
         {
-            if (host == null) throw new ArgumentNullException(nameof(host));
+            if (host == null)
+            {
+                throw new ArgumentNullException(nameof(host));
+            }
 
             var lobbyCode = GenerateLobbyCode();
             var lobby = new Lobby(lobbyCode, host, _userDao);
@@ -46,11 +51,14 @@ namespace BusinessLogic.Logic
 
         public LobbyStateDto JoinLobby(PlayerClient player, string lobbyCode)
         {
-            if (string.IsNullOrEmpty(lobbyCode)) throw new ArgumentException("El código del lobby no puede ser vacío.");
+            if (string.IsNullOrEmpty(lobbyCode))
+            {
+                throw new ArgumentException("El código del lobby no puede ser vacío.");
+            }
 
             if (!_lobbies.TryGetValue(lobbyCode, out var lobby))
             {
-                throw new LobbyNotFoundException(string.Format("El lobby {0} no existe.", lobbyCode));
+                throw new LobbyNotFoundException($"El lobby {lobbyCode} no existe.");
             }
 
             if (lobby.IsBanned(player.UserId))
@@ -63,7 +71,7 @@ namespace BusinessLogic.Logic
                 throw new UserAlreadyInLobbyException("Ya te encuentras unido a este lobby.");
             }
 
-            if (lobby.Players.Count >= Lobby.MAX_PLAYERS)
+            if (lobby.Players.Count >= Lobby.MaxPlayers)
             {
                 throw new LobbyFullException("El lobby está lleno.");
             }
@@ -118,6 +126,7 @@ namespace BusinessLogic.Logic
                     _logger.Error($"Error notificando cierre a {player.UserId}", ex);
                 }
             }
+
             lobby.Players.Clear();
             _lobbies.TryRemove(lobby.LobbyCode, out _);
             _logger.InfoFormat("[LobbyManager] Lobby {0} cerrado por el host.", lobby.LobbyCode);
@@ -172,12 +181,12 @@ namespace BusinessLogic.Logic
 
         private string GenerateLobbyCode()
         {
-            var chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
             var random = new Random();
             string code;
             do
             {
-                code = new string(Enumerable.Repeat(chars, 6).Select(s => s[random.Next(s.Length)]).ToArray());
+                code = new string(Enumerable.Repeat(LobbyCodeChars, 6)
+                    .Select(s => s[random.Next(s.Length)]).ToArray());
             }
             while (_lobbies.ContainsKey(code));
             return code;

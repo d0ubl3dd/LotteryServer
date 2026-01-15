@@ -65,7 +65,7 @@ namespace BusinessLogic.Logic.Base
             }
         }
 
-        private void HandleException(Exception exception, string operationName)
+        private static void HandleException(Exception exception, string operationName)
         {
             if (exception is FaultException<ServiceFault>)
             {

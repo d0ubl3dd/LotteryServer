@@ -51,13 +51,13 @@ namespace BusinessLogic.Handlers
 
         public async Task LogoutUser(User userToLogout)
         {
+            if (userToLogout == null)
+            {
+                throw new ArgumentNullException(nameof(userToLogout), "No se puede cerrar sesión de un usuario nulo.");
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (userToLogout == null)
-                {
-                    throw new ArgumentNullException(nameof(userToLogout), "No se puede cerrar sesión de un usuario nulo.");
-                }
-
                 _logger.InfoFormat("[LogoutUser] Cerrando sesión para {0}.", userToLogout.nickname);
 
                 if (userToLogout.id_user > 0)

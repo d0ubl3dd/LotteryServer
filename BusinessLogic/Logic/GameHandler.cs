@@ -20,17 +20,18 @@ namespace BusinessLogic.Handlers
 
         public async Task StartGame(User hostUser, GameSettingsDto settings)
         {
+            if (hostUser == null)
+            {
+                throw new ArgumentNullException(nameof(hostUser));
+            }
+
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (hostUser == null)
-                {
-                    throw new ArgumentNullException(nameof(hostUser));
-                }
-                if (settings == null)
-                {
-                    throw new ArgumentNullException(nameof(settings));
-                }
-
                 _logger.InfoFormat("[StartGame] Host {0} intenta iniciar partida.", hostUser.nickname);
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
@@ -61,13 +62,13 @@ namespace BusinessLogic.Handlers
 
         public async Task UpdateGameSettings(User hostUser, GameSettingsDto settings)
         {
+            if (hostUser == null)
+            {
+                throw new ArgumentNullException(nameof(hostUser));
+            }
+
             await ExecuteFaultSafeAsync(async () =>
             {
-                if (hostUser == null)
-                {
-                    throw new ArgumentNullException(nameof(hostUser));
-                }
-
                 _logger.InfoFormat("[UpdateGameSettings] Host {0} intenta actualizar configuración.", hostUser.nickname);
 
                 Lobby lobby = _lobbyManager.FindLobbyByHostId(hostUser.id_user);
@@ -98,6 +99,7 @@ namespace BusinessLogic.Handlers
 
             }, "GetScoreboard");
         }
+
         public async Task DeclareWin(PlayerBoardDto playerBoard)
         {
             await ExecuteFaultSafeAsync(async () =>
@@ -125,19 +127,21 @@ namespace BusinessLogic.Handlers
 
             }, "ValidateFalseLoteriaAsync");
         }
-        
+
         public async Task ConfirmGameEnd(User currentUser, int winnerId)
         {
             await ExecuteFaultSafeAsync(async () =>
-            {                
-                var lobby = _lobbyManager.FindLobbyByPlayerId(currentUser.id_user);                
+            {
+                var lobby = _lobbyManager.FindLobbyByPlayerId(currentUser.id_user);
                 if (lobby == null)
                 {
-                    _logger.Warn($"[ConfirmGameEnd] Usuario {currentUser.nickname} intentó confirmar fin, pero no tiene lobby.");
+                    _logger.WarnFormat("[ConfirmGameEnd] Usuario {0} intentó confirmar fin, pero no tiene lobby.", currentUser?.nickname ?? "Unknown");
                     return;
-                }                
+                }
+
                 await lobby.NotifyGameWinAsync(winnerId);
                 _logger.InfoFormat("[ConfirmGameEnd] Fin de juego confirmado para el ganador {0}.", winnerId);
+
             }, "ConfirmGameEnd");
         }
     }

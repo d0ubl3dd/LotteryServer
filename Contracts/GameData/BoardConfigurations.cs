@@ -1,15 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Contracts.GameData
 {
     public static class BoardConfigurations
     {
-        public static readonly Dictionary<int, List<int>> FixedBoards = new Dictionary<int, List<int>>
+        private static readonly Dictionary<int, List<int>> _fixedBoards = new Dictionary<int, List<int>>
         {
             { 1, new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 } },
-            
+
             { 2, new List<int> { 10, 20, 30, 40, 50, 1, 11, 21, 31, 41, 2, 12, 22, 32, 42, 3 } },
-            
+
             { 3, new List<int> { 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39 } },
 
             { 4, new List<int> { 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 1, 5, 9 } },
@@ -29,11 +30,16 @@ namespace Contracts.GameData
 
         public static List<int> GetBoardById(int boardId)
         {
-            if (FixedBoards.ContainsKey(boardId))
+            if (_fixedBoards.ContainsKey(boardId))
             {
-                return FixedBoards[boardId];
+                return new List<int>(_fixedBoards[boardId]);
             }
             return new List<int>();
+        }
+
+        public static Dictionary<int, List<int>> GetAllBoards()
+        {
+            return _fixedBoards.ToDictionary(k => k.Key, v => new List<int>(v.Value));
         }
     }
 }
