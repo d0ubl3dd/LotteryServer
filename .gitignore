@@ -106,3 +106,4 @@ DataAccess/*.diagram
 
 connections.config.sonarqube/conf/4/ 
 .sonarqube/conf/4/ 
+Contracts/DTOs/GameResultDto.cs 
