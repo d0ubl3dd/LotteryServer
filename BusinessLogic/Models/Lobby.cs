@@ -221,19 +221,45 @@ namespace BusinessLogic.Models
         {
             var winnerClient = Players.FirstOrDefault(p => p.UserId == winnerId);
             if (winnerClient == null) return;
+
             StopLobbyGame();
+
+            var resultDto = new GameResultDto
+            {
+                WinnerId = winnerClient.UserId,
+                WinnerNickname = winnerClient.Nickname,
+                IsDbConnectionError = false,
+                PointsEarned = 0
+            };
+
             try
             {
                 string messageCode = await ProcessWinScoreAsync(winnerClient);
+
                 BroadcastSystemMessage(messageCode);
+
                 var markedPositions = winnerClient.MarkedPositions ?? new List<int>();
-                BroadcastToAll(client => client.NotifyWinner(winnerClient.Nickname, winnerClient.UserId, winnerClient.SelectedBoardId, markedPositions));
+                BroadcastToAll(client =>
+                    client.NotifyWinner(
+                        winnerClient.Nickname,
+                        winnerClient.UserId,
+                        winnerClient.SelectedBoardId,
+                        markedPositions
+                    )
+                );
+
+                if (messageCode.StartsWith("WIN_REG"))
+                {
+                    resultDto.PointsEarned = WIN_SCORE;
+                }
             }
             catch (Exception ex)
             {
-                _logger.Error("Error en NotifyGameWinAsync", ex);
-                throw new FaultException(DB_ERROR_MESSAGE);
+                _logger.Error($"[NotifyGameWinAsync] Error guardando puntos para {winnerClient.Nickname}. Posible fallo de BD.", ex);
+                resultDto.IsDbConnectionError = true;
             }
+
+            BroadcastToAll(client => client.OnGameEnded(resultDto));
         }
 
         private async Task<string> ProcessWinScoreAsync(PlayerClient winnerClient)

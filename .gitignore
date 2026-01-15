@@ -103,3 +103,5 @@ DataAccess/*.diagram
 # Archivos temporales de VS y proyecto
 *.dtbcache.json
 *.csproj.user
+
+connections.config
