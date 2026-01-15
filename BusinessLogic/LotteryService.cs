@@ -481,9 +481,16 @@ namespace BusinessLogic
             return _gameHandler.UpdateGameSettings(_currentUser, settings);
         }
 
-        public Task GetScoreboard()
+        public Task<int[]> GetScoreboard()
         {
-            return _gameHandler.GetScoreboard();
+            if (_currentUser == null)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
+                    new FaultReason(INVALID_SESSION_REASON)
+                );
+            }
+            return _gameHandler.GetScoreboard(_currentUser);
         }
 
         public Task DeclareWin(PlayerBoardDto playerBoard)

@@ -56,9 +56,7 @@ namespace BusinessLogic.Models
             LobbyCode = code;
             Host = host;
             _userDao = userDao ?? throw new ArgumentNullException(nameof(userDao));
-
             AddPlayer(host);
-
             string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", FORBIDDEN_WORDS_FILE_NAME);
             _forbiddenWords = LoadForbiddenWords(fullPath);
         }
@@ -74,7 +72,6 @@ namespace BusinessLogic.Models
             {
                 return false;
             }
-
             lock (Players)
             {
                 if (Players.Count >= MAX_PLAYERS || Players.Any(p => p.UserId == player.UserId))
@@ -83,13 +80,11 @@ namespace BusinessLogic.Models
                 }
                 Players.Add(player);
             }
-
             player.CurrentLobby = this;
-
             if (player.CallbackChannel is ICommunicationObject channel)
             {
-                channel.Closed += (s, e) => RemovePlayer(player);
-                channel.Faulted += (s, e) => RemovePlayer(player);
+                channel.Closed += (s, e) => { RemovePlayer(player); };
+                channel.Faulted += (s, e) => { RemovePlayer(player); };
             }
             return true;
         }
@@ -101,7 +96,6 @@ namespace BusinessLogic.Models
                 Players.Remove(player);
             }
             player.CurrentLobby = null;
-
             if (_lastDeclarer != null && _lastDeclarer.UserId == player.UserId)
             {
                 _lastDeclarer = null;
@@ -109,14 +103,12 @@ namespace BusinessLogic.Models
                 ResumeGame();
                 BroadcastGameResumed();
             }
-
             if (player.UserId == Host.UserId)
             {
                 BroadcastLobbyClosed();
                 StopLobbyGame();
                 return;
             }
-
             if (IsGameInProgress && Players.Count == 1)
             {
                 PlayerClient lastPlayer = Players.FirstOrDefault();
@@ -146,14 +138,8 @@ namespace BusinessLogic.Models
         {
             try
             {
-                if (!File.Exists(path))
-                {
-                    return new HashSet<string>();
-                }
-
-                var lines = File.ReadAllLines(path)
-                    .Select(w => w.Trim().ToLower())
-                    .Where(w => !string.IsNullOrWhiteSpace(w));
+                if (!File.Exists(path)) { return new HashSet<string>(); }
+                var lines = File.ReadAllLines(path).Select(w => w.Trim().ToLower()).Where(w => !string.IsNullOrWhiteSpace(w));
                 return new HashSet<string>(lines);
             }
             catch (Exception ex)
@@ -166,25 +152,11 @@ namespace BusinessLogic.Models
         public virtual bool BroadcastChatMessage(string nickname, string message)
         {
             var sender = Players.FirstOrDefault(p => p.Nickname == nickname);
-            if (sender == null)
-            {
-                return false;
-            }
-
-            if (ContainsForbiddenWords(message))
-            {
-                HandleForbiddenWord(sender);
-                return false;
-            }
-
-            if (IsSpam(sender.UserId, message))
-            {
-                throw new ChatException("Spam detectado.");
-            }
-
+            if (sender == null) { return false; }
+            if (ContainsForbiddenWords(message)) { HandleForbiddenWord(sender); return false; }
+            if (IsSpam(sender.UserId, message)) { throw new ChatException("Spam detectado."); }
             string formattedMessage = $"{nickname}: {message}";
             AddToChatHistory(formattedMessage);
-
             BroadcastToAll(client => client.ReceiveChatMessage(nickname, message));
             return true;
         }
@@ -208,17 +180,9 @@ namespace BusinessLogic.Models
 
         private bool IsSpam(int userId, string message)
         {
-            if (!_messageHistory.ContainsKey(userId))
-            {
-                _messageHistory[userId] = new Dictionary<string, int>();
-            }
-
+            if (!_messageHistory.ContainsKey(userId)) { _messageHistory[userId] = new Dictionary<string, int>(); }
             var history = _messageHistory[userId];
-            if (!history.ContainsKey(message))
-            {
-                history[message] = 0;
-            }
-
+            if (!history.ContainsKey(message)) { history[message] = 0; }
             history[message]++;
             return history[message] > SPAM_LIMIT;
         }
@@ -228,21 +192,14 @@ namespace BusinessLogic.Models
             lock (_recentChatMessages)
             {
                 _recentChatMessages.Add(message);
-                if (_recentChatMessages.Count > CHAT_HISTORY_LIMIT)
-                {
-                    _recentChatMessages.RemoveAt(0);
-                }
+                if (_recentChatMessages.Count > CHAT_HISTORY_LIMIT) { _recentChatMessages.RemoveAt(0); }
             }
         }
 
         public void BroadcastBoardSelected(int userId, int boardId)
         {
             var player = Players.FirstOrDefault(p => p.UserId == userId);
-            if (player != null)
-            {
-                player.SelectedBoardId = boardId;
-            }
-
+            if (player != null) { player.SelectedBoardId = boardId; }
             BroadcastToAll(client => client.BoardSelected(userId, boardId));
         }
 
@@ -258,30 +215,19 @@ namespace BusinessLogic.Models
         public void BroadcastCardDrawn(CardDto card) => BroadcastToAll(client => client.OnCardDrawn(card));
         public void BroadcastGameFinished() => BroadcastToAll(client => client.OnGameFinished());
         public void BroadcastGameResumed() => BroadcastToAll(client => client.OnGameResumed());
-
-        public void BroadcastGameStarted(GameSettingsDto settings)
-        {
-            BroadcastToAll(client => client.OnGameStarted(settings));
-        }
+        public void BroadcastGameStarted(GameSettingsDto settings) => BroadcastToAll(client => client.OnGameStarted(settings));
 
         public async Task NotifyGameWinAsync(int winnerId)
         {
             var winnerClient = Players.FirstOrDefault(p => p.UserId == winnerId);
             if (winnerClient == null) return;
-
             StopLobbyGame();
-
             try
             {
                 string messageCode = await ProcessWinScoreAsync(winnerClient);
                 BroadcastSystemMessage(messageCode);
-
                 var markedPositions = winnerClient.MarkedPositions ?? new List<int>();
-                BroadcastToAll(client => client.NotifyWinner(
-                    winnerClient.Nickname,
-                    winnerClient.UserId,
-                    winnerClient.SelectedBoardId,
-                    markedPositions));
+                BroadcastToAll(client => client.NotifyWinner(winnerClient.Nickname, winnerClient.UserId, winnerClient.SelectedBoardId, markedPositions));
             }
             catch (Exception ex)
             {
@@ -293,7 +239,6 @@ namespace BusinessLogic.Models
         private async Task<string> ProcessWinScoreAsync(PlayerClient winnerClient)
         {
             if (winnerClient.UserId <= 0) return $"WIN_GST|{winnerClient.Nickname}";
-
             var user = await _userDao.GetUserByIdAsync(winnerClient.UserId);
             if (user != null)
             {
@@ -301,48 +246,26 @@ namespace BusinessLogic.Models
                 await _userDao.SaveChangesAsync();
                 return $"WIN_REG|{winnerClient.Nickname}|{WIN_SCORE}";
             }
-
             return $"WIN_SIMPLE|{winnerClient.Nickname}";
         }
 
         public virtual void StartLobbyGame(GameSettingsDto settings)
         {
             if (IsGameInProgress) return;
-
             IsGameInProgress = true;
             _gameDeck = new Deck();
             _gameCts = new CancellationTokenSource();
-
             BroadcastGameStarted(settings);
-
             Task.Run(() => RunGameLoop(settings, _gameCts.Token));
         }
 
         public void StopLobbyGame()
         {
             if (!IsGameInProgress) return;
-
             IsGameInProgress = false;
             _isPaused = false;
-
-            if (_pauseSemaphore.CurrentCount == 0)
-            {
-                try
-                {
-                    _pauseSemaphore.Release();
-                }
-                catch (SemaphoreFullException)
-                {
-                }
-            }
-
-            if (_gameCts != null)
-            {
-                _gameCts.Cancel();
-                _gameCts.Dispose();
-                _gameCts = null;
-            }
-
+            if (_pauseSemaphore.CurrentCount == 0) { try { _pauseSemaphore.Release(); } catch { } }
+            if (_gameCts != null) { _gameCts.Cancel(); _gameCts.Dispose(); _gameCts = null; }
             ResetGameState();
             BroadcastGameFinished();
         }
@@ -357,156 +280,110 @@ namespace BusinessLogic.Models
         private async Task RunGameLoop(GameSettingsDto settings, CancellationToken token)
         {
             int cardDrawDelayMs = (settings?.CardDrawSpeedSeconds ?? 1) * DRAW_DELAY_FACTOR;
-
             try
             {
                 while (IsGameInProgress && _gameDeck.CardsRemaining > 0)
                 {
-                    if (_isPaused)
-                    {
-                        await _pauseSemaphore.WaitAsync(token);
-                    }
+                    if (_isPaused) { await _pauseSemaphore.WaitAsync(token); }
                     await Task.Delay(cardDrawDelayMs, token);
                     if (token.IsCancellationRequested) break;
                     Card card = _gameDeck.DrawCard();
-                    if (card == null)
-                    {
-                        break;
-                    }
+                    if (card == null) break;
                     _drawnCards.Add(card.Id);
                     BroadcastCardDrawn(new CardDto { Id = card.Id });
                 }
-
                 if (IsGameInProgress && !token.IsCancellationRequested)
                 {
-                    _logger.Info($"[RunGameLoop] Mazo vacío en Lobby {LobbyCode}. Iniciando periodo de gracia.");
+                    // MENSAJE DE CHAT CUANDO SE ACABA EL MAZO
                     BroadcastSystemMessage("¡Se acabaron las cartas! Tienen 10 segundos para declarar Lotería.");
                     await Task.Delay(10000, token);
                 }
             }
-            catch (TaskCanceledException)
-            {
-                _logger.Info($"Juego lobby {LobbyCode} cancelado o finalizado por victoria.");
-            }
-            catch (Exception exception)
-            {
-                _logger.Error($"Error crítico en loop {LobbyCode}", exception);
-            }
-            finally
-            {
-                if (IsGameInProgress)
-                {
-                    StopLobbyGame();
-                }
-            }
+            catch (TaskCanceledException) { }
+            catch (Exception ex) { _logger.Error("Error loop", ex); }
+            finally { if (IsGameInProgress) { StopLobbyGame(); } }
         }
 
         public Task DeclareWinAsync(PlayerBoardDto playerBoard)
         {
-            var playerId = playerBoard.PlayerId;
-            _lastDeclarer = Players.FirstOrDefault(p => p.UserId == playerId);
+            _lastDeclarer = Players.FirstOrDefault(p => p.UserId == playerBoard.PlayerId);
             _lastMarkedPositions = new List<int>(playerBoard.MarkedPositions);
-
             PauseGame();
-
-            BroadcastToAll(client => client.NotifyWinner(
-                _lastDeclarer.Nickname,
-                _lastDeclarer.UserId,
-                _lastDeclarer.SelectedBoardId,
-                playerBoard.MarkedPositions));
-
+            BroadcastToAll(client => client.NotifyWinner(_lastDeclarer.Nickname, _lastDeclarer.UserId, _lastDeclarer.SelectedBoardId, playerBoard.MarkedPositions));
             return Task.CompletedTask;
         }
 
         public async Task<bool> ValidateFalseLoteriaAsync(int challengerUserId)
         {
-            if (_lastDeclarer == null || _lastMarkedPositions == null || !_lastMarkedPositions.Any() || !IsGameInProgress)
-            {
-                return false;
-            }
-
+            if (_lastDeclarer == null || _lastMarkedPositions == null || !IsGameInProgress) return false;
             var boardConfig = BoardConfigurations.GetBoardById(_lastDeclarer.SelectedBoardId);
-            if (boardConfig == null)
-            {
-                return false;
-            }
-
+            if (boardConfig == null) return false;
             bool declarerWasCorrect = CheckIfDeclarerWon(boardConfig);
-
             var challenger = Players.FirstOrDefault(p => p.UserId == challengerUserId);
+
+            // Notificamos resultado antes de procesar puntos para asegurar que llegue al chat
             BroadcastToAll(c => c.OnFalseLoteriaResult(_lastDeclarer.Nickname, challenger?.Nickname, declarerWasCorrect));
 
-            try
-            {
-                await HandleFalseLoteriaOutcome(declarerWasCorrect, challenger);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Error en ValidateFalseLoteriaAsync", ex);
-                throw new FaultException(DB_ERROR_MESSAGE);
-            }
-
-            _lastDeclarer = null;
-            _lastMarkedPositions = null;
-
+            try { await HandleFalseLoteriaOutcome(declarerWasCorrect, challenger); }
+            catch (Exception ex) { _logger.Error("Error Validate", ex); throw new FaultException(DB_ERROR_MESSAGE); }
             return !declarerWasCorrect;
         }
 
         private bool CheckIfDeclarerWon(List<int> boardConfig)
         {
-            return _lastMarkedPositions.All(pos =>
-            {
-                if (pos < 0 || pos >= boardConfig.Count)
-                {
-                    return false;
-                }
-                int cardNumber = boardConfig[pos];
-                return _drawnCards.Contains(cardNumber);
-            });
+            return _lastMarkedPositions.All(pos => (pos >= 0 && pos < boardConfig.Count) && _drawnCards.Contains(boardConfig[pos]));
         }
 
         private async Task HandleFalseLoteriaOutcome(bool declarerWasCorrect, PlayerClient challenger)
         {
-            var declarerUser = await _userDao.GetUserByIdAsync(_lastDeclarer.UserId);
-
-            User challengerUser = null;
-            if (challenger != null)
-            {
-                challengerUser = await _userDao.GetUserByIdAsync(challenger.UserId);
-            }
-
+            bool databaseChanged = false;
             if (declarerWasCorrect)
-            {                
-                if (challengerUser != null)
+            {
+                // EL ACUSADOR SE EQUIVOCÓ: Restamos al acusador si no es invitado
+                if (challenger != null && challenger.UserId > 0)
                 {
-                    challengerUser.score = Math.Max(0, (challengerUser.score ?? 0) - PENALTY_SCORE);
+                    var user = await _userDao.GetUserByIdAsync(challenger.UserId);
+                    if (user != null)
+                    {
+                        user.score = Math.Max(0, (user.score ?? 0) - PENALTY_SCORE);
+                        databaseChanged = true;
+                    }
                 }
 
-                if (challenger != null)
-                {
-                    BroadcastSystemMessage($"FL_FAIL|{challenger.Nickname}");
-                }
+                BroadcastSystemMessage(challenger != null ? $"FL_FAIL|{challenger.Nickname}" : "Alguien falló al acusar falsa lotería.");
 
-                await _userDao.SaveChangesAsync();
-                
+                if (databaseChanged) { await _userDao.SaveChangesAsync(); }
                 StopLobbyGame();
             }
             else
             {
-
-                if (declarerUser != null)
-                {                    
-                    declarerUser.score = Math.Max(0, (declarerUser.score ?? 0) - PENALTY_SCORE);
+                // EL DECLARANTE MINTIÓ: Restamos al mentiroso, sumamos al que acertó
+                if (_lastDeclarer.UserId > 0)
+                {
+                    var declarerUser = await _userDao.GetUserByIdAsync(_lastDeclarer.UserId);
+                    if (declarerUser != null)
+                    {
+                        // RECTA AL MENTIROSO
+                        declarerUser.score = Math.Max(0, (declarerUser.score ?? 0) - PENALTY_SCORE);
+                        databaseChanged = true;
+                    }
                 }
 
-                if (challengerUser != null)
-                {                    
-                    challengerUser.score = (challengerUser.score ?? 0) + PENALTY_SCORE;
+                if (challenger != null && challenger.UserId > 0)
+                {
+                    var challengerUser = await _userDao.GetUserByIdAsync(challenger.UserId);
+                    if (challengerUser != null)
+                    {
+                        // SUMA AL QUE ACERTÓ LA ACUSACIÓN
+                        challengerUser.score = (challengerUser.score ?? 0) + PENALTY_SCORE;
+                        databaseChanged = true;
+                    }
                 }
 
                 BroadcastSystemMessage($"FL_LIE|{_lastDeclarer.Nickname}");
 
-                await _userDao.SaveChangesAsync();               
+                if (databaseChanged) { await _userDao.SaveChangesAsync(); }
+
                 _lastDeclarer = null;
                 _lastMarkedPositions = null;
                 ResumeGame();
@@ -514,26 +391,17 @@ namespace BusinessLogic.Models
             }
         }
 
-        public void BanPlayer(int userId)
-        {
-            _bannedPlayers.Add(userId);
-        }
+        public void BanPlayer(int userId) => _bannedPlayers.Add(userId);
 
         public List<UserDto> GetPlayerDTOs()
         {
-            lock (Players)
-            {
-                return Players.Select(p => p.ToUserDto(p.UserId == Host.UserId)).ToList();
-            }
+            lock (Players) { return Players.Select(p => p.ToUserDto(p.UserId == Host.UserId)).ToList(); }
         }
 
         public void MarkPosition(int playerId, int position)
         {
             var player = Players.FirstOrDefault(p => p.UserId == playerId);
-            if (player != null && !player.MarkedPositions.Contains(position))
-            {
-                player.MarkedPositions.Add(position);
-            }
+            if (player != null && !player.MarkedPositions.Contains(position)) { player.MarkedPositions.Add(position); }
         }
 
         private void BroadcastSystemMessage(string message)
@@ -545,11 +413,7 @@ namespace BusinessLogic.Models
 
         private void PauseGame()
         {
-            if (!_isPaused && IsGameInProgress)
-            {
-                _isPaused = true;
-                _logger.InfoFormat("[PauseGame] Juego pausado en lobby {0}", LobbyCode);
-            }
+            if (!_isPaused && IsGameInProgress) { _isPaused = true; }
         }
 
         private void ResumeGame()
@@ -557,48 +421,24 @@ namespace BusinessLogic.Models
             if (_isPaused && IsGameInProgress)
             {
                 _isPaused = false;
-                if (_pauseSemaphore.CurrentCount == 0)
-                {
-                    try
-                    {
-                        _pauseSemaphore.Release();
-                    }
-                    catch (SemaphoreFullException)
-                    {
-                    }
-                }
-                _logger.InfoFormat("[ResumeGame] Juego reanudado en lobby {0}", LobbyCode);
+                if (_pauseSemaphore.CurrentCount == 0) { try { _pauseSemaphore.Release(); } catch { } }
             }
         }
 
         private void BroadcastToAll(Action<ILotteryCallback> action)
         {
-            List<PlayerClient> playersSnapshot;
-            lock (Players)
-            {
-                playersSnapshot = new List<PlayerClient>(Players);
-            }
-
-            foreach (var player in playersSnapshot)
-            {
-                SafeNotifyClient(player, action);
-            }
+            List<PlayerClient> snapshot;
+            lock (Players) { snapshot = new List<PlayerClient>(Players); }
+            foreach (var player in snapshot) { SafeNotifyClient(player, action); }
         }
 
         private void SafeNotifyClient(PlayerClient player, Action<ILotteryCallback> action)
         {
             try
             {
-                if (player.CallbackChannel is ICommunicationObject commObject && commObject.State == CommunicationState.Opened)
-                {
-                    action(player.CallbackChannel);
-                }
+                if (player.CallbackChannel is ICommunicationObject comm && comm.State == CommunicationState.Opened) { action(player.CallbackChannel); }
             }
-            catch (Exception ex)
-            {
-                _logger.WarnFormat("Fallo al notificar jugador {0}", player.UserId);
-                _logger.Warn("Detalle del fallo:", ex);
-            }
+            catch (Exception ex) { _logger.Warn("Fail notify", ex); }
         }
     }
 
@@ -606,14 +446,7 @@ namespace BusinessLogic.Models
     {
         public static UserDto ToUserDto(this PlayerClient player, bool isHost)
         {
-            return new UserDto
-            {
-                UserId = player.UserId,
-                Nickname = player.Nickname,
-                AvatarId = player.AvatarId,
-                SelectedBoardId = player.SelectedBoardId,
-                IsHost = isHost
-            };
+            return new UserDto { UserId = player.UserId, Nickname = player.Nickname, AvatarId = player.AvatarId, SelectedBoardId = player.SelectedBoardId, IsHost = isHost };
         }
     }
 }

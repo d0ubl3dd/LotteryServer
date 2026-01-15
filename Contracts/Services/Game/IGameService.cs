@@ -17,7 +17,7 @@ namespace Contracts.Services.Game
         Task UpdateGameSettings(GameSettingsDto settings);
 
         [OperationContract]
-        Task GetScoreboard();
+        Task<int[]> GetScoreboard();
 
         [OperationContract]
         [FaultContract(typeof(ServiceFault))]

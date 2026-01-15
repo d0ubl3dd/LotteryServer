@@ -5,6 +5,8 @@ using BusinessLogic.Models;
 using Contracts.DTOs;
 using DataAccess;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BusinessLogic.Handlers
@@ -89,13 +91,20 @@ namespace BusinessLogic.Handlers
 
             }, "UpdateGameSettings");
         }
-
-        public async Task GetScoreboard()
+        
+        public async Task<int[]> GetScoreboard(User currentUser)
         {
-            await ExecuteFaultSafeAsync(async () =>
+            return await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.Info("[GetScoreboard] Scoreboard solicitado.");
-                await Task.CompletedTask;
+                _logger.InfoFormat("[GetScoreboard/SyncCards] Sincronización solicitada por {0}.", currentUser.nickname);
+
+                var lobby = _lobbyManager.FindLobbyByPlayerId(currentUser.id_user);
+
+                if (lobby == null)
+                {
+                    return Array.Empty<int>();
+                }                
+                return lobby.DrawnCards.ToArray();
 
             }, "GetScoreboard");
         }
@@ -106,7 +115,9 @@ namespace BusinessLogic.Handlers
             {
                 var lobby = _lobbyManager.FindLobbyByPlayerId(playerBoard.PlayerId);
                 if (lobby == null)
+                {
                     throw new LobbyNotFoundException("Lobby no encontrado.");
+                }
 
                 await lobby.DeclareWinAsync(playerBoard);
 
