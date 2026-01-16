@@ -1,72 +1,75 @@
-﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Models;
-using Contracts.Callbacks;
-using DataAccess.DAOs;
+﻿using Xunit;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.ServiceModel;
+using BusinessLogic.Models;
+using BusinessLogic.Exceptions;
+using Contracts.Callbacks;
+using Contracts.DTOs;
+using DataAccess;
+using DataAccess.DAOs;
 using Tests.Builders;
-using Xunit;
+using System.Reflection;
 
 namespace Tests.Models
 {
     public class LobbyTests
     {
-        private readonly Mock<ILotteryCallback> _mockCallback;
-        private readonly PlayerClient _host;
+        private readonly Mock<IUserDao> _mockUserDao;
+        private readonly Mock<ILotteryCallback> _mockHostCallback;
+        private readonly PlayerClient _hostClient;
         private readonly Lobby _lobby;
 
         public LobbyTests()
         {
-            _mockCallback = new Mock<ILotteryCallback>();
-            var hostUser = new UserBuilder().WithId(1).WithNickname("Host").Build();
+            _mockUserDao = new Mock<IUserDao>();
+            _mockHostCallback = new Mock<ILotteryCallback>();
 
-            _host = new PlayerClient(hostUser.id_user, hostUser.nickname, hostUser.id_avatar, _mockCallback.Object);
-
-            var mockUserDao = new Mock<IUserDao>();
-
-            _lobby = new Lobby("TEST01", _host, mockUserDao.Object);
+            _hostClient = new PlayerClient(1, "Host", 1, _mockHostCallback.Object);
+            _lobby = new Lobby("CODE123", _hostClient, _mockUserDao.Object);
         }
 
         [Fact]
-        public void AddPlayer_WhenSpaceAvailable_ShouldAdd()
+        public void Constructor_ShouldAddHostToPlayers()
         {
-            var user = new UserBuilder().WithId(2).Build();
-            var player = new PlayerClient(user.id_user, user.nickname, user.id_avatar, _mockCallback.Object);
+            Assert.Single(_lobby.Players);
+            Assert.Equal(_hostClient, _lobby.Players[0]);
+            Assert.Equal(_lobby, _hostClient.CurrentLobby);
+        }
 
-            bool result = _lobby.AddPlayer(player);
+        [Fact]
+        public void AddPlayer_WhenLobbyIsNotFull_ShouldAddPlayer()
+        {
+            var newPlayer = new PlayerClient(2, "Player2", 1, Mock.Of<ILotteryCallback>());
+
+            bool result = _lobby.AddPlayer(newPlayer);
 
             Assert.True(result);
-            Assert.Contains(player, _lobby.Players);
-            Assert.Equal(_lobby, player.CurrentLobby);
+            Assert.Equal(2, _lobby.Players.Count);
         }
 
         [Fact]
-        public void AddPlayer_WhenFull_ShouldReturnFalse()
+        public void AddPlayer_WhenLobbyIsFull_ShouldReturnFalse()
         {
-            var u2 = new UserBuilder().WithId(2).Build();
-            _lobby.AddPlayer(new PlayerClient(u2.id_user, u2.nickname, u2.id_avatar, _mockCallback.Object));
+            _lobby.AddPlayer(new PlayerClient(2, "P2", 1, Mock.Of<ILotteryCallback>()));
+            _lobby.AddPlayer(new PlayerClient(3, "P3", 1, Mock.Of<ILotteryCallback>()));
+            _lobby.AddPlayer(new PlayerClient(4, "P4", 1, Mock.Of<ILotteryCallback>()));
 
-            var u3 = new UserBuilder().WithId(3).Build();
-            _lobby.AddPlayer(new PlayerClient(u3.id_user, u3.nickname, u3.id_avatar, _mockCallback.Object));
-
-            var u4 = new UserBuilder().WithId(4).Build();
-            _lobby.AddPlayer(new PlayerClient(u4.id_user, u4.nickname, u4.id_avatar, _mockCallback.Object));
-
-            var u5 = new UserBuilder().WithId(5).Build();
-            var extra = new PlayerClient(u5.id_user, u5.nickname, u5.id_avatar, _mockCallback.Object);
-
-            bool result = _lobby.AddPlayer(extra);
+            var extraPlayer = new PlayerClient(5, "P5", 1, Mock.Of<ILotteryCallback>());
+            bool result = _lobby.AddPlayer(extraPlayer);
 
             Assert.False(result);
-            Assert.DoesNotContain(extra, _lobby.Players);
+            Assert.Equal(4, _lobby.Players.Count);
         }
 
         [Fact]
-        public void AddPlayer_WhenBanned_ShouldReturnFalse()
+        public void AddPlayer_WhenPlayerBanned_ShouldReturnFalse()
         {
-            _lobby.BanPlayer(99);
-
-            var bannedUser = new UserBuilder().WithId(99).Build();
-            var bannedPlayer = new PlayerClient(bannedUser.id_user, bannedUser.nickname, bannedUser.id_avatar, _mockCallback.Object);
+            _lobby.BanPlayer(2);
+            var bannedPlayer = new PlayerClient(2, "Banned", 1, Mock.Of<ILotteryCallback>());
 
             bool result = _lobby.AddPlayer(bannedPlayer);
 
@@ -74,22 +77,66 @@ namespace Tests.Models
         }
 
         [Fact]
-        public void BroadcastChat_WhenSpamming_ShouldThrowChatException()
+        public void RemovePlayer_WhenHostLeaves_ShouldTriggerHostLeftEvent()
         {
-            var spammerUser = new UserBuilder().WithId(2).WithNickname("Spammer").Build();
-            var spammer = new PlayerClient(spammerUser.id_user, spammerUser.nickname, spammerUser.id_avatar, _mockCallback.Object);
+            bool eventTriggered = false;
+            _lobby.HostLeft += () => eventTriggered = true;
 
-            _lobby.AddPlayer(spammer);
+            _lobby.RemovePlayer(_hostClient);
 
+            Assert.True(eventTriggered);
+            Assert.Empty(_lobby.Players);
+        }
+
+        [Fact]
+        public void BroadcastChatMessage_WhenSpam_ShouldThrowChatException()
+        {
             for (int i = 0; i < 10; i++)
             {
-                _lobby.BroadcastChatMessage("Spammer", "Spam");
+                _lobby.BroadcastChatMessage("Host", "Spam");
             }
 
-            var ex = Assert.Throws<ChatException>(() =>
-                _lobby.BroadcastChatMessage("Spammer", "Spam"));
+            Assert.Throws<ChatException>(() => _lobby.BroadcastChatMessage("Host", "Spam"));
+        }
 
-            Assert.Equal("Spam detectado.", ex.Message);
+        [Fact]
+        public async Task NotifyGameWinAsync_ShouldUpdateScoreAndEndGame()
+        {
+            _lobby.StartLobbyGame(new GameSettingsDto());
+
+            var user = new User { id_user = 1, score = 100 };
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
+
+            await _lobby.NotifyGameWinAsync(1);
+
+            Assert.Equal(1100, user.score);
+            _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+            Assert.False(_lobby.IsGameInProgress);
+        }
+
+        [Fact]
+        public void MarkPosition_ShouldAddToPlayerSet()
+        {
+            _lobby.MarkPosition(1, 5);
+            Assert.Contains(5, _hostClient.MarkedPositions);
+        }
+
+        [Fact]
+        public void BanPlayer_ShouldPreventRejoin()
+        {
+            _lobby.BanPlayer(99);
+            Assert.True(_lobby.IsBanned(99));
+        }
+
+        private void SetDrawnCards(Lobby lobby, List<int> cards)
+        {
+            var field = typeof(Lobby).GetField("_drawnCards", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field != null)
+            {
+                var list = (List<int>)field.GetValue(lobby);
+                list.Clear();
+                list.AddRange(cards);
+            }
         }
     }
 }

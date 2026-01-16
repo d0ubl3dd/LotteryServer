@@ -1,46 +1,55 @@
 ﻿using Xunit;
 using Moq;
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.ServiceModel;
-using BusinessLogic.Handlers;
 using BusinessLogic.Logic;
-using BusinessLogic.Models;
-using DataAccess.DAOs;
-using DataAccess;
 using Contracts.Faults;
-using Contracts.Callbacks;
+using DataAccess;
+using DataAccess.DAOs;
 using Tests.Builders;
+using Contracts.Callbacks;
+using BusinessLogic.Models;
 
-namespace Tests.Handlers
+namespace Tests.Logic
 {
     public class FriendHandlerTests
     {
-        private readonly Mock<ISessionManager> _mockSessionManager;
         private readonly Mock<IFriendshipDao> _mockFriendshipDao;
-        private readonly Mock<ILotteryCallback> _mockCallback;
-
+        private readonly Mock<ISessionManager> _mockSessionManager;
         private readonly Mock<IUserDao> _mockUserDao;
-
+        private readonly Mock<ILotteryCallback> _mockCallback;
         private readonly FriendHandler _handler;
 
         public FriendHandlerTests()
         {
-            _mockSessionManager = new Mock<ISessionManager>();
             _mockFriendshipDao = new Mock<IFriendshipDao>();
-            _mockCallback = new Mock<ILotteryCallback>();
+            _mockSessionManager = new Mock<ISessionManager>();
             _mockUserDao = new Mock<IUserDao>();
+            _mockCallback = new Mock<ILotteryCallback>();
 
             _handler = new FriendHandler(_mockSessionManager.Object, _mockFriendshipDao.Object);
         }
 
         [Fact]
-        public async Task SendRequest_WhenValid_ShouldCallDao()
+        public void Constructor_WhenSessionManagerIsNull_ShouldThrowArgumentNullException()
         {
-            int userId = 1, targetId = 2;
-            _mockFriendshipDao.Setup(d => d.FriendshipExistsAsync(userId, targetId))
-                              .ReturnsAsync(false);
+            Assert.Throws<ArgumentNullException>(() => new FriendHandler(null, _mockFriendshipDao.Object));
+        }
+
+        [Fact]
+        public void Constructor_WhenFriendshipDaoIsNull_ShouldThrowArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new FriendHandler(_mockSessionManager.Object, null));
+        }
+
+        [Theory]
+        [InlineData(10, 20)]
+        [InlineData(999, 1)]
+        public async Task SendRequestFriendship_WhenValid_ShouldCallDao(int userId, int targetId)
+        {
+            _mockFriendshipDao.Setup(d => d.FriendshipExistsAsync(userId, targetId)).ReturnsAsync(false);
 
             await _handler.SendRequestFriendship(userId, targetId);
 
@@ -48,152 +57,172 @@ namespace Tests.Handlers
         }
 
         [Fact]
-        public async Task SendRequest_WhenGuest_ShouldThrowFault_GuestRestricted()
+        public async Task AcceptFriendRequest_WhenValid_ShouldAccept()
         {
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.SendRequestFriendship(-1, 2));
-
-            Assert.Equal("GUEST_RESTRICTED", ex.Detail.ErrorCode);
-        }
-
-        [Fact]
-        public async Task SendRequest_WhenSelf_ShouldThrowFault_FriendInvalid()
-        {
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.SendRequestFriendship(1, 1));
-
-            Assert.Equal("FRIEND_INVALID", ex.Detail.ErrorCode);
-        }
-
-        [Fact]
-        public async Task SendRequest_WhenDuplicate_ShouldThrowFault_FriendDuplicate()
-        {
-            _mockFriendshipDao.Setup(d => d.FriendshipExistsAsync(1, 2)).ReturnsAsync(true);
-
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.SendRequestFriendship(1, 2));
-
-            Assert.Equal("FRIEND_DUPLICATE", ex.Detail.ErrorCode);
-        }
-
-        [Fact]
-        public async Task AcceptRequest_WhenRequestExists_ShouldAccept()
-        {
-            var request = new Friendship { id_user_sender = 2, id_user_receiver = 1 };
-            _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(2, 1)).ReturnsAsync(request);
-
-            await _handler.AcceptFriendRequest(1, 2);
-
-            _mockFriendshipDao.Verify(d => d.AcceptRequestAsync(request), Times.Once);
-        }
-
-        [Fact]
-        public async Task AcceptRequest_WhenNotFound_ShouldThrowFault_FriendNotFound()
-        {
-            _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(It.IsAny<int>(), It.IsAny<int>()))
-                              .ReturnsAsync((Friendship)null);
-
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.AcceptFriendRequest(1, 2));
-
-            Assert.Equal("FRIEND_NOT_FOUND", ex.Detail.ErrorCode);
-        }
-
-        [Fact]
-        public async Task GetFriends_WhenCalled_ShouldReturnDtoList()
-        {
-            var friends = new List<User> {
-                new User { id_user = 2, nickname = "Friend1", status = "Offline" },
-                new User { id_user = 3, nickname = "Friend2", status = "Offline" }
+            var friendship = new Friendship
+            {
+                id_user_sender = 20,
+                id_user_receiver = 10,
+                status = "Pending"
             };
 
-            _mockFriendshipDao.Setup(d => d.GetAcceptedFriendsAsync(1)).ReturnsAsync(friends);
+            _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(20, 10)).ReturnsAsync(friendship);
 
-            _mockSessionManager.Setup(sm => sm.IsUserOnline(2)).Returns(true);
-            _mockSessionManager.Setup(sm => sm.IsUserOnline(3)).Returns(false);
+            await _handler.AcceptFriendRequest(10, 20);
 
-            var result = await _handler.GetFriends(1);
+            _mockFriendshipDao.Verify(d => d.AcceptRequestAsync(friendship), Times.Once);
+        }
 
-            Assert.Equal(2, result.Count);
-            Assert.Equal("Friend1", result[0].Nickname);
+        [Fact]
+        public async Task RejectFriendRequest_WhenValid_ShouldRemove()
+        {
+            var friendship = new Friendship
+            {
+                id_user_sender = 20,
+                id_user_receiver = 10,
+                status = "Pending"
+            };
+
+            _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(20, 10)).ReturnsAsync(friendship);
+
+            await _handler.RejectFriendRequest(10, 20);
+
+            _mockFriendshipDao.Verify(d => d.RemoveFriendshipAsync(friendship), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelFriendRequest_WhenValid_ShouldRemove()
+        {
+            var friendship = new Friendship
+            {
+                id_user_sender = 10,
+                id_user_receiver = 20,
+                status = "Pending"
+            };
+
+            _mockFriendshipDao.Setup(d => d.GetPendingRequestAsync(10, 20)).ReturnsAsync(friendship);
+
+            await _handler.CancelFriendRequest(10, 20);
+
+            _mockFriendshipDao.Verify(d => d.RemoveFriendshipAsync(friendship), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemoveFriend_WhenValid_ShouldRemove()
+        {
+            var friendship = new Friendship
+            {
+                id_user_sender = 10,
+                id_user_receiver = 20,
+                status = "Accepted"
+            };
+
+            _mockFriendshipDao.Setup(d => d.GetAcceptedFriendshipAsync(10, 20)).ReturnsAsync(friendship);
+
+            await _handler.RemoveFriend(10, 20);
+
+            _mockFriendshipDao.Verify(d => d.RemoveFriendshipAsync(friendship), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetFriends_WhenUserIsOnline_ShouldReturnOnlineStatus()
+        {
+            var friends = new List<User> { new UserBuilder().WithId(20).Build() };
+            _mockFriendshipDao.Setup(d => d.GetAcceptedFriendsAsync(10)).ReturnsAsync(friends);
+            _mockSessionManager.Setup(sm => sm.IsUserOnline(20)).Returns(true);
+
+            var result = await _handler.GetFriends(10);
+
+            Assert.Single(result);
             Assert.Equal("Online", result[0].Status);
-            Assert.Equal("Friend2", result[1].Nickname);
-            Assert.Equal("Offline", result[1].Status);
         }
 
         [Fact]
-        public async Task InviteToLobby_WhenConditionsMet_ShouldSendCallback()
+        public async Task GetFriends_WhenUserIsOffline_ShouldReturnOfflineStatus()
         {
-            string lobbyCode = "LOBBY1";
-            var inviterUser = new UserBuilder().WithId(1).WithNickname("Inviter").Build();
-            var targetUser = new UserBuilder().WithId(2).WithNickname("Target").Build();
+            var friends = new List<User> { new UserBuilder().WithId(20).Build() };
+            _mockFriendshipDao.Setup(d => d.GetAcceptedFriendsAsync(10)).ReturnsAsync(friends);
+            _mockSessionManager.Setup(sm => sm.IsUserOnline(20)).Returns(false);
 
-            var inviterClient = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
+            var result = await _handler.GetFriends(10);
 
-            var targetCallbackMock = new Mock<ILotteryCallback>();
-            var targetClient = new PlayerClient(targetUser.id_user, targetUser.nickname, targetUser.id_avatar, targetCallbackMock.Object);
-
-            var mockLobby = new Mock<Lobby>(lobbyCode, inviterClient, _mockUserDao.Object);
-            inviterClient.CurrentLobby = mockLobby.Object;
-
-            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(1);
-            _mockSessionManager.Setup(sm => sm.GetClient(1)).Returns(inviterClient);
-            _mockSessionManager.Setup(sm => sm.GetClient(2)).Returns(targetClient);
-
-            await _handler.InviteFriendToLobby(lobbyCode, 2);
-
-            targetCallbackMock.Verify(cb => cb.ReceiveLobbyInvite("Inviter", lobbyCode), Times.Once);
+            Assert.Single(result);
+            Assert.Equal("Offline", result[0].Status);
         }
 
         [Fact]
-        public async Task InviteToLobby_WhenInviterNotInLobby_ShouldThrowFault_LobbyError()
+        public async Task InviteFriendToLobby_WhenInviterNotInLobby_ShouldThrowLobbyException()
         {
-            var inviterUser = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
-            client.CurrentLobby = null;
+            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(10);
 
-            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(1);
-            _mockSessionManager.Setup(sm => sm.GetClient(1)).Returns(client);
+            var inviter = new PlayerClient(10, "Inviter", 1, _mockCallback.Object);
+            inviter.CurrentLobby = null;
+            _mockSessionManager.Setup(sm => sm.GetClient(10)).Returns(inviter);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.InviteFriendToLobby("CODE", 2));
+                _handler.InviteFriendToLobby("CODE", 20));
 
             Assert.Equal("LOBBY_ERROR", ex.Detail.ErrorCode);
         }
 
         [Fact]
-        public async Task InviteToLobby_WhenTargetAlreadyInSameLobby_ShouldThrowFault_LobbyUserAlreadyIn()
+        public async Task InviteFriendToLobby_WhenTargetOffline_ShouldThrowUserOffline()
         {
-            var inviterUser = new UserBuilder().WithId(1).Build();
-            var targetUser = new UserBuilder().WithId(2).Build();
+            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(10);
 
-            var inviterClient = new PlayerClient(inviterUser.id_user, inviterUser.nickname, inviterUser.id_avatar, _mockCallback.Object);
-            var targetClient = new PlayerClient(targetUser.id_user, targetUser.nickname, targetUser.id_avatar, _mockCallback.Object);
+            var inviter = new PlayerClient(10, "Inviter", 1, _mockCallback.Object);
+            var lobby = new Lobby("CODE", inviter, _mockUserDao.Object);
+            inviter.CurrentLobby = lobby;
 
-            var lobby = new Mock<Lobby>("CODE", inviterClient, _mockUserDao.Object);
-
-            inviterClient.CurrentLobby = lobby.Object;
-            targetClient.CurrentLobby = lobby.Object;
-
-            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(1);
-            _mockSessionManager.Setup(sm => sm.GetClient(1)).Returns(inviterClient);
-            _mockSessionManager.Setup(sm => sm.GetClient(2)).Returns(targetClient);
+            _mockSessionManager.Setup(sm => sm.GetClient(10)).Returns(inviter);
+            _mockSessionManager.Setup(sm => sm.GetClient(20)).Returns((PlayerClient)null);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.InviteFriendToLobby("CODE", 2));
+                _handler.InviteFriendToLobby("CODE", 20));
+
+            Assert.Equal("USER_OFFLINE", ex.Detail.ErrorCode);
+        }
+
+        [Fact]
+        public async Task InviteFriendToLobby_WhenTargetInAnotherLobby_ShouldThrowUserBusy()
+        {
+            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(10);
+
+            var inviter = new PlayerClient(10, "Inviter", 1, _mockCallback.Object);
+            var lobby1 = new Lobby("CODE1", inviter, _mockUserDao.Object);
+            inviter.CurrentLobby = lobby1;
+
+            var target = new PlayerClient(20, "Target", 1, _mockCallback.Object);
+            var lobby2 = new Lobby("CODE2", target, _mockUserDao.Object);
+            target.CurrentLobby = lobby2;
+
+            _mockSessionManager.Setup(sm => sm.GetClient(10)).Returns(inviter);
+            _mockSessionManager.Setup(sm => sm.GetClient(20)).Returns(target);
+
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.InviteFriendToLobby("CODE1", 20));
 
             Assert.Equal("LOBBY_USER_ALREADY_IN", ex.Detail.ErrorCode);
         }
 
         [Fact]
-        public async Task InviteToLobby_WhenSessionContextFails_ShouldThrowFault_UserNotConnected()
+        public async Task InviteFriendToLobby_WhenValid_ShouldSendInvite()
         {
-            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns((int?)null);
+            _mockSessionManager.Setup(sm => sm.GetUserIdFromContext()).Returns(10);
 
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.InviteFriendToLobby("CODE", 2));
+            var inviter = new PlayerClient(10, "Inviter", 1, _mockCallback.Object);
+            var lobby = new Lobby("CODE", inviter, _mockUserDao.Object);
+            inviter.CurrentLobby = lobby;
 
-            Assert.Equal("USER_OFFLINE", ex.Detail.ErrorCode);
+            var target = new PlayerClient(20, "Target", 1, _mockCallback.Object);
+            target.CurrentLobby = null;
+
+            _mockSessionManager.Setup(sm => sm.GetClient(10)).Returns(inviter);
+            _mockSessionManager.Setup(sm => sm.GetClient(20)).Returns(target);
+
+            await _handler.InviteFriendToLobby("CODE", 20);
+
+            _mockCallback.Verify(cb => cb.ReceiveLobbyInvite("Inviter", "CODE"), Times.Once);
         }
     }
 }

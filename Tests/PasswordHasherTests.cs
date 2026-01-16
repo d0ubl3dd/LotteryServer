@@ -1,53 +1,105 @@
 ﻿using Xunit;
 using BusinessLogic.Logic;
+using System;
+using System.Linq;
 
 namespace Tests.Logic
 {
     public class PasswordHasherTests
     {
-        [Fact]
-        public void CreateAndVerify_WhenPasswordIsCorrect_ShouldReturnTrue()
+        [Theory]
+        [InlineData("password")]
+        [InlineData("123456")]
+        [InlineData("SuperSecurePassword!@#")]
+        [InlineData("ñandú")]
+        [InlineData("  spaces  ")]
+        public void CreateAndVerify_WhenPasswordIsCorrect_ShouldReturnTrue(string password)
         {
-            string password = "MySecurePassword123!";
-            byte[] hash, salt;
-
-            PasswordHasher.CreatePasswordHash(password, out hash, out salt);
+            PasswordHasher.CreatePasswordHash(password, out byte[] hash, out byte[] salt);
 
             bool result = PasswordHasher.VerifyPasswordHash(password, hash, salt);
 
-            Assert.True(result, "El password correcto debería verificarse exitosamente.");
+            Assert.True(result);
+        }
+
+        [Theory]
+        [InlineData("password", "Password")]
+        [InlineData("123456", "1234567")]
+        [InlineData("test", "Test")]
+        [InlineData("secure", " secure")]
+        public void VerifyPasswordHash_WhenPasswordIsIncorrect_ShouldReturnFalse(string original, string wrong)
+        {
+            PasswordHasher.CreatePasswordHash(original, out byte[] hash, out byte[] salt);
+
+            bool result = PasswordHasher.VerifyPasswordHash(wrong, hash, salt);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void CreatePasswordHash_ShouldGenerateValidLengths()
+        {
+            PasswordHasher.CreatePasswordHash("test", out byte[] hash, out byte[] salt);
+
             Assert.NotNull(hash);
             Assert.NotNull(salt);
-            Assert.NotEmpty(hash);
-            Assert.NotEmpty(salt);
+            Assert.Equal(64, hash.Length);
+            Assert.Equal(128, salt.Length);
         }
 
         [Fact]
-        public void Verify_WhenPasswordIsIncorrect_ShouldReturnFalse()
+        public void CreatePasswordHash_SamePassword_ShouldGenerateDifferentSalts()
         {
-            string correctPassword = "RightPassword";
-            string wrongPassword = "WrongPassword";
-            byte[] hash, salt;
+            string password = "TestPassword";
 
-            PasswordHasher.CreatePasswordHash(correctPassword, out hash, out salt);
-
-            bool result = PasswordHasher.VerifyPasswordHash(wrongPassword, hash, salt);
-
-            Assert.False(result, "Un password incorrecto NO debería verificarse.");
-        }
-
-        [Fact]
-        public void Create_WhenCalledTwiceWithSamePassword_ShouldGenerateDifferentSalts()
-        {
-            string password = "SamePassword";
-            byte[] hash1, salt1;
-            byte[] hash2, salt2;
-
-            PasswordHasher.CreatePasswordHash(password, out hash1, out salt1);
-            PasswordHasher.CreatePasswordHash(password, out hash2, out salt2);
+            PasswordHasher.CreatePasswordHash(password, out byte[] hash1, out byte[] salt1);
+            PasswordHasher.CreatePasswordHash(password, out byte[] hash2, out byte[] salt2);
 
             Assert.NotEqual(salt1, salt2);
             Assert.NotEqual(hash1, hash2);
+        }
+
+        [Fact]
+        public void VerifyPasswordHash_WhenHashIsTampered_ShouldReturnFalse()
+        {
+            string password = "Test";
+            PasswordHasher.CreatePasswordHash(password, out byte[] hash, out byte[] salt);
+
+            hash[0] = (byte)(hash[0] + 1);
+
+            bool result = PasswordHasher.VerifyPasswordHash(password, hash, salt);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void VerifyPasswordHash_WhenSaltIsTampered_ShouldReturnFalse()
+        {
+            string password = "Test";
+            PasswordHasher.CreatePasswordHash(password, out byte[] hash, out byte[] salt);
+
+            salt[0] = (byte)(salt[0] + 1);
+
+            bool result = PasswordHasher.VerifyPasswordHash(password, hash, salt);
+
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        public void VerifyPasswordHash_WhenInputEmpty_ShouldHandleGracefullyOrThrow(string emptyInput)
+        {
+            if (emptyInput == null)
+            {
+                PasswordHasher.CreatePasswordHash("valid", out byte[] h, out byte[] s);
+                Assert.Throws<ArgumentNullException>(() => PasswordHasher.VerifyPasswordHash(null, h, s));
+            }
+            else
+            {
+                PasswordHasher.CreatePasswordHash(emptyInput, out byte[] hash, out byte[] salt);
+                Assert.True(PasswordHasher.VerifyPasswordHash(emptyInput, hash, salt));
+            }
         }
     }
 }

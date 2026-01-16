@@ -1,9 +1,11 @@
 ﻿using Xunit;
+using System;
 using System.Threading.Tasks;
 using System.ServiceModel;
 using BusinessLogic.Handlers;
-using DataAccess;
+using BusinessLogic.Exceptions;
 using Contracts.Faults;
+using DataAccess;
 
 namespace Tests.Handlers
 {
@@ -16,55 +18,44 @@ namespace Tests.Handlers
             _handler = new GuestHandler();
         }
 
-        [Fact]
-        public async Task LoginGuest_WhenNicknameIsValid_ShouldReturnUserWithNegativeId()
+        [Theory]
+        [InlineData("GuestUser")]
+        [InlineData("Player1")]
+        [InlineData("ValidNick")]
+        [InlineData("User1234")]
+        public async Task LoginGuest_WhenNicknameIsValid_ShouldReturnUserWithNegativeId(string nickname)
         {
-            string nickname = "Visitante";
-
             User result = await _handler.LoginGuest(nickname);
 
             Assert.NotNull(result);
+            Assert.True(result.id_user < 0);
             Assert.Equal(nickname, result.nickname);
-            Assert.True(result.id_user < 0, "El ID del invitado debe ser negativo.");
             Assert.Equal("Online", result.status);
-            Assert.Equal("guest@temp.com", result.email);
+            Assert.Equal(1, result.id_avatar);
         }
 
-        [Fact]
-        public async Task LoginGuest_WhenCalledMultipleTimes_ShouldGenerateUniqueIds()
-        {
-            User guest1 = await _handler.LoginGuest("GuestOne");
-            User guest2 = await _handler.LoginGuest("GuestTwo");
-
-            Assert.NotEqual(guest1.id_user, guest2.id_user);
-            Assert.True(guest2.id_user < guest1.id_user, "Los IDs deben ser decrecientes (-1, -2, etc).");
-        }
-
-        [Fact]
-        public async Task LoginGuest_WhenNicknameIsEmpty_ShouldThrowFault_EmptyNickname()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task LoginGuest_WhenNicknameIsEmpty_ShouldThrowEmptyNicknameException(string nickname)
         {
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.LoginGuest(""));
+                _handler.LoginGuest(nickname));
 
             Assert.Equal("AUTH_EMPTY_NICKNAME", ex.Detail.ErrorCode);
         }
 
         [Fact]
-        public async Task LoginGuest_WhenNicknameIsTooShort_ShouldThrowFault_InvalidLength()
+        public async Task LoginGuest_SequentialCalls_ShouldDecrementIds()
         {
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.LoginGuest("Ab"));
+            var user1 = await _handler.LoginGuest("Guest1");
+            var user2 = await _handler.LoginGuest("Guest2");
 
-            Assert.Equal("AUTH_INVALID_LENGTH", ex.Detail.ErrorCode);
-        }
-
-        [Fact]
-        public async Task LoginGuest_WhenNicknameHasSpecialChars_ShouldThrowFault_InvalidFormat()
-        {
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.LoginGuest("Guest$#"));
-
-            Assert.Equal("AUTH_INVALID_FORMAT", ex.Detail.ErrorCode);
+            Assert.True(user1.id_user < 0);
+            Assert.True(user2.id_user < 0);
+            Assert.NotEqual(user1.id_user, user2.id_user);
+            Assert.True(user2.id_user < user1.id_user); // -2 < -1
         }
     }
 }

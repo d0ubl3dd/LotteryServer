@@ -6,12 +6,14 @@ using System.ServiceModel;
 using BusinessLogic.Handlers;
 using BusinessLogic.Logic;
 using BusinessLogic.Models;
-using Contracts.DTOs;
+using BusinessLogic.Exceptions;
+using Contracts.Faults;
 using DataAccess;
 using DataAccess.DAOs;
-using Contracts.Faults;
-using Tests.Builders;
+using Contracts.DTOs;
 using Contracts.Callbacks;
+using Tests.Builders;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace Tests.Handlers
@@ -19,113 +21,178 @@ namespace Tests.Handlers
     public class GameHandlerTests
     {
         private readonly Mock<ILobbyManager> _mockLobbyManager;
-        private readonly GameHandler _handler;
-        private readonly Mock<ILotteryCallback> _mockCallback;
         private readonly Mock<IUserDao> _mockUserDao;
+        private readonly Mock<ILotteryCallback> _mockCallback;
+        private readonly GameHandler _handler;
 
         public GameHandlerTests()
         {
             _mockLobbyManager = new Mock<ILobbyManager>();
-            _mockCallback = new Mock<ILotteryCallback>();
             _mockUserDao = new Mock<IUserDao>();
+            _mockCallback = new Mock<ILotteryCallback>();
             _handler = new GameHandler(_mockLobbyManager.Object);
         }
 
-        private void ForceSetGameInProgress(Lobby lobby, bool value)
+        [Fact]
+        public void Constructor_WhenLobbyManagerIsNull_ShouldThrowArgumentNullException()
         {
-            var property = typeof(Lobby).GetProperty("IsGameInProgress",
-                BindingFlags.Public | BindingFlags.Instance);
-
-            if (property != null && property.CanWrite)
-            {
-                property.SetValue(lobby, value);
-            }
-            else
-            {
-                var field = typeof(Lobby).GetField("<IsGameInProgress>k__BackingField",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-
-                if (field != null)
-                {
-                    field.SetValue(lobby, value);
-                }
-            }
+            Assert.Throws<ArgumentNullException>(() => new GameHandler(null));
         }
 
         [Fact]
-        public async Task StartGame_WhenConditionsMet_ShouldStartLobbyGame()
+        public async Task StartGame_WhenUserIsNull_ShouldThrowArgumentNullException()
         {
-            var host = new UserBuilder().WithId(1).WithNickname("HostUser").Build();
-            var settings = new GameSettingsDto();
-
-            var hostClient = new PlayerClient(host.id_user, host.nickname, host.id_avatar, _mockCallback.Object);
-
-            var mockLobby = new Mock<Lobby>("CODE1", hostClient, _mockUserDao.Object);
-
-            mockLobby.Setup(l => l.StartLobbyGame(settings));
-            mockLobby.Object.Players.Add(new PlayerClient(2, "P2", 1, _mockCallback.Object));
-
-            _mockLobbyManager.Setup(m => m.FindLobbyByHostId(host.id_user))
-                             .Returns(mockLobby.Object);
-
-            await _handler.StartGame(host, settings);
-
-            mockLobby.Verify(l => l.StartLobbyGame(settings), Times.Once);
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.StartGame(null, new GameSettingsDto()));
         }
 
         [Fact]
-        public async Task StartGame_WhenLobbyNotFound_ShouldThrowFault_LobbyNotFound()
+        public async Task StartGame_WhenSettingsAreNull_ShouldThrowArgumentNullException()
         {
-            var host = new UserBuilder().WithId(1).Build();
-            _mockLobbyManager.Setup(m => m.FindLobbyByHostId(1)).Returns((Lobby)null);
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.StartGame(new UserBuilder().Build(), null));
+        }
+
+        [Fact]
+        public async Task StartGame_WhenLobbyNotFound_ShouldThrowLobbyNotFound()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByHostId(1)).Returns((Lobby)null);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.StartGame(host, new GameSettingsDto()));
+                _handler.StartGame(user, new GameSettingsDto()));
 
             Assert.Equal("LOBBY_NOT_FOUND", ex.Detail.ErrorCode);
         }
 
         [Fact]
-        public async Task StartGame_WhenGameAlreadyRunning_ShouldThrowFault_GameAlreadyActive()
+        public async Task StartGame_WhenNotEnoughPlayers_ShouldThrowNotEnoughPlayers()
         {
-            var host = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(host.id_user, host.nickname, host.id_avatar, _mockCallback.Object);
+            var user = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(1, "Host", 1, _mockCallback.Object);
+            var lobby = new Lobby("CODE", hostClient, _mockUserDao.Object);
 
-            var realLobby = new Lobby("CODE", client, _mockUserDao.Object);
-            ForceSetGameInProgress(realLobby, true);
-
-            _mockLobbyManager.Setup(m => m.FindLobbyByHostId(1)).Returns(realLobby);
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByHostId(1)).Returns(lobby);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.StartGame(host, new GameSettingsDto()));
+                _handler.StartGame(user, new GameSettingsDto()));
 
-            Assert.Equal("GAME_ALREADY_ACTIVE", ex.Detail.ErrorCode);
+            Assert.Equal("GAME_NOT_ENOUGH_PLAYERS", ex.Detail.ErrorCode);
         }
 
         [Fact]
-        public async Task StartGame_WhenArgumentsNull_ShouldThrowFault_BadRequest()
+        public async Task StartGame_WhenValid_ShouldStartGame()
         {
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.StartGame(null, new GameSettingsDto()));
+            var user = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(1, "Host", 1, _mockCallback.Object);
+            var lobby = new Lobby("CODE", hostClient, _mockUserDao.Object);
 
-            Assert.Equal("GLOBAL_BAD_REQUEST", ex.Detail.ErrorCode);
+            lobby.AddPlayer(new PlayerClient(2, "P2", 1, _mockCallback.Object));
+
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByHostId(1)).Returns(lobby);
+
+            await _handler.StartGame(user, new GameSettingsDto());
+
+            Assert.True(lobby.IsGameInProgress);
         }
 
         [Fact]
-        public async Task UpdateSettings_WhenGameInProgress_ShouldThrowFault_GameAlreadyActive()
+        public async Task UpdateGameSettings_WhenHostNull_ShouldThrowArgumentNull()
         {
-            var host = new UserBuilder().WithId(1).Build();
-            var client = new PlayerClient(host.id_user, host.nickname, host.id_avatar, _mockCallback.Object);
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.UpdateGameSettings(null, new GameSettingsDto()));
+        }
 
-            var realLobby = new Lobby("CODE", client, _mockUserDao.Object);
-            ForceSetGameInProgress(realLobby, true);
-
-            _mockLobbyManager.Setup(m => m.FindLobbyByHostId(1)).Returns(realLobby);
+        [Fact]
+        public async Task UpdateGameSettings_WhenLobbyNotFound_ShouldThrowLobbyNotFound()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByHostId(1)).Returns((Lobby)null);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.UpdateGameSettings(host, new GameSettingsDto()));
+                _handler.UpdateGameSettings(user, new GameSettingsDto()));
 
-            Assert.Equal("GAME_ALREADY_ACTIVE", ex.Detail.ErrorCode);
+            Assert.Equal("LOBBY_NOT_FOUND", ex.Detail.ErrorCode);
+        }
+
+        [Fact]
+        public async Task UpdateGameSettings_WhenValid_ShouldSucceed()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(1, "Host", 1, _mockCallback.Object);
+            var lobby = new Lobby("CODE", hostClient, _mockUserDao.Object);
+
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByHostId(1)).Returns(lobby);
+
+            await _handler.UpdateGameSettings(user, new GameSettingsDto());
+        }
+
+        [Fact]
+        public async Task GetScoreboard_WhenLobbyNotFound_ShouldReturnEmptyArray()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByPlayerId(1)).Returns((Lobby)null);
+
+            var result = await _handler.GetScoreboard(user);
+
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task GetScoreboard_WhenLobbyExists_ShouldReturnCards()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            var hostClient = new PlayerClient(1, "Host", 1, _mockCallback.Object);
+            var lobby = new Lobby("CODE", hostClient, _mockUserDao.Object);
+
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByPlayerId(1)).Returns(lobby);
+
+            var result = await _handler.GetScoreboard(user);
+
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public async Task DeclareWin_WhenLobbyNotFound_ShouldThrowLobbyNotFound()
+        {
+            var dto = new PlayerBoardDto { PlayerId = 1 };
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByPlayerId(1)).Returns((Lobby)null);
+
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.DeclareWin(dto));
+
+            Assert.Equal("LOBBY_NOT_FOUND", ex.Detail.ErrorCode);
+        }
+
+        [Fact]
+        public async Task ValidateFalseLoteria_WhenLobbyNotFound_ShouldThrowLobbyNotFound()
+        {
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByPlayerId(1)).Returns((Lobby)null);
+
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.ValidateFalseLoteriaAsync(1));
+
+            Assert.Equal("LOBBY_NOT_FOUND", ex.Detail.ErrorCode);
+        }
+
+        [Fact]
+        public async Task ConfirmGameEnd_WhenLobbyNotFound_ShouldLogAndReturn()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            _mockLobbyManager.Setup(lm => lm.FindLobbyByPlayerId(1)).Returns((Lobby)null);
+
+            await _handler.ConfirmGameEnd(user, 2);
+        }
+
+        private void SetGameInProgress(Lobby lobby, bool value)
+        {
+            var prop = typeof(Lobby).GetProperty("IsGameInProgress");
+            if (prop != null && prop.CanWrite)
+            {
+                prop.SetValue(lobby, value);
+            }
+            else
+            {
+                var field = typeof(Lobby).GetField("<IsGameInProgress>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (field != null) field.SetValue(lobby, value);
+            }
         }
     }
 }

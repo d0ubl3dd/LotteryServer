@@ -26,22 +26,30 @@ namespace Tests.Handlers
         }
 
         [Fact]
-        public async Task GetSocialMedia_WhenUserExistsAndHasData_ShouldReturnDto()
+        public void Constructor_WhenSocialDaoIsNull_ShouldThrowArgumentNullException()
         {
-            var user = new UserBuilder().WithId(1).Build();
-            var socialData = new SocialMedia { id_user = 1, facebook = "fb_user" };
-
-            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-            _mockSocialDao.Setup(d => d.GetSocialMediaByUserIdAsync(1)).ReturnsAsync(socialData);
-
-            var result = await _handler.GetSocialMedia(1);
-
-            Assert.NotNull(result);
-            Assert.Equal("fb_user", result.Facebook);
+            Assert.Throws<ArgumentNullException>(() => new SocialMediaHandler(null, _mockUserDao.Object));
         }
 
         [Fact]
-        public async Task GetSocialMedia_WhenUserExistsButNoData_ShouldReturnEmptyDto()
+        public void Constructor_WhenUserDaoIsNull_ShouldThrowArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SocialMediaHandler(_mockSocialDao.Object, null));
+        }
+
+        [Fact]
+        public async Task GetSocialMedia_WhenUserNotFound_ShouldThrowUserNotFound()
+        {
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync((User)null);
+
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.GetSocialMedia(1));
+
+            Assert.Equal("AUTH_USER_NOT_FOUND", ex.Detail.ErrorCode);
+        }
+
+        [Fact]
+        public async Task GetSocialMedia_WhenNoSocialData_ShouldReturnEmptyDto()
         {
             var user = new UserBuilder().WithId(1).Build();
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
@@ -51,62 +59,86 @@ namespace Tests.Handlers
 
             Assert.NotNull(result);
             Assert.Null(result.Facebook);
+            Assert.Null(result.Twitter);
         }
 
         [Fact]
-        public async Task GetSocialMedia_WhenUserNotFound_ShouldThrowFault_UserNotFound()
+        public async Task GetSocialMedia_WhenDataExists_ShouldReturnMappedDto()
         {
-            _mockUserDao.Setup(d => d.GetUserByIdAsync(99)).ReturnsAsync((User)null);
+            var user = new UserBuilder().WithId(1).Build();
+            var social = new SocialMedia { id_user = 1, facebook = "fb", twitter = "tw" };
+
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
+            _mockSocialDao.Setup(d => d.GetSocialMediaByUserIdAsync(1)).ReturnsAsync(social);
+
+            var result = await _handler.GetSocialMedia(1);
+
+            Assert.Equal("fb", result.Facebook);
+            Assert.Equal("tw", result.Twitter);
+        }
+
+        [Fact]
+        public async Task UpdateSocialMedia_WhenDtoIsNull_ShouldThrowArgumentNull()
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.UpdateSocialMedia(null));
+        }
+
+        [Fact]
+        public async Task UpdateSocialMedia_WhenUserNotFound_ShouldThrowUserNotFound()
+        {
+            var dto = new SocialMediaDto { IdUser = 1 };
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync((User)null);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.GetSocialMedia(99));
+                _handler.UpdateSocialMedia(dto));
 
             Assert.Equal("AUTH_USER_NOT_FOUND", ex.Detail.ErrorCode);
         }
 
-        [Fact]
-        public async Task UpdateSocialMedia_WhenNewRecord_ShouldAddAndSave()
+        [Theory]
+        [InlineData("taken_tw")]
+        [InlineData("another_tw")]
+        public async Task UpdateSocialMedia_WhenTwitterDuplicate_ShouldThrowUserAlreadyExists(string twitter)
         {
             var user = new UserBuilder().WithId(1).Build();
-            var dto = new SocialMediaDto { IdUser = 1, Twitter = "new_tw" };
+            var dto = new SocialMediaDto { IdUser = 1, Twitter = twitter };
 
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-            _mockSocialDao.Setup(d => d.GetSocialMediaByUserIdAsync(1)).ReturnsAsync((SocialMedia)null);
+            _mockSocialDao.Setup(d => d.ExistsTwitterUsernameExcludingUserAsync(1, twitter)).ReturnsAsync(true);
 
-            var success = await _handler.UpdateSocialMedia(dto);
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.UpdateSocialMedia(dto));
 
-            Assert.True(success);
-            _mockSocialDao.Verify(d => d.AddSocialMediaAsync(It.Is<SocialMedia>(s => s.twitter == "new_tw")), Times.Once);
-            _mockSocialDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+            Assert.Equal("USER_DUPLICATE", ex.Detail.ErrorCode);
         }
 
-        [Fact]
-        public async Task UpdateSocialMedia_WhenExistingRecord_ShouldUpdateAndSave()
+        [Theory]
+        [InlineData("taken_insta")]
+        [InlineData("insta_pro")]
+        public async Task UpdateSocialMedia_WhenInstagramDuplicate_ShouldThrowUserAlreadyExists(string instagram)
         {
             var user = new UserBuilder().WithId(1).Build();
-            var existingSocial = new SocialMedia { id_user = 1, twitter = "old_tw" };
-            var dto = new SocialMediaDto { IdUser = 1, Twitter = "updated_tw" };
+            var dto = new SocialMediaDto { IdUser = 1, Instagram = instagram };
 
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-            _mockSocialDao.Setup(d => d.GetSocialMediaByUserIdAsync(1)).ReturnsAsync(existingSocial);
+            _mockSocialDao.Setup(d => d.ExistsInstagramUsernameExcludingUserAsync(1, instagram)).ReturnsAsync(true);
 
-            var success = await _handler.UpdateSocialMedia(dto);
+            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
+                _handler.UpdateSocialMedia(dto));
 
-            Assert.True(success);
-            Assert.Equal("updated_tw", existingSocial.twitter);
-            _mockSocialDao.Verify(d => d.UpdateSocialMediaAsync(existingSocial), Times.Once);
-            _mockSocialDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+            Assert.Equal("USER_DUPLICATE", ex.Detail.ErrorCode);
         }
 
-        [Fact]
-        public async Task UpdateSocialMedia_WhenTwitterDuplicate_ShouldThrowFault_UserDuplicate()
+        [Theory]
+        [InlineData("taken_tiktok")]
+        [InlineData("tiktok_star")]
+        public async Task UpdateSocialMedia_WhenTikTokDuplicate_ShouldThrowUserAlreadyExists(string tiktok)
         {
             var user = new UserBuilder().WithId(1).Build();
-            var dto = new SocialMediaDto { IdUser = 1, Twitter = "taken_handle" };
+            var dto = new SocialMediaDto { IdUser = 1, TikTok = tiktok };
 
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-            _mockSocialDao.Setup(d => d.ExistsTwitterUsernameExcludingUserAsync(1, "taken_handle"))
-                          .ReturnsAsync(true);
+            _mockSocialDao.Setup(d => d.ExistsTikTokUsernameExcludingUserAsync(1, tiktok)).ReturnsAsync(true);
 
             var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
                 _handler.UpdateSocialMedia(dto));
@@ -115,12 +147,35 @@ namespace Tests.Handlers
         }
 
         [Fact]
-        public async Task UpdateSocialMedia_WhenDtoIsNull_ShouldThrowFault_BadRequest()
+        public async Task UpdateSocialMedia_WhenNewRecord_ShouldAdd()
         {
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.UpdateSocialMedia(null));
+            var user = new UserBuilder().WithId(1).Build();
+            var dto = new SocialMediaDto { IdUser = 1, Facebook = "new_fb" };
 
-            Assert.Equal("GLOBAL_BAD_REQUEST", ex.Detail.ErrorCode);
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
+            _mockSocialDao.Setup(d => d.GetSocialMediaByUserIdAsync(1)).ReturnsAsync((SocialMedia)null);
+
+            await _handler.UpdateSocialMedia(dto);
+
+            _mockSocialDao.Verify(d => d.AddSocialMediaAsync(It.Is<SocialMedia>(s => s.facebook == "new_fb")), Times.Once);
+            _mockSocialDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateSocialMedia_WhenExistingRecord_ShouldUpdate()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            var existing = new SocialMedia { id_user = 1, facebook = "old_fb" };
+            var dto = new SocialMediaDto { IdUser = 1, Facebook = "new_fb" };
+
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
+            _mockSocialDao.Setup(d => d.GetSocialMediaByUserIdAsync(1)).ReturnsAsync(existing);
+
+            await _handler.UpdateSocialMedia(dto);
+
+            Assert.Equal("new_fb", existing.facebook);
+            _mockSocialDao.Verify(d => d.UpdateSocialMediaAsync(existing), Times.Once);
+            _mockSocialDao.Verify(d => d.SaveChangesAsync(), Times.Once);
         }
     }
 }

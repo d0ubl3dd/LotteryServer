@@ -4,9 +4,9 @@ using System;
 using System.Threading.Tasks;
 using System.ServiceModel;
 using BusinessLogic.Handlers;
+using BusinessLogic.Exceptions;
 using Contracts.Services.Email;
 using Contracts.Faults;
-using BusinessLogic.Exceptions;
 
 namespace Tests.Handlers
 {
@@ -22,9 +22,27 @@ namespace Tests.Handlers
         }
 
         [Fact]
-        public async Task SendCode_WhenEmailValid_ShouldStoreCodeAndSendEmail()
+        public void Constructor_WhenEmailServiceIsNull_ShouldThrowArgumentNullException()
         {
-            string email = "test@example.com";
+            Assert.Throws<ArgumentNullException>(() => new VerificationHandler(null));
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task SendVerificationCode_WhenEmailIsInvalid_ShouldThrowArgumentNullException(string email)
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.SendVerificationCode(email));
+        }
+
+        [Theory]
+        [InlineData("test1@example.com")]
+        [InlineData("user.name@domain.co")]
+        [InlineData("admin@localhost")]
+        public async Task SendVerificationCode_WhenValid_ShouldSendEmailAndReturnTrue(string email)
+        {
+            _mockEmailService.Setup(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                             .Returns(Task.CompletedTask);
 
             bool result = await _handler.SendVerificationCode(email);
 
@@ -32,17 +50,42 @@ namespace Tests.Handlers
             _mockEmailService.Verify(s => s.SendEmailAsync(email, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
-        [Fact]
-        public async Task SendCode_WhenEmailServiceFails_ShouldThrowFault_EmailFailed()
+        [Theory]
+        [InlineData(null, "123456")]
+        [InlineData("", "123456")]
+        public async Task VerifyCode_WhenEmailInvalid_ShouldThrowArgumentNullException(string email, string code)
         {
-            string email = "fail@example.com";
-            _mockEmailService.Setup(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-                             .ThrowsAsync(new Exception("SMTP Error"));
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.VerifyCode(email, code));
+        }
 
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.SendVerificationCode(email));
+        [Theory]
+        [InlineData("test@test.com", null)]
+        [InlineData("test@test.com", "")]
+        public async Task VerifyCode_WhenCodeInvalid_ShouldThrowArgumentNullException(string email, string code)
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.VerifyCode(email, code));
+        }
 
-            Assert.Equal("VERIFY_EMAIL_SEND_FAILED", ex.Detail.ErrorCode);
+        [Fact]
+        public async Task VerifyCode_WhenCodeNeverSent_ShouldReturnFalse()
+        {
+            bool result = await _handler.VerifyCode("unknown@test.com", "123456");
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData("111111")]
+        [InlineData("000000")]
+        [InlineData("abcdef")]
+        public async Task VerifyCode_WhenCodeSentButDoesNotMatch_ShouldReturnFalse(string wrongCode)
+        {
+            string email = Guid.NewGuid().ToString() + "@test.com";
+
+            await _handler.SendVerificationCode(email);
+
+            bool result = await _handler.VerifyCode(email, wrongCode);
+
+            Assert.False(result);
         }
 
         [Fact]
@@ -52,12 +95,12 @@ namespace Tests.Handlers
             string capturedCode = null;
 
             _mockEmailService.Setup(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-                .Callback<string, string, string>((to, subject, body) =>
+                .Callback<string, string, string>((e, s, body) =>
                 {
-                    var parts = body.Split(new[] { ": " }, StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length > 1)
+                    var split = body.Split(new[] { ": " }, StringSplitOptions.None);
+                    if (split.Length > 1)
                     {
-                        capturedCode = parts[1].Substring(0, 6);
+                        capturedCode = split[1].Substring(0, 6);
                     }
                 })
                 .Returns(Task.CompletedTask);
@@ -66,42 +109,77 @@ namespace Tests.Handlers
 
             Assert.NotNull(capturedCode);
 
-            bool isValid = await _handler.VerifyCode(email, capturedCode);
+            bool result = await _handler.VerifyCode(email, capturedCode);
 
-            Assert.True(isValid);
+            Assert.True(result);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task ConsumeVerificationCode_WhenEmailInvalid_ShouldThrowArgumentNullException(string email)
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.ConsumeVerificationCode(email));
         }
 
         [Fact]
-        public async Task VerifyCode_WhenCodeIsWrong_ShouldReturnFalse()
+        public async Task ConsumeVerificationCode_WhenNotSent_ShouldReturnFalse()
         {
-            string email = Guid.NewGuid().ToString() + "@test.com";
+            bool result = await _handler.ConsumeVerificationCode("never@sent.com");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ConsumeVerificationCode_WhenSentButNotVerified_ShouldReturnTrueAndRemove()
+        {
+            string email = Guid.NewGuid().ToString() + "@consume.com";
+
             await _handler.SendVerificationCode(email);
 
-            bool isValid = await _handler.VerifyCode(email, "000000");
+            bool result = await _handler.ConsumeVerificationCode(email);
 
-            Assert.False(isValid);
+            Assert.True(result);
+
+            bool secondTry = await _handler.ConsumeVerificationCode(email);
+            Assert.False(secondTry);
         }
 
         [Fact]
-        public async Task VerifyCode_WhenNoCodeRequested_ShouldReturnFalse()
+        public async Task FullFlow_SendVerifyConsume_ShouldWorkCorrectly()
         {
-            bool isValid = await _handler.VerifyCode("nobody@test.com", "123456");
+            string email = Guid.NewGuid().ToString() + "@flow.com";
+            string capturedCode = null;
 
-            Assert.False(isValid);
+            _mockEmailService.Setup(s => s.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string, string>((e, s, body) =>
+                {
+                    var split = body.Split(new[] { ": " }, StringSplitOptions.None);
+                    capturedCode = split[1].Substring(0, 6);
+                })
+                .Returns(Task.CompletedTask);
+
+            await _handler.SendVerificationCode(email);
+
+            bool verifyResult = await _handler.VerifyCode(email, capturedCode);
+            Assert.True(verifyResult);
+
+            bool consumeResult = await _handler.ConsumeVerificationCode(email);
+            Assert.True(consumeResult);
+
+            bool verifyAgain = await _handler.VerifyCode(email, capturedCode);
+            Assert.False(verifyAgain);
         }
 
         [Fact]
-        public async Task SendCode_WhenEmailEmpty_ShouldThrowFault_BadRequest()
+        public async Task ConsumeVerificationCode_WhenAlreadyConsumed_ShouldReturnFalse()
         {
-            await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.SendVerificationCode(""));
-        }
+            string email = Guid.NewGuid().ToString() + "@double.com";
+            await _handler.SendVerificationCode(email);
 
-        [Fact]
-        public async Task VerifyCode_WhenCodeEmpty_ShouldThrowFault_BadRequest()
-        {
-            await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.VerifyCode("a@a.com", ""));
+            await _handler.ConsumeVerificationCode(email);
+            bool result = await _handler.ConsumeVerificationCode(email);
+
+            Assert.False(result);
         }
     }
 }

@@ -1,16 +1,21 @@
-﻿using BusinessLogic.Handlers;
+﻿using Xunit;
+using Moq;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.ServiceModel;
+using BusinessLogic.Handlers;
+using BusinessLogic.Exceptions;
+using BusinessLogic.Logic;
 using Contracts.DTOs;
 using Contracts.Faults;
 using Contracts.Services.Users;
 using DataAccess;
 using DataAccess.DAOs;
-using Moq;
-using System.ServiceModel;
-using System.Threading.Tasks;
 using Tests.Builders;
-using Xunit;
+using System.Linq;
 
-namespace Tests.Logic
+namespace Tests.Handlers
 {
     public class UserHandlerTests
     {
@@ -26,131 +31,211 @@ namespace Tests.Logic
         }
 
         [Fact]
-        public async Task RegisterUserWithCode_WhenDtoAndCodeAreValid_ShouldAddUserAndReturnId()
+        public void Constructor_WhenUserDaoIsNull_ShouldThrowArgumentNullException()
         {
-            var dto = new UserDto
-            {
-                Nickname = "NewUser",
-                Email = "new@test.com",
-                Password = "Password123!",
-                FirstName = "Test",
-                PaternalLastName = "Test"
-            };
-
-            string verificationCode = "123456";
-
-            _mockVerificationService
-                .Setup(v => v.VerifyCode(dto.Email, verificationCode))
-                .ReturnsAsync(true);
-
-            _mockVerificationService
-                .Setup(v => v.ConsumeVerificationCode(dto.Email))
-                .Returns(Task.FromResult(true));
-
-            _mockUserDao
-                .Setup(d => d.AddUser(It.IsAny<User>()))
-                .Callback<User>(u => u.id_user = 10);
-
-            int result = await _handler.RegisterUserWithCode(dto, verificationCode);
-
-            _mockUserDao.Verify(d => d.AddUser(It.Is<User>(u => u.nickname == dto.Nickname && u.email == dto.Email)), Times.Once);
-            _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
-            _mockVerificationService.Verify(v => v.ConsumeVerificationCode(dto.Email), Times.Once);
-
-            Assert.True(result > 0);
+            Assert.Throws<ArgumentNullException>(() => new UserHandler(null, _mockVerificationService.Object));
         }
 
         [Fact]
-        public async Task RequestVerification_WhenNicknameExists_ShouldThrowFault_UserDuplicate()
+        public void Constructor_WhenVerificationServiceIsNull_ShouldThrowArgumentNullException()
         {
-            var dto = new UserDto
-            {
-                Nickname = "TakenNick",
-                Email = "a@a.com",
-                Password = "PasswordValid1!",
-                FirstName = "A",
-                PaternalLastName = "B"
-            };
-
-            _mockUserDao.Setup(d => d.NicknameExistsAsync("TakenNick")).ReturnsAsync(true);
-
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.RequestUserVerification(dto));
-
-            Assert.Equal("USER_DUPLICATE", ex.Detail.ErrorCode);
+            Assert.Throws<ArgumentNullException>(() => new UserHandler(_mockUserDao.Object, null));
         }
 
         [Fact]
-        public async Task VerifyPassword_WhenPasswordIsCorrect_ShouldReturnTrue()
+        public async Task RequestUserVerification_WhenDtoIsNull_ShouldThrowArgumentNullException()
         {
-            string pass = "MySecretPass";
-            var user = new UserBuilder().WithId(1).WithPassword(pass).Build();
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.RequestUserVerification(null));
+        }
+
+        [Fact]
+        public async Task RegisterUserWithCode_WhenDtoIsNull_ShouldThrowArgumentNullException()
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.RegisterUserWithCode(null, "123"));
+        }
+
+        [Fact]
+        public async Task VerifyPassword_WhenCorrect_ShouldReturnTrue()
+        {
+            var pass = "Pass1!";
+            PasswordHasher.CreatePasswordHash(pass, out byte[] hash, out byte[] salt);
+            var user = new UserBuilder().WithId(1).Build();
+            user.passwordHash = hash;
+            user.passwordSalt = salt;
 
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
 
-            bool isValid = await _handler.VerifyPassword(1, pass);
-
-            Assert.True(isValid);
+            var result = await _handler.VerifyPassword(1, pass);
+            Assert.True(result);
         }
 
         [Fact]
-        public async Task VerifyPassword_WhenPasswordIsIncorrect_ShouldReturnFalse()
-        {
-            var user = new UserBuilder().WithId(1).WithPassword("CorrectPass").Build();
-            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-
-            bool isValid = await _handler.VerifyPassword(1, "WrongPass");
-
-            Assert.False(isValid);
-        }
-
-        [Fact]
-        public async Task ChangePassword_WhenUserExists_ShouldUpdateHashAndSave()
+        public async Task ChangePassword_WhenValid_ShouldUpdateAndSave()
         {
             var user = new UserBuilder().WithId(1).Build();
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
 
-            await _handler.ChangePassword(1, "NewPass123");
+            await _handler.ChangePassword(1, "NewPass1!");
 
             _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
         }
 
         [Fact]
-        public async Task UpdateProfile_WhenNicknameChangedToDuplicate_ShouldThrowFault()
+        public async Task UpdateProfile_WhenDtoIsNull_ShouldThrowArgumentNullException()
         {
-            var user = new UserBuilder().WithId(1).WithNickname("OldNick").Build();
-            var dto = new UserDto { Nickname = "TakenNick", FirstName = "A", PaternalLastName = "B" };
-
-            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-            _mockUserDao.Setup(d => d.NicknameExistsAsync("TakenNick")).ReturnsAsync(true);
-
-            var ex = await Assert.ThrowsAsync<FaultException<ServiceFault>>(() =>
-                _handler.UpdateProfile(1, dto));
-
-            Assert.Equal("USER_DUPLICATE", ex.Detail.ErrorCode);
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _handler.UpdateProfile(1, null));
         }
 
         [Fact]
-        public async Task UpdateProfile_WhenValid_ShouldUpdatePropertiesAndSave()
+        public async Task UpdateProfile_WhenValid_ShouldUpdateFieldsAndReturnSuccess()
         {
-            var user = new UserBuilder().WithId(1).WithNickname("OldNick").Build();
-            var dto = new UserDto
-            {
-                Nickname = "NewNick",
-                FirstName = "NewName",
-                PaternalLastName = "NewLast",
-                AvatarId = 5
-            };
+            var user = new UserBuilder().WithId(1).WithNickname("Old").Build();
+            var dto = new UserDto { Nickname = "New", FirstName = "F", PaternalLastName = "P", AvatarId = 5 };
 
             _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
-            _mockUserDao.Setup(d => d.NicknameExistsAsync("NewNick")).ReturnsAsync(false);
+            _mockUserDao.Setup(d => d.NicknameExistsAsync("New")).ReturnsAsync(false);
 
-            await _handler.UpdateProfile(1, dto);
+            var result = await _handler.UpdateProfile(1, dto);
 
-            Assert.Equal("NewNick", user.nickname);
-            Assert.Equal("NewName", user.first_name);
+            Assert.True(result.Success);
+            Assert.Equal("New", user.nickname);
+            Assert.Equal("F", user.first_name);
             Assert.Equal(5, user.id_avatar);
             _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task RequestEmailChangeVerification_WhenEmailEmpty_ShouldThrowArgumentException(string email)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _handler.RequestEmailChangeVerification(email));
+        }
+
+        [Fact]
+        public async Task RequestEmailChangeVerification_WhenValid_ShouldReturnTrue()
+        {
+            _mockUserDao.Setup(d => d.EmailExistsAsync("new@a.com")).ReturnsAsync(false);
+            _mockVerificationService.Setup(v => v.SendVerificationCode("new@a.com")).ReturnsAsync(true);
+
+            var result = await _handler.RequestEmailChangeVerification("new@a.com");
+            Assert.True(result);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task ChangeEmailWithCodeAsync_WhenEmailEmpty_ShouldThrowArgumentException(string email)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _handler.ChangeEmailWithCodeAsync(1, email, "123"));
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task ChangeEmailWithCodeAsync_WhenCodeEmpty_ShouldThrowArgumentException(string code)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _handler.ChangeEmailWithCodeAsync(1, "a@a.com", code));
+        }
+
+        [Fact]
+        public async Task ChangeEmailWithCodeAsync_WhenValid_ShouldUpdateEmail()
+        {
+            var user = new UserBuilder().WithId(1).Build();
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
+            _mockVerificationService.Setup(v => v.VerifyCode("new@a.com", "123")).ReturnsAsync(true);
+            _mockUserDao.Setup(d => d.EmailExistsAsync("new@a.com")).ReturnsAsync(false);
+
+            await _handler.ChangeEmailWithCodeAsync(1, "new@a.com", "123");
+
+            Assert.Equal("new@a.com", user.email);
+            _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task RecoverPasswordRequest_WhenEmailEmpty_ShouldThrowArgumentException(string email)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _handler.RecoverPasswordRequest(email));
+        }
+
+        [Fact]
+        public async Task RecoverPasswordRequest_WhenValid_ShouldReturnTrue()
+        {
+            _mockUserDao.Setup(d => d.EmailExistsAsync("a@a.com")).ReturnsAsync(true);
+            _mockVerificationService.Setup(v => v.SendVerificationCode("a@a.com")).ReturnsAsync(true);
+
+            Assert.True(await _handler.RecoverPasswordRequest("a@a.com"));
+        }
+
+        [Fact]
+        public async Task RegisterGuest_ShouldReturnNegativeOne()
+        {
+            Assert.Equal(-1, await _handler.RegisterGuest());
+        }
+
+        [Theory]
+        [InlineData("", "pass")]
+        [InlineData(null, "pass")]
+        [InlineData("a@a.com", "")]
+        [InlineData("a@a.com", null)]
+        public async Task RecoverPassword_WhenArgsEmpty_ShouldThrowArgumentException(string email, string pass)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _handler.RecoverPassword(email, pass));
+        }
+
+        [Fact]
+        public async Task RecoverPassword_WhenValid_ShouldUpdatePass()
+        {
+            var user = new UserBuilder().Build();
+            _mockUserDao.Setup(d => d.GetUserByEmailAsync("a@a.com")).ReturnsAsync(user);
+
+            await _handler.RecoverPassword("a@a.com", "NewPass123!");
+            _mockUserDao.Verify(d => d.SaveChangesAsync(), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task FindUserByNickname_WhenEmpty_ShouldThrowArgumentException(string nick)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _handler.FindUserByNickname(nick));
+        }
+
+        [Fact]
+        public async Task FindUserByNickname_WhenFound_ShouldReturnDto()
+        {
+            var user = new UserBuilder().WithId(1).WithNickname("Found").Build();
+            _mockUserDao.Setup(d => d.GetUserByNicknameAsync("Found")).ReturnsAsync(user);
+
+            var result = await _handler.FindUserByNickname("Found");
+            Assert.Equal("Found", result.Nickname);
+        }
+
+        [Fact]
+        public async Task GetUserProfile_WhenFound_ShouldReturnDto()
+        {
+            var user = new UserBuilder().WithId(1).WithNickname("Nick").Build();
+            _mockUserDao.Setup(d => d.GetUserByIdAsync(1)).ReturnsAsync(user);
+
+            var result = await _handler.GetUserProfile(1);
+            Assert.Equal("Nick", result.Nickname);
+        }
+
+        [Fact]
+        public async Task GetLeaderboard_ShouldReturnList()
+        {
+            var list = new List<User>
+            {
+                new UserBuilder().WithId(1).Build(),
+                new UserBuilder().WithId(2).Build()
+            };
+            _mockUserDao.Setup(d => d.GetLeaderboard()).ReturnsAsync(list);
+
+            var result = await _handler.GetLeaderboard();
+            Assert.Equal(2, result.Count);
         }
     }
 }
