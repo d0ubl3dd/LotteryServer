@@ -48,7 +48,6 @@
     <Compile Include="Callbacks\ILotteryCallback.cs" />
     <Compile Include="DTOs\CardDto.cs" />
     <Compile Include="DTOs\FriendDto.cs" />
-    <Compile Include="DTOs\GameResultDto.cs" />
     <Compile Include="DTOs\GameSettingsDto.cs" />
     <Compile Include="DTOs\LeaderboardPlayerDto.cs" />
     <Compile Include="DTOs\LobbyStateDto.cs" />

@@ -224,42 +224,24 @@ namespace BusinessLogic.Models
 
             StopLobbyGame();
 
-            var resultDto = new GameResultDto
-            {
-                WinnerId = winnerClient.UserId,
-                WinnerNickname = winnerClient.Nickname,
-                IsDbConnectionError = false,
-                PointsEarned = 0
-            };
-
             try
             {
                 string messageCode = await ProcessWinScoreAsync(winnerClient);
-
                 BroadcastSystemMessage(messageCode);
 
                 var markedPositions = winnerClient.MarkedPositions ?? new List<int>();
-                BroadcastToAll(client =>
-                    client.NotifyWinner(
-                        winnerClient.Nickname,
-                        winnerClient.UserId,
-                        winnerClient.SelectedBoardId,
-                        markedPositions
-                    )
-                );
 
-                if (messageCode.StartsWith("WIN_REG"))
-                {
-                    resultDto.PointsEarned = WIN_SCORE;
-                }
+                BroadcastToAll(client => client.NotifyWinner(
+                    winnerClient.Nickname,
+                    winnerClient.UserId,
+                    winnerClient.SelectedBoardId,
+                    markedPositions));
             }
             catch (Exception ex)
             {
-                _logger.Error($"[NotifyGameWinAsync] Error guardando puntos para {winnerClient.Nickname}. Posible fallo de BD.", ex);
-                resultDto.IsDbConnectionError = true;
+                _logger.Error("Error en NotifyGameWinAsync", ex);
+                throw new FaultException(DB_ERROR_MESSAGE);
             }
-
-            BroadcastToAll(client => client.OnGameEnded(resultDto));
         }
 
         private async Task<string> ProcessWinScoreAsync(PlayerClient winnerClient)
@@ -320,7 +302,6 @@ namespace BusinessLogic.Models
                 }
                 if (IsGameInProgress && !token.IsCancellationRequested)
                 {
-                    // MENSAJE DE CHAT CUANDO SE ACABA EL MAZO
                     BroadcastSystemMessage("¡Se acabaron las cartas! Tienen 10 segundos para declarar Lotería.");
                     await Task.Delay(10000, token);
                 }
@@ -335,7 +316,13 @@ namespace BusinessLogic.Models
             _lastDeclarer = Players.FirstOrDefault(p => p.UserId == playerBoard.PlayerId);
             _lastMarkedPositions = new List<int>(playerBoard.MarkedPositions);
             PauseGame();
-            BroadcastToAll(client => client.NotifyWinner(_lastDeclarer.Nickname, _lastDeclarer.UserId, _lastDeclarer.SelectedBoardId, playerBoard.MarkedPositions));
+
+            BroadcastToAll(client => client.NotifyWinner(
+                _lastDeclarer.Nickname,
+                _lastDeclarer.UserId,
+                _lastDeclarer.SelectedBoardId,
+                playerBoard.MarkedPositions));
+
             return Task.CompletedTask;
         }
 
@@ -346,7 +333,8 @@ namespace BusinessLogic.Models
             if (boardConfig == null) return false;
             bool declarerWasCorrect = CheckIfDeclarerWon(boardConfig);
             var challenger = Players.FirstOrDefault(p => p.UserId == challengerUserId);
-            
+
+            // Notificamos resultado antes de procesar puntos para asegurar que llegue al chat
             BroadcastToAll(c => c.OnFalseLoteriaResult(_lastDeclarer.Nickname, challenger?.Nickname, declarerWasCorrect));
 
             try { await HandleFalseLoteriaOutcome(declarerWasCorrect, challenger); }
@@ -363,7 +351,8 @@ namespace BusinessLogic.Models
         {
             bool databaseChanged = false;
             if (declarerWasCorrect)
-            {                
+            {
+                // EL ACUSADOR SE EQUIVOCÓ: Restamos al acusador si no es invitado
                 if (challenger != null && challenger.UserId > 0)
                 {
                     var user = await _userDao.GetUserByIdAsync(challenger.UserId);
@@ -380,12 +369,14 @@ namespace BusinessLogic.Models
                 StopLobbyGame();
             }
             else
-            {                
+            {
+                // EL DECLARANTE MINTIÓ: Restamos al mentiroso, sumamos al que acertó
                 if (_lastDeclarer.UserId > 0)
                 {
                     var declarerUser = await _userDao.GetUserByIdAsync(_lastDeclarer.UserId);
                     if (declarerUser != null)
-                    {             
+                    {
+                        // RECTA AL MENTIROSO
                         declarerUser.score = Math.Max(0, (declarerUser.score ?? 0) - PENALTY_SCORE);
                         databaseChanged = true;
                     }
@@ -395,7 +386,8 @@ namespace BusinessLogic.Models
                 {
                     var challengerUser = await _userDao.GetUserByIdAsync(challenger.UserId);
                     if (challengerUser != null)
-                    {                        
+                    {
+                        // SUMA AL QUE ACERTÓ LA ACUSACIÓN
                         challengerUser.score = (challengerUser.score ?? 0) + PENALTY_SCORE;
                         databaseChanged = true;
                     }
