@@ -57,5 +57,8 @@ namespace Contracts.Callbacks
 
         [OperationContract(IsOneWay = true)]
         void OnGameCancelledByAbandonment();
+
+        [OperationContract(IsOneWay = true)]
+        void OnGameEnded(GameResultDto result);
     }
 }

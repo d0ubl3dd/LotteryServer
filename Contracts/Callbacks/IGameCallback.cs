@@ -9,5 +9,8 @@ namespace Contracts.Callbacks
     {
         [OperationContract(IsOneWay = true)]
         void PlayerDeclaredWinner(int playerId, string nickname);
+
+        [OperationContract(IsOneWay = true)]
+        void OnGameEnded(GameResultDto result);
     }
 }

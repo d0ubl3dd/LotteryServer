@@ -147,8 +147,8 @@
     <Property Name="sonaranalyzer-vbnet.pluginKey">vbnet</Property>
     <Property Name="sonar.java.jvmframeworkconfig.activate">true</Property>
     <Property Name="sonar.updatecenter.url">https://downloads.sonarsource.com/sonarqube/update/update-center.properties</Property>
-    <Property Name="sonar.core.id">147B411E-AZqXY1EwYqGQ_TGz6dJv</Property>
-    <Property Name="sonar.core.startTime">18/11/2025 09:26:11 a. m.</Property>
+    <Property Name="sonar.core.id">147B411E-AZuE8LRUZ5iKIacGILTH</Property>
+    <Property Name="sonar.core.startTime">14/01/2026 04:21:15 a. m.</Property>
   </ServerSettings>
   <LocalSettings>
     <Property Name="sonar.host.url">http://localhost:9000</Property>
@@ -162,8 +162,8 @@
       <AnalyzerPlugins>
         <AnalyzerPlugin Key="csharp" Version="10.15.0.120848" StaticResourceName="SonarAnalyzer-csharp-10.15.0.120848.zip">
           <AssemblyPaths>
-            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\2\SonarAnalyzer.CSharp.dll</Path>
-            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\2\THIRD-PARTY-NOTICES.txt</Path>
+            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\0\SonarAnalyzer.CSharp.dll</Path>
+            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\0\THIRD-PARTY-NOTICES.txt</Path>
           </AssemblyPaths>
         </AnalyzerPlugin>
       </AnalyzerPlugins>
@@ -178,8 +178,8 @@
       <AnalyzerPlugins>
         <AnalyzerPlugin Key="vbnet" Version="10.15.0.120848" StaticResourceName="SonarAnalyzer-vbnet-10.15.0.120848.zip">
           <AssemblyPaths>
-            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\3\SonarAnalyzer.VisualBasic.dll</Path>
-            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\3\THIRD-PARTY-NOTICES.txt</Path>
+            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\1\SonarAnalyzer.VisualBasic.dll</Path>
+            <Path>C:\Users\carlo\AppData\Local\Temp\.sonarqube\resources\1\THIRD-PARTY-NOTICES.txt</Path>
           </AssemblyPaths>
         </AnalyzerPlugin>
       </AnalyzerPlugins>
