@@ -17,8 +17,8 @@ namespace BusinessLogic.Handlers
 {
     public partial class UserHandler : BaseHandler
     {
-        private const string MandatoryFieldsMessage = "Todos los campos son obligatorios.";
-        private const string DefaultStatus = "Offline";
+        private const string MANDATORY_FIELD_MESSAGE = "Todos los campos son obligatorios.";
+        private const string DEFAULT_STATUS = "Offline";
 
         private readonly IUserDao _userRepository;
         private readonly IVerificationService _verificationHandler;
@@ -26,10 +26,10 @@ namespace BusinessLogic.Handlers
         private static readonly Dictionary<RegistrationValidationResult, Func<Exception>> _validationExceptions =
             new Dictionary<RegistrationValidationResult, Func<Exception>>
             {
-                { RegistrationValidationResult.EmptyNickname, () => new ArgumentException(MandatoryFieldsMessage) },
-                { RegistrationValidationResult.EmptyEmail, () => new ArgumentException(MandatoryFieldsMessage) },
-                { RegistrationValidationResult.EmptyPassword, () => new ArgumentException(MandatoryFieldsMessage) },
-                { RegistrationValidationResult.EmptyName, () => new ArgumentException(MandatoryFieldsMessage) },
+                { RegistrationValidationResult.EmptyNickname, () => new ArgumentException(MANDATORY_FIELD_MESSAGE) },
+                { RegistrationValidationResult.EmptyEmail, () => new ArgumentException(MANDATORY_FIELD_MESSAGE) },
+                { RegistrationValidationResult.EmptyPassword, () => new ArgumentException(MANDATORY_FIELD_MESSAGE) },
+                { RegistrationValidationResult.EmptyName, () => new ArgumentException(MANDATORY_FIELD_MESSAGE) },
                 { RegistrationValidationResult.InvalidNicknameLength, () => new ArgumentException("El nickname debe tener al menos 4 caracteres.") },
                 { RegistrationValidationResult.InvalidEmailFormat, () => new ArgumentException("El formato del correo electrónico no es válido.") },
                 { RegistrationValidationResult.PasswordTooShort, () => new ArgumentException("La contraseña debe tener al menos 8 caracteres.") },
@@ -133,7 +133,7 @@ namespace BusinessLogic.Handlers
                     passwordSalt = passwordSalt,
                     isLocked = false,
                     failedLoginAttempts = 0,
-                    status = DefaultStatus,
+                    status = DEFAULT_STATUS,
                     id_avatar = 1
                 };
 
@@ -343,12 +343,12 @@ namespace BusinessLogic.Handlers
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new ArgumentException(MandatoryFieldsMessage, nameof(email));
+                throw new ArgumentException(MANDATORY_FIELD_MESSAGE, nameof(email));
             }
 
             if (string.IsNullOrWhiteSpace(newPassword))
             {
-                throw new ArgumentException(MandatoryFieldsMessage, nameof(newPassword));
+                throw new ArgumentException(MANDATORY_FIELD_MESSAGE, nameof(newPassword));
             }
 
             return await ExecuteFaultSafeAsync(async () =>

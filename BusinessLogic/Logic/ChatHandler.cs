@@ -12,7 +12,7 @@ namespace BusinessLogic.Handlers
         private readonly ISessionManager _sessionManager;
         private readonly ILobbyManager _lobbyManager;
 
-        private const string SpamKeyword = "Spam";
+        private const string SPAM_KEYWORD = "Spam";
 
         public ChatHandler(ISessionManager sessionManager, ILobbyManager lobbyManager)
             : base(typeof(ChatHandler))
@@ -60,7 +60,7 @@ namespace BusinessLogic.Handlers
                     _logger.WarnFormat("[SendMessage] Grosería detectada de {0}. Procediendo a expulsión.", client.Nickname);
                     _lobbyManager.KickPlayer(client.CurrentLobby.Host, client.UserId);
                 }
-                catch (ChatException ex) when (ex.Message.Contains(SpamKeyword))
+                catch (ChatException ex) when (ex.Message.Contains(SPAM_KEYWORD))
                 {
                     _logger.WarnFormat("[SendMessage] Spam detectado de {0}. Procediendo a expulsión.", client.Nickname);
                     _lobbyManager.KickPlayer(client.CurrentLobby.Host, client.UserId);

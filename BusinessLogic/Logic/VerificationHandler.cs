@@ -10,8 +10,8 @@ namespace BusinessLogic.Handlers
 {
     public class VerificationHandler : BaseHandler, IVerificationService
     {
-        private const int ExpirationMinutes = 5;
-        private const string EmailSubject = "Código de verificación - Lottery Game";
+        private const int EXPIRATION_MINUTES = 5;
+        private const string EMAIL_SUBJECT = "Código de verificación - Lottery Game";
 
         private readonly IEmailService _emailService;
         private readonly Random _random = new Random();
@@ -41,7 +41,7 @@ namespace BusinessLogic.Handlers
             return await ExecuteFaultSafeAsync(async () =>
             {
                 string code = _random.Next(100000, 999999).ToString();
-                DateTime expiration = DateTime.UtcNow.AddMinutes(ExpirationMinutes);
+                DateTime expiration = DateTime.UtcNow.AddMinutes(EXPIRATION_MINUTES);
 
                 _codes[email] = new VerificationEntry
                 {
@@ -50,11 +50,11 @@ namespace BusinessLogic.Handlers
                     IsUsed = false
                 };
 
-                string body = $"Tu código de verificación es: {code}\n\nEste código expirará en {ExpirationMinutes} minutos.";
+                string body = $"Tu código de verificación es: {code}\n\nEste código expirará en {EXPIRATION_MINUTES} minutos.";
 
                 try
                 {
-                    await _emailService.SendEmailAsync(email, EmailSubject, body);
+                    await _emailService.SendEmailAsync(email, EMAIL_SUBJECT, body);
                 }
                 catch (Exception exception)
                 {

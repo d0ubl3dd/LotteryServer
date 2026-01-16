@@ -14,7 +14,7 @@ namespace BusinessLogic.Logic
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LobbyManager));
         private readonly ConcurrentDictionary<string, Lobby> _lobbies = new ConcurrentDictionary<string, Lobby>();
 
-        private const string LobbyCodeChars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
+        private const string LOBBY_CODE_CHARS = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
 
         private readonly ISessionManager _sessionManager;
         private readonly IUserDao _userDao;
@@ -185,7 +185,7 @@ namespace BusinessLogic.Logic
             string code;
             do
             {
-                code = new string(Enumerable.Repeat(LobbyCodeChars, 6)
+                code = new string(Enumerable.Repeat(LOBBY_CODE_CHARS, 6)
                     .Select(s => s[random.Next(s.Length)]).ToArray());
             }
             while (_lobbies.ContainsKey(code));

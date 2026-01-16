@@ -320,8 +320,7 @@ namespace BusinessLogic.Models
             if (boardConfig == null) return false;
             bool declarerWasCorrect = CheckIfDeclarerWon(boardConfig);
             var challenger = Players.FirstOrDefault(p => p.UserId == challengerUserId);
-
-            // Notificamos resultado antes de procesar puntos para asegurar que llegue al chat
+            
             BroadcastToAll(c => c.OnFalseLoteriaResult(_lastDeclarer.Nickname, challenger?.Nickname, declarerWasCorrect));
 
             try { await HandleFalseLoteriaOutcome(declarerWasCorrect, challenger); }
@@ -338,8 +337,7 @@ namespace BusinessLogic.Models
         {
             bool databaseChanged = false;
             if (declarerWasCorrect)
-            {
-                // EL ACUSADOR SE EQUIVOCÓ: Restamos al acusador si no es invitado
+            {                
                 if (challenger != null && challenger.UserId > 0)
                 {
                     var user = await _userDao.GetUserByIdAsync(challenger.UserId);
@@ -356,14 +354,12 @@ namespace BusinessLogic.Models
                 StopLobbyGame();
             }
             else
-            {
-                // EL DECLARANTE MINTIÓ: Restamos al mentiroso, sumamos al que acertó
+            {                
                 if (_lastDeclarer.UserId > 0)
                 {
                     var declarerUser = await _userDao.GetUserByIdAsync(_lastDeclarer.UserId);
                     if (declarerUser != null)
-                    {
-                        // RECTA AL MENTIROSO
+                    {             
                         declarerUser.score = Math.Max(0, (declarerUser.score ?? 0) - PENALTY_SCORE);
                         databaseChanged = true;
                     }
@@ -373,8 +369,7 @@ namespace BusinessLogic.Models
                 {
                     var challengerUser = await _userDao.GetUserByIdAsync(challenger.UserId);
                     if (challengerUser != null)
-                    {
-                        // SUMA AL QUE ACERTÓ LA ACUSACIÓN
+                    {                        
                         challengerUser.score = (challengerUser.score ?? 0) + PENALTY_SCORE;
                         databaseChanged = true;
                     }
