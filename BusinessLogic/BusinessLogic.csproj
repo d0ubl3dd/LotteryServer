@@ -75,6 +75,7 @@
     <Compile Include="Logic\AuthenticationHandler.cs" />
     <Compile Include="Logic\Base\BaseHandler.cs" />
     <Compile Include="Logic\ChatHandler.cs" />
+    <Compile Include="Logic\DisconnectionHandler.cs" />
     <Compile Include="Logic\FriendHandler.cs" />
     <Compile Include="Logic\GameHandler.cs" />
     <Compile Include="Logic\GlobalSessionManager.cs" />

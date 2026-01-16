@@ -25,7 +25,10 @@ namespace BusinessLogic.Logic
 
         public async Task ChooseBoard(User currentUser, int boardId)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser));
+            }
 
             await ExecuteFaultSafeAsync(() =>
             {
@@ -67,7 +70,10 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> CreateLobby(User currentUser)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser));
+            }
 
             return await ExecuteFaultSafeAsync(() =>
             {
@@ -95,7 +101,10 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> JoinLobby(User currentUser, string lobbyCode)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser));
+            }
 
             return await ExecuteFaultSafeAsync(() =>
             {
@@ -140,7 +149,10 @@ namespace BusinessLogic.Logic
 
         public async Task LeaveLobby(User currentUser)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser));
+            }
 
             await ExecuteFaultSafeAsync(() =>
             {
@@ -154,7 +166,10 @@ namespace BusinessLogic.Logic
 
         public async Task KickPlayer(User currentUser, int targetPlayerId)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser));
+            }
 
             await ExecuteFaultSafeAsync(() =>
             {
@@ -168,7 +183,10 @@ namespace BusinessLogic.Logic
 
         public async Task<LobbyStateDto> GetLobbyState(User currentUser, string lobbyCode)
         {
-            if (currentUser == null) throw new ArgumentNullException(nameof(currentUser));
+            if (currentUser == null)
+            {
+                throw new ArgumentNullException(nameof(currentUser));
+            }
 
             return await ExecuteFaultSafeAsync(() =>
             {

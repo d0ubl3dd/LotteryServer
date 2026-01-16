@@ -18,7 +18,9 @@ namespace BusinessLogic.Models
         public List<int> MarkedPositions { get; } = new List<int>();
         public HashSet<int> WinningCards { get; set; } = new HashSet<int>();
 
-        public PlayerClient() { }
+        public PlayerClient()
+        {
+        }
 
         public PlayerClient(int userId, string nickname, int avatarId, ILotteryCallback callbackChannel)
         {
