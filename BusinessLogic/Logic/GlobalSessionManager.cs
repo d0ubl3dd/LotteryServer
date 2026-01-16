@@ -1,24 +1,36 @@
 ﻿using BusinessLogic.Exceptions;
+using BusinessLogic.Handlers;
 using BusinessLogic.Logic.Base;
 using BusinessLogic.Models;
 using Contracts.Callbacks;
 using DataAccess;
+using DataAccess.DAOs;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel;
+using System.Threading.Tasks;
+using System.Timers;
 
 namespace BusinessLogic.Logic
 {
     public class GlobalSessionManager : BaseHandler, ISessionManager
     {
-        private static readonly Lazy<GlobalSessionManager> _instance =
-            new Lazy<GlobalSessionManager>(() => new GlobalSessionManager());
-        public static GlobalSessionManager Instance => _instance.Value;
+        private static readonly Lazy<GlobalSessionManager> _instance = new Lazy<GlobalSessionManager>(() => new GlobalSessionManager());
 
-        private readonly ConcurrentDictionary<int, PlayerClient> _onlineUsers =
-            new ConcurrentDictionary<int, PlayerClient>();
+        public static GlobalSessionManager Instance
+        {
+            get { return _instance.Value; }
+        }
+
+        private readonly ConcurrentDictionary<int, PlayerClient> _onlineUsers = new ConcurrentDictionary<int, PlayerClient>();
+
+        private readonly ConcurrentDictionary<int, Timer> _reconnectionTimers = new ConcurrentDictionary<int, Timer>();
+
+        public ILobbyManager LobbyManagerService { get; set; }
+
+        private const double RECONNECTION_TIMEOUT_MS = 30000;
 
         private GlobalSessionManager() : base(typeof(GlobalSessionManager))
         {
@@ -38,6 +50,13 @@ namespace BusinessLogic.Logic
 
             ExecuteFaultSafe(() =>
             {
+                if (_reconnectionTimers.TryRemove(user.id_user, out var timer))
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                    _logger.InfoFormat("[RegisterClient] Timer de desconexión cancelado para usuario {0} por nuevo Login.", user.id_user);
+                }
+
                 var client = new PlayerClient(
                             user.id_user,
                             user.nickname,
@@ -73,6 +92,12 @@ namespace BusinessLogic.Logic
         {
             return ExecuteFaultSafe(() =>
             {
+                if (_reconnectionTimers.TryRemove(userId, out var timer))
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                }
+
                 if (!_onlineUsers.TryRemove(userId, out var client))
                 {
                     _logger.WarnFormat("[UnregisterClient] Usuario {0} ya estaba desconectado. No se toma acción.", userId);
@@ -85,24 +110,52 @@ namespace BusinessLogic.Logic
             }, "UnregisterClient");
         }
 
-        private void AutoDisconnect(int userId)
+        private void HandleConnectionLost(int userId)
+        {
+            if (_reconnectionTimers.ContainsKey(userId))
+            {
+                return;
+            }
+
+            _logger.WarnFormat("[HandleConnectionLost] Conexión perdida para usuario {0}. Iniciando espera de {1}ms para reconexión...", userId, RECONNECTION_TIMEOUT_MS);
+
+            var timer = new Timer(RECONNECTION_TIMEOUT_MS);
+            timer.AutoReset = false;
+            timer.Elapsed += (sender, e) => ExecuteTimeoutDisconnection(userId, timer);
+
+            if (_reconnectionTimers.TryAdd(userId, timer))
+            {
+                timer.Start();
+            }
+        }
+
+        private void ExecuteTimeoutDisconnection(int userId, Timer timer)
         {
             try
             {
-                var disconnectedClient = UnregisterClient(userId);
+                timer.Stop();
+                timer.Dispose();
+                _reconnectionTimers.TryRemove(userId, out _);
 
-                if (disconnectedClient == null)
+                _logger.WarnFormat("[ExecuteTimeoutDisconnection] Tiempo agotado para usuario {0}. Ejecutando limpieza completa.", userId);
+
+                if (this.LobbyManagerService == null)
                 {
-                    _logger.WarnFormat("[AutoDisconnect] Usuario {0} ya estaba desconectado. Ignorando evento duplicado.", userId);
+                    _logger.ErrorFormat("FATAL: LobbyManagerService no ha sido asignado en GlobalSessionManager. No se pueden cerrar lobbies para el usuario {0}.", userId);
+                    UnregisterClient(userId);
+                    return;
                 }
-                else
+
+                var disconnectionHandler = new DisconnectionHandler(this, this.LobbyManagerService);
+
+                Task.Run(async () =>
                 {
-                    _logger.WarnFormat("[AutoDisconnect] Detectada desconexión para userId={0}. Procediendo a limpiar sesión.", userId);
-                }
+                    await disconnectionHandler.HandleDisconnectionAsync(userId, "Timeout por falta de reconexión");
+                });
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                _logger.WarnFormat("[AutoDisconnect] Error al desconectar automáticamente userId={0}. Detalle: {1}", userId, exception);
+                _logger.ErrorFormat("[ExecuteTimeoutDisconnection] Error crítico limpiando usuario {0}: {1}", userId, ex);
             }
         }
 
@@ -144,14 +197,21 @@ namespace BusinessLogic.Logic
 
             ExecuteFaultSafe(() =>
             {
+                if (_reconnectionTimers.TryRemove(userId, out var timer))
+                {
+                    timer.Stop();
+                    timer.Dispose();
+                    _logger.InfoFormat("[ReconnectUser] Usuario {0} reconectado a tiempo. Desconexión cancelada.", userId);
+                }
+
                 if (_onlineUsers.TryGetValue(userId, out var existingClient))
                 {
-                    _logger.InfoFormat("[ReconnectUser] Usuario {0} reconectando. Reemplazando callback.", userId);
+                    _logger.InfoFormat("[ReconnectUser] Actualizando canal de callback para usuario {0}.", userId);
                     existingClient.CallbackChannel = newCallback;
                 }
                 else
                 {
-                    _logger.WarnFormat("[ReconnectUser] Usuario {0} no estaba registrado. Se registra como nuevo.", userId);
+                    _logger.WarnFormat("[ReconnectUser] Usuario {0} no encontrado en memoria (posiblemente expiró). Registrando como nuevo.", userId);
 
                     var client = new PlayerClient(
                         userId,
@@ -181,8 +241,17 @@ namespace BusinessLogic.Logic
         {
             if (callback is ICommunicationObject channel)
             {
-                channel.Closed += (s, e) => AutoDisconnect(userId);
-                channel.Faulted += (s, e) => AutoDisconnect(userId);
+                channel.Closed += (s, e) =>
+                {
+                    _logger.InfoFormat("Canal cerrado (Closed) para usuario {0}.", userId);
+                    UnregisterClient(userId);
+                };
+
+                channel.Faulted += (s, e) =>
+                {
+                    _logger.WarnFormat("Canal falló (Faulted) para usuario {0}.", userId);
+                    HandleConnectionLost(userId);
+                };
             }
         }
     }

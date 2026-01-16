@@ -11,6 +11,7 @@ using DataAccess.DAOs;
 using log4net;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ServiceModel;
 using System.Threading.Tasks;
 
@@ -22,8 +23,8 @@ namespace BusinessLogic
         private static readonly ILog _logger = LogManager.GetLogger(typeof(LotteryService));
 
         private static readonly IUserDao _userDao = new UserDao();
-        private static readonly ILobbyManager _sharedLobbyManager = new LobbyManager(GlobalSessionManager.Instance, _userDao);
 
+        private static readonly ILobbyManager _sharedLobbyManager = new LobbyManager(GlobalSessionManager.Instance, _userDao);
 
         private const string INVALID_SESSION_MSG = "Sesión de usuario no válida para esta operación.";
         private const string INVALID_SESSION_REASON = "Sesión inválida";
@@ -45,22 +46,22 @@ namespace BusinessLogic
             _logger.Info("Inicializando tipo LotteryService...");
             try
             {
+                GlobalSessionManager.Instance.LobbyManagerService = _sharedLobbyManager;
+
                 using (var context = new lottery_databaseEntities())
                 {
                     int rowsAffected = context.Database.ExecuteSqlCommand("UPDATE [User] SET status = 'Offline' WHERE status = 'Online'");
-
                     _logger.InfoFormat("Mantenimiento de BD completado. Usuarios corregidos a Offline: {0}", rowsAffected);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error("Error crítico al intentar limpiar estados de usuarios en BD.", ex);
+                _logger.Error("Error crítico al intentar inicializar servicios estáticos o BD.", ex);
             }
         }
 
         public LotteryService()
         {
-            IUserDao userDao = new UserDao();
             IFriendshipDao friendshipDao = new FriendshipDao();
             ISocialMediaDao socialMediaDao = new SocialMediaDao();
             IEmailService emailService = new EmailService();
@@ -69,10 +70,10 @@ namespace BusinessLogic
             ILobbyManager lobbyManager = _sharedLobbyManager;
 
             _verificationHandler = new VerificationHandler(emailService);
-            _authenticationHandler = new AuthenticationHandler(userDao);
+            _authenticationHandler = new AuthenticationHandler(_userDao);
             _guestHandler = new GuestHandler();
-            _userHandler = new UserHandler(userDao, _verificationHandler);
-            _socialMediaHandler = new SocialMediaHandler(socialMediaDao, userDao);
+            _userHandler = new UserHandler(_userDao, _verificationHandler);
+            _socialMediaHandler = new SocialMediaHandler(socialMediaDao, _userDao);
 
             _chatHandler = new ChatHandler(sessionManager, lobbyManager);
             _friendHandler = new FriendHandler(sessionManager, friendshipDao);
@@ -95,7 +96,6 @@ namespace BusinessLogic
                 );
             }
 
-            var channel = operationContext.Channel;
             var callback = operationContext.GetCallbackChannel<ILotteryCallback>();
 
             _currentUser = await _authenticationHandler.LoginUser(username, password);
@@ -106,8 +106,6 @@ namespace BusinessLogic
             }
 
             GlobalSessionManager.Instance.RegisterClient(_currentUser, callback);
-            channel.Faulted += OnChannelFaulted;
-            channel.Closing += OnChannelFaulted;
 
             return new UserDto
             {
@@ -127,10 +125,6 @@ namespace BusinessLogic
                 _currentUser = guestUser;
 
                 GlobalSessionManager.Instance.RegisterClient(guestUser, callback);
-
-                var channel = OperationContext.Current.Channel;
-                channel.Faulted += OnChannelFaulted;
-                channel.Closing += OnChannelFaulted;
 
                 return new UserDto
                 {
@@ -159,13 +153,30 @@ namespace BusinessLogic
             await _authenticationHandler.LogoutUser(userToLogout);
         }
 
-        private void OnChannelFaulted(object sender, EventArgs e)
+        public void Reconnect(int userId)
         {
-            if (_currentUser != null)
+            var callback = OperationContext.Current.GetCallbackChannel<ILotteryCallback>();
+
+            GlobalSessionManager.Instance.ReconnectUser(userId, callback);
+
+            try
             {
-                _lobbyHandler.LeaveLobby(_currentUser);
-                GlobalSessionManager.Instance.UnregisterClient(_currentUser.id_user);
-                _currentUser = null;
+                using (var context = new lottery_databaseEntities())
+                {
+                    _currentUser = context.User.FirstOrDefault(u => u.id_user == userId);
+                    if (_currentUser != null)
+                    {
+                        _logger.InfoFormat("[Reconnect] Estado de instancia restaurado para usuario {0}.", userId);
+                    }
+                    else
+                    {
+                        _logger.WarnFormat("[Reconnect] No se pudo encontrar el usuario {0} en BD al reconectar.", userId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error al restaurar _currentUser en Reconnect para {userId}", ex);
             }
         }
 
@@ -198,27 +209,13 @@ namespace BusinessLogic
 
         public Task<bool> ChangePassword(int currentUserId, string newPassword)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _userHandler.ChangePassword(currentUserId, newPassword);
         }
 
         public Task<(bool Success, string Message)> UpdateProfile(int currentUserId, UserDto userData)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _userHandler.UpdateProfile(currentUserId, userData);
         }
 
@@ -234,18 +231,12 @@ namespace BusinessLogic
 
         public Task<bool> ChangeEmailWithCodeAsync(int currentUserId, string newEmail, string code)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
+            ValidateSession(currentUserId);
             return _userHandler.ChangeEmailWithCodeAsync(currentUserId, newEmail, code);
         }
 
         public Task<bool> RecoverPasswordRequest(string email)
-        {            
+        {
             return _userHandler.RecoverPasswordRequest(email);
         }
 
@@ -258,16 +249,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault
-                    {
-                        ErrorCode = "USER_NOT_CONNECTED",
-                        Message = USER_NOT_CONNECTED_MSG
-                    },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _userHandler.RequestEmailChangeVerification(newEmail);
         }
 
@@ -275,105 +258,49 @@ namespace BusinessLogic
 
         public Task SendRequestFriendship(int currentUserId, int targetUserId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.SendRequestFriendship(currentUserId, targetUserId);
         }
 
         public Task AcceptFriendRequest(int currentUserId, int requesterId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.AcceptFriendRequest(currentUserId, requesterId);
         }
 
         public Task RejectFriendRequest(int currentUserId, int requesterId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.RejectFriendRequest(currentUserId, requesterId);
         }
 
         public Task CancelFriendRequest(int currentUserId, int targetUserId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.CancelFriendRequest(currentUserId, targetUserId);
         }
 
         public Task RemoveFriend(int currentUserId, int friendUserId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.RemoveFriend(currentUserId, friendUserId);
         }
 
         public Task<List<FriendDto>> GetFriends(int currentUserId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.GetFriends(currentUserId);
         }
 
         public Task<List<FriendDto>> GetPendingRequests(int currentUserId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.GetPendingRequests(currentUserId);
         }
 
         public Task<List<FriendDto>> GetSentRequests(int currentUserId)
         {
-            if (_currentUser == null || _currentUser.id_user != currentUserId)
-            {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = INVALID_SESSION_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }
-
+            ValidateSession(currentUserId);
             return _friendHandler.GetSentRequests(currentUserId);
         }
 
@@ -381,12 +308,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _friendHandler.InviteFriendToLobby(lobbyCode, targetFriendId);
         }
 
@@ -396,12 +319,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _lobbyHandler.CreateLobby(_currentUser);
         }
 
@@ -409,12 +328,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _lobbyHandler.JoinLobby(_currentUser, lobbyCode);
         }
 
@@ -431,12 +346,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _lobbyHandler.KickPlayer(_currentUser, targetPlayerId);
         }
 
@@ -444,12 +355,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _lobbyHandler.ChooseBoard(_currentUser, boardId);
         }
 
@@ -459,12 +366,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _gameHandler.StartGame(_currentUser, settings);
         }
 
@@ -472,12 +375,8 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
-
             return _gameHandler.UpdateGameSettings(_currentUser, settings);
         }
 
@@ -485,10 +384,7 @@ namespace BusinessLogic
         {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
+                throwNotConnected();
             }
             return _gameHandler.GetScoreboard(_currentUser);
         }
@@ -504,14 +400,11 @@ namespace BusinessLogic
         }
 
         public Task ConfirmGameEnd(int winnerId)
-        {        
+        {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                   new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                   new FaultReason(INVALID_SESSION_REASON)
-               );
-            }          
+                throwNotConnected();
+            }
             return _gameHandler.ConfirmGameEnd(_currentUser, winnerId);
         }
 
@@ -519,15 +412,10 @@ namespace BusinessLogic
 
         public async Task SendMessage(string message)
         {
-            await _chatHandler.SendMessage(_currentUser, message);
-        }
-
-        public void Reconnect(int userId)
-        {
-            var callback =
-                OperationContext.Current.GetCallbackChannel<ILotteryCallback>();
-
-            GlobalSessionManager.Instance.ReconnectUser(userId, callback);
+            if (_currentUser != null)
+            {
+                await _chatHandler.SendMessage(_currentUser, message);
+            }
         }
 
         // --- IVerificationService ---
@@ -548,14 +436,11 @@ namespace BusinessLogic
         }
 
         public Task<LobbyStateDto> GetLobbyState(string lobbyCode)
-        {            
+        {
             if (_currentUser == null)
             {
-                throw new FaultException<ServiceFault>(
-                    new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
-                    new FaultReason(INVALID_SESSION_REASON)
-                );
-            }            
+                throwNotConnected();
+            }
             return _lobbyHandler.GetLobbyState(_currentUser, lobbyCode);
         }
 
@@ -569,6 +454,27 @@ namespace BusinessLogic
         public async Task<bool> SaveOrUpdateSocialMediaAsync(SocialMediaDto media)
         {
             return await _socialMediaHandler.UpdateSocialMedia(media);
+        }
+
+        // --- Helpers ---
+
+        private void ValidateSession(int currentUserId)
+        {
+            if (_currentUser == null || _currentUser.id_user != currentUserId)
+            {
+                throw new FaultException<ServiceFault>(
+                    new ServiceFault { Message = INVALID_SESSION_MSG },
+                    new FaultReason(INVALID_SESSION_REASON)
+                );
+            }
+        }
+
+        private void throwNotConnected()
+        {
+            throw new FaultException<ServiceFault>(
+                new ServiceFault { Message = USER_NOT_CONNECTED_MSG },
+                new FaultReason(INVALID_SESSION_REASON)
+            );
         }
     }
 }

@@ -45,25 +45,28 @@ namespace BusinessLogic.Handlers
                     throw new UserNotOnlineException("No se encontró sesión activa para este usuario.");
                 }
 
-                if (client.CurrentLobby == null)
+                var lobby = client.CurrentLobby;
+
+                if (lobby == null)
                 {
                     throw new UserNotInLobbyException("No estás dentro de un lobby, no puedes enviar mensajes.");
                 }
 
                 try
                 {
-                    client.CurrentLobby.BroadcastChatMessage(client.Nickname, message);
-                    _logger.InfoFormat("[SendMessage] Mensaje enviado en lobby '{0}'.", client.CurrentLobby.LobbyCode);
+                    lobby.BroadcastChatMessage(client.Nickname, message);
+
+                    _logger.InfoFormat("[SendMessage] Mensaje enviado en lobby '{0}'.", lobby.LobbyCode);
                 }
                 catch (ForbiddenWordException)
                 {
                     _logger.WarnFormat("[SendMessage] Grosería detectada de {0}. Procediendo a expulsión.", client.Nickname);
-                    _lobbyManager.KickPlayer(client.CurrentLobby.Host, client.UserId);
+                    _lobbyManager.KickPlayer(lobby.Host, client.UserId);
                 }
                 catch (ChatException ex) when (ex.Message.Contains(SPAM_KEYWORD))
                 {
                     _logger.WarnFormat("[SendMessage] Spam detectado de {0}. Procediendo a expulsión.", client.Nickname);
-                    _lobbyManager.KickPlayer(client.CurrentLobby.Host, client.UserId);
+                    _lobbyManager.KickPlayer(lobby.Host, client.UserId);
                 }
 
             }, "SendMessage");
