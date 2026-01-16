@@ -1,5 +1,4 @@
 ﻿using BusinessLogic.Exceptions;
-using BusinessLogic.Logic; // Tu namespace
 using Contracts.Callbacks;
 using Contracts.DTOs;
 using Contracts.Faults;
@@ -24,15 +23,12 @@ namespace BusinessLogic.Models
         private const int WIN_SCORE = 1000;
         private const int PENALTY_SCORE = 500;
         private const int DRAW_DELAY_FACTOR = 1000;
-
-        // Constantes del compañero (Manejo de DB y Errores)
+        
         private const int DB_TIMEOUT_MS = 2000;
         private const string DB_ERROR_MESSAGE = "DB_ERROR";
-
         private const string SYSTEM_NAME = "Sistema";
         private const string FORBIDDEN_WORDS_FILE_NAME = "forbidden_words.txt";
-
-        // EVENTO TUYO (Vital para desconexión del host)
+        
         public event Action HostLeft;
 
         public string LobbyCode { get; }
@@ -51,9 +47,7 @@ namespace BusinessLogic.Models
 
         private Deck _gameDeck;
         private CancellationTokenSource _gameCts;
-        private readonly SemaphoreSlim _pauseSemaphore = new SemaphoreSlim(0, 1);
-
-        // Semáforos y listas del compañero (Vital para evitar crashes de DB)
+        private readonly SemaphoreSlim _pauseSemaphore = new SemaphoreSlim(0, 1);        
         private readonly SemaphoreSlim _dbSemaphore = new SemaphoreSlim(1, 1);
         private readonly HashSet<int> _playersAffectedByDbError = new HashSet<int>();
 
@@ -67,9 +61,7 @@ namespace BusinessLogic.Models
         {
             LobbyCode = code;
             Host = host;
-            _userDao = userDao ?? throw new ArgumentNullException(nameof(userDao));
-
-            // Usamos tu lógica de AddPlayer que es más segura
+            _userDao = userDao ?? throw new ArgumentNullException(nameof(userDao));            
             AddPlayer(host);
 
             string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", FORBIDDEN_WORDS_FILE_NAME);
@@ -81,13 +73,10 @@ namespace BusinessLogic.Models
             return _bannedPlayers.Contains(userId);
         }
 
-        // --- TU LÓGICA DE ADD PLAYER (Mejor manejo de eventos) ---
         public bool AddPlayer(PlayerClient player)
         {
-            if (_bannedPlayers.Contains(player.UserId))
-            {
-                return false;
-            }
+            if (_bannedPlayers.Contains(player.UserId)) return false;
+
             lock (Players)
             {
                 if (Players.Count >= MAX_PLAYERS || Players.Any(p => p.UserId == player.UserId))
@@ -96,13 +85,12 @@ namespace BusinessLogic.Models
                 }
                 Players.Add(player);
             }
-            player.CurrentLobby = this;
-
+            player.CurrentLobby = this;           
             if (player.CallbackChannel is ICommunicationObject channel)
             {
                 EventHandler handler = null;
                 handler = (s, e) =>
-                {
+                {                    
                     channel.Closed -= handler;
                     channel.Faulted -= handler;
                     RemovePlayer(player);
@@ -113,15 +101,13 @@ namespace BusinessLogic.Models
             return true;
         }
 
-        // --- TU LÓGICA DE REMOVE PLAYER (CRÍTICO: Manejo de Ghosts y HostLeft) ---
         public void RemovePlayer(PlayerClient playerOrGhost)
         {
             bool wasHost = false;
             PlayerClient actualPlayerToRemove = null;
 
             lock (Players)
-            {
-                // Buscamos por ID para evitar fallos con objetos fantasma
+            {                
                 actualPlayerToRemove = Players.FirstOrDefault(p => p.UserId == playerOrGhost.UserId);
 
                 if (actualPlayerToRemove != null)
@@ -138,19 +124,16 @@ namespace BusinessLogic.Models
             if (actualPlayerToRemove != null)
             {
                 actualPlayerToRemove.CurrentLobby = null;
-            }
-
+            }            
             if (wasHost)
             {
-                _logger.InfoFormat("[Lobby] Host {0} abandonó. Disparando HostLeft.", playerOrGhost.UserId);
-
-                // Integramos la limpieza segura del compañero antes de cerrar
+                _logger.InfoFormat("[Lobby] Host {0} abandonó. Cerrando lobby.", playerOrGhost.UserId);
+                BroadcastLobbyClosed();
                 StopLobbyGame();
                 HostLeft?.Invoke();
                 return;
             }
-
-            // Lógica compartida de reinicio si se va el declarador
+            
             if (_lastDeclarer != null && _lastDeclarer.UserId == playerOrGhost.UserId)
             {
                 _lastDeclarer = null;
@@ -158,17 +141,15 @@ namespace BusinessLogic.Models
                 ResumeGame();
                 BroadcastGameResumed();
             }
-
+            
             if (IsGameInProgress && Players.Count == 1)
             {
                 PlayerClient lastPlayer = Players.FirstOrDefault();
                 if (lastPlayer != null)
                 {
                     IsGameInProgress = false;
-                    if (_gameCts != null)
-                    {
-                        _gameCts.Cancel();
-                    }
+                    if (_gameCts != null) _gameCts.Cancel();
+
                     SafeNotifyClient(lastPlayer, client => client.OnGameCancelledByAbandonment());
                     ResetGameState();
                 }
@@ -257,8 +238,7 @@ namespace BusinessLogic.Models
                 if (_recentChatMessages.Count > CHAT_HISTORY_LIMIT) _recentChatMessages.RemoveAt(0);
             }
         }
-
-        // --- MÉTODOS DE BROADCAST (Comunes) ---
+        
         public void BroadcastBoardSelected(int userId, int boardId)
         {
             var player = Players.FirstOrDefault(p => p.UserId == userId);
@@ -279,8 +259,7 @@ namespace BusinessLogic.Models
         public void BroadcastGameFinished(string finalMessage) => BroadcastToAll(client => client.OnGameFinished(finalMessage));
         public void BroadcastGameResumed() => BroadcastToAll(client => client.OnGameResumed());
         public void BroadcastGameStarted(GameSettingsDto settings) => BroadcastToAll(client => client.OnGameStarted(settings));
-
-        // --- LÓGICA DEL COMPAÑERO: Persistencia Segura y Timeouts ---
+        
         private async Task SaveChangesWithTimeoutAsync()
         {
             var saveTask = _userDao.SaveChangesAsync();
@@ -294,20 +273,16 @@ namespace BusinessLogic.Models
                 throw new TimeoutException("La base de datos tardó demasiado en responder.");
             }
         }
-
-        // --- LÓGICA DE VICTORIA: Fusión (Lógica del compañero con semáforos + Tu estructura) ---
+        
         public async Task NotifyGameWinAsync(int winnerId)
         {
             var winnerClient = Players.FirstOrDefault(p => p.UserId == winnerId);
-            if (winnerClient == null) return;
-
-            // Detenemos lógica de juego
+            if (winnerClient == null) return;            
             IsGameInProgress = false;
             if (_gameCts != null) _gameCts.Cancel();
 
             string systemMsgCode = $"WIN_SIMPLE|{winnerClient.Nickname}";
-
-            // Lógica del compañero: Protección con semáforo y manejo de errores DB
+            
             await _dbSemaphore.WaitAsync();
             try
             {
@@ -346,7 +321,7 @@ namespace BusinessLogic.Models
                 markedPositions));
 
             await Task.Delay(500);
-            StopAndNotifyGameFinished(); // Método del compañero para cierre seguro
+            StopAndNotifyGameFinished();
         }
 
         public virtual void StartLobbyGame(GameSettingsDto settings)
@@ -360,6 +335,7 @@ namespace BusinessLogic.Models
             _gameDeck = new Deck();
             _gameCts = new CancellationTokenSource();
             BroadcastGameStarted(settings);
+            
             Task.Run(() => RunGameLoop(settings, _gameCts.Token));
         }
 
@@ -369,7 +345,6 @@ namespace BusinessLogic.Models
             StopAndNotifyGameFinished();
         }
 
-        // Método auxiliar del compañero para centralizar el fin del juego y notificar errores DB
         private void StopAndNotifyGameFinished()
         {
             IsGameInProgress = false;
@@ -391,7 +366,7 @@ namespace BusinessLogic.Models
             string finalMsg = _playersAffectedByDbError.Count > 0 ? $"{DB_ERROR_MESSAGE}|{affectedIds}" : null;
 
             ResetGameState();
-            BroadcastGameFinished(finalMsg); // Sobrecarga que acepta mensaje
+            BroadcastGameFinished(finalMsg);
             _playersAffectedByDbError.Clear();
         }
 
@@ -406,7 +381,6 @@ namespace BusinessLogic.Models
             }
         }
 
-        // --- GAME LOOP: Fusión (Loop del compañero + Tu mensaje de advertencia) ---
         private async Task RunGameLoop(GameSettingsDto settings, CancellationToken token)
         {
             int cardDrawDelayMs = (settings?.CardDrawSpeedSeconds ?? 1) * DRAW_DELAY_FACTOR;
@@ -426,12 +400,9 @@ namespace BusinessLogic.Models
 
                     _drawnCards.Add(card.Id);
                     BroadcastCardDrawn(new CardDto { Id = card.Id });
-                }
-
-                // TU AGREGO: Advertencia de 10 segundos
+                }                
                 if (IsGameInProgress && !token.IsCancellationRequested)
-                {
-                    BroadcastSystemMessage("¡Se acabaron las cartas! Tienen 10 segundos para declarar Lotería.");
+                {                    
                     await Task.Delay(10000, token);
                 }
             }
@@ -463,8 +434,7 @@ namespace BusinessLogic.Models
 
             return Task.CompletedTask;
         }
-
-        // --- VALIDATE FALSE: Lógica del compañero (Mejor DB) ---
+        
         public async Task<bool> ValidateFalseLoteriaAsync(int challengerUserId)
         {
             if (_lastDeclarer == null || _lastMarkedPositions == null || !IsGameInProgress)
@@ -489,7 +459,6 @@ namespace BusinessLogic.Models
             return _lastMarkedPositions.All(pos => (pos >= 0 && pos < boardConfig.Count) && _drawnCards.Contains(boardConfig[pos]));
         }
 
-        // Método complejo del compañero para manejar DB y Penalizaciones
         private async Task HandleFalseLoteriaOutcome(bool declarerWasCorrect, PlayerClient challenger)
         {
             await _dbSemaphore.WaitAsync();
@@ -497,7 +466,7 @@ namespace BusinessLogic.Models
             {
                 bool databaseChanged = false;
                 if (declarerWasCorrect)
-                {
+                {                    
                     if (challenger != null && challenger.UserId > 0)
                     {
                         var user = await _userDao.GetUserByIdAsync(challenger.UserId);
@@ -506,7 +475,7 @@ namespace BusinessLogic.Models
                             user.score = Math.Max(0, (user.score ?? 0) - PENALTY_SCORE);
                             databaseChanged = true;
                         }
-                    }
+                    }                    
                     if (_lastDeclarer != null && _lastDeclarer.UserId > 0)
                     {
                         var winner = await _userDao.GetUserByIdAsync(_lastDeclarer.UserId);
@@ -518,7 +487,7 @@ namespace BusinessLogic.Models
                     }
                 }
                 else
-                {
+                {                    
                     if (_lastDeclarer.UserId > 0)
                     {
                         var declarerUser = await _userDao.GetUserByIdAsync(_lastDeclarer.UserId);
@@ -527,7 +496,7 @@ namespace BusinessLogic.Models
                             declarerUser.score = Math.Max(0, (declarerUser.score ?? 0) - PENALTY_SCORE);
                             databaseChanged = true;
                         }
-                    }
+                    }                    
                     if (challenger != null && challenger.UserId > 0)
                     {
                         var challengerUser = await _userDao.GetUserByIdAsync(challenger.UserId);
@@ -574,7 +543,6 @@ namespace BusinessLogic.Models
             }
         }
 
-        // Método extra del compañero para persistencia segura
         public async Task ConfirmWinnerPersistenceAsync(int winnerId)
         {
             await _dbSemaphore.WaitAsync();
