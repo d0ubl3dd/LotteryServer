@@ -41,7 +41,7 @@ namespace Contracts.Callbacks
         void OnCardDrawn(CardDto card);
 
         [OperationContract(IsOneWay = true)]
-        void OnGameFinished();
+        void OnGameFinished(string finalMessage);
 
         [OperationContract(IsOneWay = true)]
         void LobbyStateUpdated(LobbyStateDto lobbyState);
