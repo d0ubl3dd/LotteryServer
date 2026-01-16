@@ -72,10 +72,7 @@ namespace BusinessLogic.Logic.Base
                 throw exception;
             }
 
-            var result = BusinessLogic.Utilities.ExceptionMapper.GetFaultAndLogAction(exception);
-
-            var fault = result.Fault;
-            var logAction = result.Logger;
+            (ServiceFault fault, Action<string> logAction) = Utilities.ExceptionMapper.GetFaultAndLogAction(exception);
 
             logAction(string.Format("[{0}] {1}: {2} | DebugDetail: {3}",
                 operationName, fault.ErrorCode, fault.Message, exception.Message));

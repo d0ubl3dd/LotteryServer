@@ -1,6 +1,7 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Logic;
 using BusinessLogic.Logic.Base;
+using BusinessLogic.Models;
 using DataAccess;
 using System;
 using System.Threading.Tasks;
@@ -32,40 +33,40 @@ namespace BusinessLogic.Handlers
             {
                 if (string.IsNullOrWhiteSpace(message))
                 {
-                    _logger.InfoFormat("[SendMessage] Mensaje vacío ignorado para usuario {0}.", currentUser.nickname);
+                    _logger.InfoFormat("[SendMessage] Empty message ignored for user {0}.", currentUser.nickname);
                     return;
                 }
 
-                _logger.InfoFormat("[SendMessage] Usuario {0} intenta enviar mensaje.", currentUser.nickname);
+                _logger.InfoFormat("[SendMessage] User {0} attempting to send message.", currentUser.nickname);
 
-                var client = _sessionManager.GetClient(currentUser.id_user);
+                PlayerClient client = _sessionManager.GetClient(currentUser.id_user);
 
                 if (client == null)
                 {
-                    throw new UserNotOnlineException("No se encontró sesión activa para este usuario.");
+                    throw new UserNotOnlineException("No active session found for this user.");
                 }
 
-                var lobby = client.CurrentLobby;
+                Lobby lobby = client.CurrentLobby;
 
                 if (lobby == null)
                 {
-                    throw new UserNotInLobbyException("No estás dentro de un lobby, no puedes enviar mensajes.");
+                    throw new UserNotInLobbyException("You are not inside a lobby, you cannot send messages.");
                 }
 
                 try
                 {
                     lobby.BroadcastChatMessage(client.Nickname, message);
 
-                    _logger.InfoFormat("[SendMessage] Mensaje enviado en lobby '{0}'.", lobby.LobbyCode);
+                    _logger.InfoFormat("[SendMessage] Message sent in lobby '{0}'.", lobby.LobbyCode);
                 }
                 catch (ForbiddenWordException)
                 {
-                    _logger.WarnFormat("[SendMessage] Grosería detectada de {0}. Procediendo a expulsión.", client.Nickname);
+                    _logger.WarnFormat("[SendMessage] Profanity detected from {0}. Proceeding to kick.", client.Nickname);
                     _lobbyManager.KickPlayer(lobby.Host, client.UserId);
                 }
                 catch (ChatException ex) when (ex.Message.Contains(SPAM_KEYWORD))
                 {
-                    _logger.WarnFormat("[SendMessage] Spam detectado de {0}. Procediendo a expulsión.", client.Nickname);
+                    _logger.WarnFormat("[SendMessage] Spam detected from {0}. Proceeding to kick.", client.Nickname);
                     _lobbyManager.KickPlayer(lobby.Host, client.UserId);
                 }
 

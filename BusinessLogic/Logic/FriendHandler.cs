@@ -1,7 +1,9 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Logic.Base;
+using BusinessLogic.Models;
 using BusinessLogic.Utilities;
 using Contracts.DTOs;
+using DataAccess;
 using DataAccess.DAOs;
 using System;
 using System.Collections.Generic;
@@ -28,24 +30,24 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no pueden enviar solicitudes de amistad.");
+                    throw new GuestActionException("Guests cannot send friend requests.");
                 }
 
                 _logger.InfoFormat("[SendRequestFriendship] {0} -> {1}", currentUserId, targetUserId);
 
                 if (currentUserId == targetUserId)
                 {
-                    throw new InvalidFriendshipRequestException("No puedes agregarte a ti mismo.");
+                    throw new InvalidFriendshipRequestException("You cannot add yourself.");
                 }
 
                 if (await _friendshipDao.FriendshipExistsAsync(currentUserId, targetUserId))
                 {
-                    throw new FriendshipDuplicateException("Ya existe una amistad o solicitud.");
+                    throw new FriendshipDuplicateException("A friendship or request already exists.");
                 }
 
                 await _friendshipDao.RequestFriendshipAsync(currentUserId, targetUserId);
 
-                _logger.Info("[SendRequestFriendship] Solicitud enviada.");
+                _logger.Info("[SendRequestFriendship] Request sent.");
 
             }, "SendRequestFriendship");
         }
@@ -56,17 +58,17 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no pueden aceptar solicitudes.");
+                    throw new GuestActionException("Guests cannot accept requests.");
                 }
 
-                _logger.InfoFormat("[AcceptFriendRequest] {0} acepta de {1}", currentUserId, requesterId);
+                _logger.InfoFormat("[AcceptFriendRequest] {0} accepts from {1}", currentUserId, requesterId);
 
-                var request = await _friendshipDao.GetPendingRequestAsync(requesterId, currentUserId)
-                    ?? throw new FriendshipNotFoundException("La solicitud no existe.");
+                Friendship request = await _friendshipDao.GetPendingRequestAsync(requesterId, currentUserId)
+                    ?? throw new FriendshipNotFoundException("The request does not exist.");
 
                 await _friendshipDao.AcceptRequestAsync(request);
 
-                _logger.Info("[AcceptFriendRequest] Solicitud aceptada.");
+                _logger.Info("[AcceptFriendRequest] Request accepted.");
 
             }, "AcceptFriendRequest");
         }
@@ -77,17 +79,17 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no pueden rechazar solicitudes.");
+                    throw new GuestActionException("Guests cannot reject requests.");
                 }
 
-                _logger.InfoFormat("[RejectFriendRequest] {0} rechaza a {1}", currentUserId, requesterId);
+                _logger.InfoFormat("[RejectFriendRequest] {0} rejects {1}", currentUserId, requesterId);
 
-                var request = await _friendshipDao.GetPendingRequestAsync(requesterId, currentUserId)
-                    ?? throw new FriendshipNotFoundException("La solicitud no existe.");
+                Friendship request = await _friendshipDao.GetPendingRequestAsync(requesterId, currentUserId)
+                    ?? throw new FriendshipNotFoundException("The request does not exist.");
 
                 await _friendshipDao.RemoveFriendshipAsync(request);
 
-                _logger.Info("[RejectFriendRequest] Solicitud rechazado.");
+                _logger.Info("[RejectFriendRequest] Request rejected.");
 
             }, "RejectFriendRequest");
         }
@@ -98,17 +100,17 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no pueden cancelar solicitudes.");
+                    throw new GuestActionException("Guests cannot cancel requests.");
                 }
 
-                _logger.InfoFormat("[CancelFriendRequest] {0} cancela solicitud a {1}", currentUserId, targetUserId);
+                _logger.InfoFormat("[CancelFriendRequest] {0} cancels request to {1}", currentUserId, targetUserId);
 
-                var request = await _friendshipDao.GetPendingRequestAsync(currentUserId, targetUserId)
-                    ?? throw new FriendshipNotFoundException("No existe solicitud pendiente.");
+                Friendship request = await _friendshipDao.GetPendingRequestAsync(currentUserId, targetUserId)
+                    ?? throw new FriendshipNotFoundException("No pending request exists.");
 
                 await _friendshipDao.RemoveFriendshipAsync(request);
 
-                _logger.Info("[CancelFriendRequest] Solicitud cancelada.");
+                _logger.Info("[CancelFriendRequest] Request canceled.");
 
             }, "CancelFriendRequest");
         }
@@ -119,17 +121,17 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no pueden eliminar amigos.");
+                    throw new GuestActionException("Guests cannot remove friends.");
                 }
 
-                _logger.InfoFormat("[RemoveFriend] {0} elimina amistad con {1}", currentUserId, friendUserId);
+                _logger.InfoFormat("[RemoveFriend] {0} removes friendship with {1}", currentUserId, friendUserId);
 
-                var friendship = await _friendshipDao.GetAcceptedFriendshipAsync(currentUserId, friendUserId)
-                    ?? throw new FriendshipNotFoundException("No existe una amistad con ese usuario.");
+                Friendship friendship = await _friendshipDao.GetAcceptedFriendshipAsync(currentUserId, friendUserId)
+                    ?? throw new FriendshipNotFoundException("No friendship exists with that user.");
 
                 await _friendshipDao.RemoveFriendshipAsync(friendship);
 
-                _logger.Info("[RemoveFriend] Amistad eliminada.");
+                _logger.Info("[RemoveFriend] Friendship removed.");
 
             }, "RemoveFriend");
         }
@@ -140,20 +142,18 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no tienen lista de amigos.");
+                    throw new GuestActionException("Guests do not have a friend list.");
                 }
 
-                _logger.InfoFormat("[GetFriends] Solicitando amigos de {0}", currentUserId);
+                _logger.InfoFormat("[GetFriends] Requesting friends for {0}", currentUserId);
 
-                var users = await _friendshipDao.GetAcceptedFriendsAsync(currentUserId);
+                List<User> users = await _friendshipDao.GetAcceptedFriendsAsync(currentUserId);
 
-                var friendList = users.Select(u => new FriendDto
+                List<FriendDto> friendList = users.Select(u => new FriendDto
                 {
                     FriendId = u.id_user,
                     Nickname = u.nickname,
-
                     Status = _sessionManager.IsUserOnline(u.id_user) ? "Online" : "Offline"
-
                 }).ToList();
 
                 return friendList;
@@ -167,12 +167,12 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no tienen solicitudes.");
+                    throw new GuestActionException("Guests do not have requests.");
                 }
 
                 _logger.InfoFormat("[GetPendingRequests] {0}", currentUserId);
 
-                var users = await _friendshipDao.GetPendingRequestsAsync(currentUserId);
+                List<User> users = await _friendshipDao.GetPendingRequestsAsync(currentUserId);
 
                 return users.Select(u => new FriendDto
                 {
@@ -189,12 +189,12 @@ namespace BusinessLogic.Logic
             {
                 if (currentUserId < 0)
                 {
-                    throw new GuestActionException("Los invitados no tienen solicitudes enviadas.");
+                    throw new GuestActionException("Guests do not have sent requests.");
                 }
 
                 _logger.InfoFormat("[GetSentRequests] {0}", currentUserId);
 
-                var users = await _friendshipDao.GetSentRequestsAsync(currentUserId);
+                List<User> users = await _friendshipDao.GetSentRequestsAsync(currentUserId);
 
                 return users.Select(u => new FriendDto
                 {
@@ -210,51 +210,51 @@ namespace BusinessLogic.Logic
         {
             await ExecuteFaultSafeAsync(async () =>
             {
-                _logger.InfoFormat("[InviteFriendToLobby] Invitando a {0} al lobby {1}", targetFriendId, lobbyCode);
+                _logger.InfoFormat("[InviteFriendToLobby] Inviting {0} to lobby {1}", targetFriendId, lobbyCode);
 
                 int? currentUserId = _sessionManager.GetUserIdFromContext();
 
                 if (currentUserId == null)
                 {
-                    throw new UserNotConnectedException("Usuario no autenticado.");
+                    throw new UserNotConnectedException("User not authenticated.");
                 }
 
                 if (currentUserId.Value < 0)
                 {
-                    throw new GuestActionException("Los invitados no pueden invitar amigos.");
+                    throw new GuestActionException("Guests cannot invite friends.");
                 }
 
-                var inviter = _sessionManager.GetClient(currentUserId.Value);
+                PlayerClient inviter = _sessionManager.GetClient(currentUserId.Value);
 
                 if (inviter?.CurrentLobby == null)
                 {
-                    throw new LobbyException("No tienes un lobby activo.");
+                    throw new LobbyException("You do not have an active lobby.");
                 }
 
                 if (inviter.CurrentLobby.LobbyCode != lobbyCode)
                 {
-                    throw new LobbyException("Intento de invitación desde un lobby distinto.");
+                    throw new LobbyException("Invitation attempt from a different lobby.");
                 }
 
-                var target = _sessionManager.GetClient(targetFriendId);
+                PlayerClient target = _sessionManager.GetClient(targetFriendId);
 
                 if (target == null)
                 {
-                    throw new UserNotConnectedException("El amigo no está conectado.");
+                    throw new UserNotConnectedException("Friend is not online.");
                 }
 
                 if (target.CurrentLobby != null)
                 {
                     throw new UserAlreadyInLobbyException(
                         target.CurrentLobby == inviter.CurrentLobby
-                        ? "El usuario ya está en este lobby."
-                        : "El usuario está en otro lobby."
+                        ? "The user is already in this lobby."
+                        : "The user is in another lobby."
                     );
                 }
 
                 target.CallbackChannel.ReceiveLobbyInvite(inviter.Nickname, lobbyCode);
 
-                _logger.Info("[InviteFriendToLobby] Invitación enviada.");
+                _logger.Info("[InviteFriendToLobby] Invitation sent.");
 
                 await Task.CompletedTask;
 

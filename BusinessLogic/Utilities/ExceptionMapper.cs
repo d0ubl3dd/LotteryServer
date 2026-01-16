@@ -1,6 +1,5 @@
 ﻿using BusinessLogic.Exceptions;
 using BusinessLogic.Logic;
-using BusinessLogic.Utilities;
 using Contracts.Faults;
 using log4net;
 using System;
@@ -35,7 +34,8 @@ namespace BusinessLogic.Utilities
             Register<InvalidNicknameLengthException>("AUTH_INVALID_LENGTH", "Longitud de nickname incorrecta.", useExMsg: true);
             Register<InvalidNicknameFormatException>("AUTH_INVALID_FORMAT", "Formato de nickname inválido.", useExMsg: true);
 
-            Register<EmailDeliveryException>("VERIFY_EMAIL_SEND_FAILED", "No pudimos enviar el correo de verificación.", logAsError: true);
+            Register<EmailDeliveryException>("VERIFY_EMAIL_SEND_FAILED", "No pudimos enviar el correo de verificación.", 
+                logAsError: true);
             Register<VerificationException>("VERIFY_ERROR", "Error en el proceso de verificación.", useExMsg: true);
 
             Register<LobbyNotFoundException>("LOBBY_NOT_FOUND", "El lobby no existe o ha cerrado.");
@@ -63,7 +63,13 @@ namespace BusinessLogic.Utilities
             Register<SessionContextException>("SESSION_CONTEXT_ERROR", "Error de contexto de sesión WCF.", logAsError: true);
         }
 
-        private static void Register<T>(string code, string message, bool useExMsg = false, bool logAsError = false, bool isFatal = false) where T : Exception
+        /* JUSTIFICATION: 
+           This method acts as an internal helper for the static constructor. 
+           It exceeds the 3-parameter limit to allow flexible boolean configuration (flags) 
+           without the verbosity of creating a separate configuration object for each registration. 
+           Refactoring this would hurt the readability of the static constructor. */
+        private static void Register<T>(
+            string code, string message, bool useExMsg = false, bool logAsError = false, bool isFatal = false) where T : Exception
         {
             Action<string> logAction;
 
@@ -97,7 +103,7 @@ namespace BusinessLogic.Utilities
 
         public static (ServiceFault Fault, Action<string> Logger) GetFaultAndLogAction(Exception ex)
         {
-            if (_strategies.TryGetValue(ex.GetType(), out var strategy))
+            if (_strategies.TryGetValue(ex.GetType(), out ErrorStrategy strategy))
             {
                 string msg = strategy.UseExceptionMessage ? ex.Message : strategy.ClientMessage;
                 return (
@@ -110,6 +116,14 @@ namespace BusinessLogic.Utilities
                 new ServiceFault { ErrorCode = "INTERNAL_SERVER_ERROR", Message = "Ocurrió un error inesperado en el servidor." },
                 _logger.Fatal
             );
+        }
+
+        private class ErrorStrategy
+        {
+            public string ErrorCode { get; set; }
+            public string ClientMessage { get; set; }
+            public bool UseExceptionMessage { get; set; }
+            public Action<string> LogAction { get; set; }
         }
     }
 }
