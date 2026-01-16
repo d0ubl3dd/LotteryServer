@@ -30,7 +30,7 @@ namespace BusinessLogic
         private const string USER_NOT_CONNECTED_MSG = "Usuario no conectado.";
 
         private User _currentUser;
-        private readonly AuthenticationHandler _authHandler;
+        private readonly AuthenticationHandler _authenticationHandler;
         private readonly UserHandler _userHandler;
         private readonly FriendHandler _friendHandler;
         private readonly LobbyHandler _lobbyHandler;
@@ -69,7 +69,7 @@ namespace BusinessLogic
             ILobbyManager lobbyManager = _sharedLobbyManager;
 
             _verificationHandler = new VerificationHandler(emailService);
-            _authHandler = new AuthenticationHandler(userDao);
+            _authenticationHandler = new AuthenticationHandler(userDao);
             _guestHandler = new GuestHandler();
             _userHandler = new UserHandler(userDao, _verificationHandler);
             _socialMediaHandler = new SocialMediaHandler(socialMediaDao, userDao);
@@ -98,7 +98,7 @@ namespace BusinessLogic
             var channel = operationContext.Channel;
             var callback = operationContext.GetCallbackChannel<ILotteryCallback>();
 
-            _currentUser = await _authHandler.LoginUser(username, password);
+            _currentUser = await _authenticationHandler.LoginUser(username, password);
 
             if (_currentUser == null)
             {
@@ -156,7 +156,7 @@ namespace BusinessLogic
                 GlobalSessionManager.Instance.UnregisterClient(userToLogout.id_user);
             }
 
-            await _authHandler.LogoutUser(userToLogout);
+            await _authenticationHandler.LogoutUser(userToLogout);
         }
 
         private void OnChannelFaulted(object sender, EventArgs e)

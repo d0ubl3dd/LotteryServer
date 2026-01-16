@@ -20,31 +20,31 @@ namespace BusinessLogic.Validation
 
         public static RegistrationValidationResult Validate(User user, string password, bool nicknameExists, bool emailExists)
         {
-            var requiredResult = ValidateRequiredFields(user, password);
+            RegistrationValidationResult requiredResult = ValidateRequiredFields(user, password);
             if (requiredResult != RegistrationValidationResult.Success)
             {
                 return requiredResult;
             }
 
-            var nicknameResult = ValidateNicknameRules(user.nickname);
+            RegistrationValidationResult nicknameResult = ValidateNicknameRules(user.nickname);
             if (nicknameResult != RegistrationValidationResult.Success)
             {
                 return nicknameResult;
             }
 
-            var emailResult = ValidateEmailRules(user.email);
+            RegistrationValidationResult emailResult = ValidateEmailRules(user.email);
             if (emailResult != RegistrationValidationResult.Success)
             {
                 return emailResult;
             }
 
-            var nameResult = ValidateNameRules(user);
+            RegistrationValidationResult nameResult = ValidateNameRules(user);
             if (nameResult != RegistrationValidationResult.Success)
             {
                 return nameResult;
             }
 
-            var passwordResult = ValidatePasswordRules(password);
+            RegistrationValidationResult passwordResult = ValidatePasswordRules(password);
             if (passwordResult != RegistrationValidationResult.Success)
             {
                 return passwordResult;
